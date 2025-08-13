@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF7F27;
+            --primary-dark: #E56A17;
+            --primary-light: #FFE0B2;
+            --primary-extra-light: #FFF3E0;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --dark: #333333;
+            --text-light: #666666;
+            --success: #48BB78;
+            --warning: #F59E0B;
+            --danger: #F56565;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--light-gray);
+            color: var(--dark);
+        }
+        
+        /* Orange Sidebar - Exact match with quizzes page */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+            color: var(--white);
+            padding: 30px 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            padding: 0 25px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .sidebar-header p {
+            font-weight: 500;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+        }
+        
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--white);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        
+        .sidebar-nav li a:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav li a.active {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+        
+        /* Main Content - Matching quizzes page */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            color: var(--primary-dark);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-bar {
+            display: flex;
+            width: 300px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+            font-size: 1rem;
+        }
+        
+        .search-bar button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .search-bar button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        /* Profile Grid */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 25px;
+        }
+        
+        /* Profile Card - Matching style */
+        .profile-card {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-align: center;
+            padding: 25px;
+        }
+        
+        .profile-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        
+        .profile-picture {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 20px;
+            border: 4px solid var(--primary);
+            box-shadow: 0 4px 15px rgba(255, 127, 39, 0.3);
+        }
+        
+        .profile-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        
+        .profile-role {
+            color: var(--primary-dark);
+            font-weight: 500;
+            margin-bottom: 20px;
+            padding: 5px 15px;
+            background-color: var(--primary-extra-light);
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .profile-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 25px 0;
+            padding: 15px 0;
+            border-top: 1px solid var(--light-gray);
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        /* Details Card - Matching style */
+        .details-card {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            padding: 25px;
+        }
+        
+        .details-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .details-header h2 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .details-section {
+            margin-bottom: 25px;
+        }
+        
+        .details-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        
+        .detail-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            margin-bottom: 12px;
+        }
+        
+        .detail-label {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+        
+        .detail-value {
+            font-weight: 500;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background-color: rgba(72,187,120,0.1);
+            color: var(--success);
+        }
+        
+        /* Responsive - Matching quizzes page */
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profile-card {
+                max-width: 400px;
+                margin: 0 auto;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .detail-row {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Orange Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-graduation-cap"></i> Student Portal</h2>
+            <p><b>Data Science - Spring 2025</b></p>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="profile.html" class="active"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="assignments.html"><i class="fas fa-tasks"></i> Assignments</a></li>
+            <li><a href="quizzes.html"><i class="fas fa-question-circle"></i> Quizzes</a></li>
+            <li><a href="grades.html"><i class="fas fa-chart-bar"></i> Grades</a></li>
+            <li><a href="announcements.html"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="messages.html"><i class="fas fa-envelope"></i> Messages</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1><i class="fas fa-user-circle"></i> My Profile</h1>
+            <div class="search-bar">
+                <input type="text" placeholder="Search profile...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+
+        <div class="profile-grid">
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <img src="https://ui-avatars.com/api/?name=Muhammad+Saad&background=FF7F27&color=fff&size=150" alt="Profile Picture" class="profile-picture">
+                <h2 class="profile-name">Muhammad Saad</h2>
+                <div class="profile-role">Computer Science Student</div>
+                
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">12</div>
+                        <div class="stat-label">Courses</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">3.8</div>
+                        <div class="stat-label">GPA</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">86%</div>
+                        <div class="stat-label">Progress</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary">
+                    <i class="fas fa-edit"></i> Edit Profile
+                </button>
+            </div>
+
+            <!-- Details Card -->
+            <div class="details-card">
+                <div class="details-header">
+                    <h2><i class="fas fa-info-circle"></i> Personal Information</h2>
+                </div>
+
+                <div class="details-section">
+                    <h3><i class="fas fa-user-tag"></i> Basic Information</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Full Name:</div>
+                        <div class="detail-value">Muhammad Saad</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Student ID:</div>
+                        <div class="detail-value">CS20234567</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date of Birth:</div>
+                        <div class="detail-value">May 15, 2005</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Gender:</div>
+                        <div class="detail-value">Male</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status:</div>
+                        <div class="detail-value">
+                            <span class="status-badge status-active">
+                                <i class="fas fa-check-circle"></i> Active
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h3><i class="fas fa-address-book"></i> Contact Information</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Email:</div>
+                        <div class="detail-value">saad@pucit.edu.pk</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Phone:</div>
+                        <div class="detail-value">+92 334 6378278</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Address:</div>
+                        <div class="detail-value">123 University Ave, Apt 45<br>Springfield, SP 12345</div>
+                    </div>
+                </div>
+
+                <div class="details-section">
+                    <h3><i class="fas fa-graduation-cap"></i> Academic Information</h3>
+                    <div class="detail-row">
+                        <div class="detail-label">Department:</div>
+                        <div class="detail-value">Computer Science</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Program:</div>
+                        <div class="detail-value">Bachelor of Science</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Admission Year:</div>
+                        <div class="detail-value">2020</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Expected Graduation:</div>
+                        <div class="detail-value">May 2024</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Current Semester:</div>
+                        <div class="detail-value">Spring 2025</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.querySelector('.btn-primary').addEventListener('click', function() {
+            // In a real app, this would open a modal or redirect to an edit page
+            const editModal = document.createElement('div');
+            editModal.style.position = 'fixed';
+            editModal.style.top = '0';
+            editModal.style.left = '0';
+            editModal.style.width = '100%';
+            editModal.style.height = '100%';
+            editModal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            editModal.style.display = 'flex';
+            editModal.style.justifyContent = 'center';
+            editModal.style.alignItems = 'center';
+            editModal.style.zIndex = '1000';
+            
+            editModal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);">
+                    <h2 style="margin-bottom: 20px; color: var(--primary-dark); display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-user-edit"></i> Edit Profile
+                    </h2>
+                    <p style="margin-bottom: 20px;">Profile editing functionality would appear here in a complete application.</p>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button id="cancelModal" style="background: white; color: var(--primary); border: 2px solid var(--primary); padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: 500;">Cancel</button>
+                        <button id="saveModal" style="background: var(--primary); color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: 500;">Save Changes</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(editModal);
+            
+            document.getElementById('cancelModal').addEventListener('click', function() {
+                document.body.removeChild(editModal);
+            });
+            
+            document.getElementById('saveModal').addEventListener('click', function() {
+                alert('Changes saved successfully!');
+                document.body.removeChild(editModal);
+            });
+        });
+    </script>
+</body>
+</html>
