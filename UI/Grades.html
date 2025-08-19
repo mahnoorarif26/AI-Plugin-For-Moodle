@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grades - Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF7F27;
+            --primary-dark: #E56A17;
+            --primary-light: #FFE0B2;
+            --primary-extra-light: #FFF3E0;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --dark: #333333;
+            --text-light: #666666;
+            --success: #48BB78;
+            --warning: #F59E0B;
+            --danger: #F56565;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--light-gray);
+            color: var(--dark);
+        }
+        
+        /* Orange Sidebar - Matching profile page */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+            color: var(--white);
+            padding: 30px 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            padding: 0 25px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .sidebar-header p {
+            font-weight: 500;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+        }
+        
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--white);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        
+        .sidebar-nav li a:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav li a.active {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+        
+        /* Main Content - Matching profile page */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            color: var(--primary-dark);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-bar {
+            display: flex;
+            width: 300px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+            font-size: 1rem;
+        }
+        
+        .search-bar button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .search-bar button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        /* Grades Grid */
+        .grades-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+        
+        /* Summary Card - Matching profile card style */
+        .summary-card {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        
+        .summary-card h2 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .gpa-display {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .gpa-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        
+        .gpa-label {
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+        
+        .progress-container {
+            margin: 30px 0;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: var(--light-gray);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            border-radius: 5px;
+            width: 85%;
+        }
+        
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        /* Grades List - Matching details card style */
+        .grades-list {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            padding: 25px;
+        }
+        
+        .grades-list h2 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .course-item {
+            display: flex;
+            padding: 15px;
+            border-bottom: 1px solid var(--light-gray);
+            transition: background-color 0.3s;
+        }
+        
+        .course-item:last-child {
+            border-bottom: none;
+        }
+        
+        .course-item:hover {
+            background-color: var(--primary-extra-light);
+            border-radius: 8px;
+        }
+        
+        .course-icon {
+            width: 45px;
+            height: 45px;
+            background: var(--primary-extra-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: var(--primary-dark);
+            font-size: 1.1rem;
+        }
+        
+        .course-details {
+            flex: 1;
+        }
+        
+        .course-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        
+        .course-meta {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .grade-value {
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        
+        .grade-scale {
+            color: var(--text-light);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-excellent {
+            background: rgba(72,187,120,0.1);
+            color: var(--success);
+        }
+        
+        .status-good {
+            background: rgba(255,193,7,0.1);
+            color: var(--warning);
+        }
+        
+        .status-poor {
+            background: rgba(245,101,101,0.1);
+            color: var(--danger);
+        }
+        
+        /* Responsive - Matching profile page */
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .course-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Orange Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-graduation-cap"></i> Student Portal</h2>
+            <p><b>Data Science - Spring 2025</b></p>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="profile.html"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="assignments.html"><i class="fas fa-tasks"></i> Assignments</a></li>
+            <li><a href="quizzes.html"><i class="fas fa-question-circle"></i> Quizzes</a></li>
+            <li><a href="grades.html" class="active"><i class="fas fa-chart-bar"></i> Grades</a></li>
+            <li><a href="announcements.html"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="messages.html"><i class="fas fa-envelope"></i> Messages</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1><i class="fas fa-chart-bar"></i> Grades</h1>
+            <div class="search-bar">
+                <input type="text" placeholder="Search courses...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+
+        <div class="grades-grid">
+            <!-- Summary Card -->
+            <div class="summary-card">
+                <h2><i class="fas fa-star"></i> Academic Summary</h2>
+                <div class="gpa-display">
+                    <div class="gpa-value">3.82</div>
+                    <div class="gpa-label">Current GPA</div>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span>Overall Progress</span>
+                        <span>85%</span>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; text-align: center;">
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-dark);">12</div>
+                        <div style="font-size: 0.9rem; color: var(--text-light);">Courses</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-dark);">4</div>
+                        <div style="font-size: 0.9rem; color: var(--text-light);">A Grades</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-dark);">2</div>
+                        <div style="font-size: 0.9rem; color: var(--text-light);">Pending</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grades List -->
+            <div class="grades-list">
+                <h2><i class="fas fa-list-check"></i> Course Grades</h2>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-calculator"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Advanced Mathematics</div>
+                        <div class="course-meta">
+                            <span class="grade-value">A</span>
+                            <span class="grade-scale">(94/100)</span>
+                            <span class="status-badge status-excellent">Excellent</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-flask"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Data Science Fundamentals</div>
+                        <div class="course-meta">
+                            <span class="grade-value">A-</span>
+                            <span class="grade-scale">(90/100)</span>
+                            <span class="status-badge status-excellent">Excellent</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-code"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Machine Learning</div>
+                        <div class="course-meta">
+                            <span class="grade-value">B+</span>
+                            <span class="grade-scale">(87/100)</span>
+                            <span class="status-badge status-good">Good</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-database"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Database Systems</div>
+                        <div class="course-meta">
+                            <span class="grade-value">B</span>
+                            <span class="grade-scale">(83/100)</span>
+                            <span class="status-badge status-good">Good</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-network-wired"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Computer Networks</div>
+                        <div class="course-meta">
+                            <span class="grade-value">C+</span>
+                            <span class="grade-scale">(77/100)</span>
+                            <span class="status-badge status-poor">Needs Improvement</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="course-item">
+                    <div class="course-icon"><i class="fas fa-chart-line"></i></div>
+                    <div class="course-details">
+                        <div class="course-title">Statistics for DS</div>
+                        <div class="course-meta">
+                            <span class="grade-value">IP</span>
+                            <span class="grade-scale">(In Progress)</span>
+                            <span class="status-badge">Pending</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Simple animation for progress bar
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressFill = document.querySelector('.progress-fill');
+            progressFill.style.width = '0';
+            setTimeout(() => {
+                progressFill.style.transition = 'width 1.5s ease-in-out';
+                progressFill.style.width = '85%';
+            }, 300);
+            
+            // Search functionality
+            const searchInput = document.querySelector('.search-bar input');
+            const searchButton = document.querySelector('.search-bar button');
+            const courseItems = document.querySelectorAll('.course-item');
+            
+            searchButton.addEventListener('click', filterCourses);
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    filterCourses();
+                }
+            });
+            
+            function filterCourses() {
+                const searchTerm = searchInput.value.toLowerCase();
+                
+                courseItems.forEach(item => {
+                    const title = item.querySelector('.course-title').textContent.toLowerCase();
+                    if (title.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
