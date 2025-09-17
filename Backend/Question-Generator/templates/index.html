@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Generator</title>
+    <link rel="stylesheet" href="style.css"> <!-- if you later want to separate CSS -->
+</head>
+<body>
+    <div class="container">
+        <h1>Question Generator</h1>
+        <p>Enter a topic below and generate short questions:</p>
+        
+        <input type="text" id="topicInput" placeholder="Enter topic (e.g., Linear Regression)">
+        
+        <button onclick="generateQuestion()" id="generateBtn">
+            Generate Questions
+        </button>
+        
+        <div id="result">
+            <p class="loading">Your generated questions will appear here...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
