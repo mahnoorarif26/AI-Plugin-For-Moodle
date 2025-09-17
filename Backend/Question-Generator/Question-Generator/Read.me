@@ -1,0 +1,12 @@
+# Backend – AI Question Generator
+
+This is the **backend service** of our Final Year Project (AI Plugin for Moodle).  
+It is built with **Flask** and connects to **LM Studio (LLaMA 2–7B)** to generate questions from a given topic.
+
+---
+
+## 🚀 Features
+- REST API endpoint (`/generate-question`) for question generation
+- Uses **LM Studio API** (`localhost:1234/v1/completions`) to run LLaMA locally
+- Returns 5 short, difficult questions for the given topic
+- Integrated with a simple frontend (HTML + JS) for testing
