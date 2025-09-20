@@ -1,0 +1,18 @@
+# Environment variables
+.env
+Backend/Question-Generator/.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env/
+
+# Logs
+*.log
+
+# IDE/project files
+.vscode/
+.idea/
