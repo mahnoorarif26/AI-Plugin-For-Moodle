@@ -1,27 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question Generator</title>
-    <link rel="stylesheet" href="style.css"> <!-- if you later want to separate CSS -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Question Generator</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <h1>Question Generator</h1>
-        <p>Enter a topic below and generate short questions:</p>
-        
-        <input type="text" id="topicInput" placeholder="Enter topic (e.g., Linear Regression)">
-        
-        <button onclick="generateQuestion()" id="generateBtn">
-            Generate Questions
-        </button>
-        
-        <div id="result">
-            <p class="loading">Your generated questions will appear here...</p>
-        </div>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 16V12M12 8H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1>AI Question Generator</h1>
+      <p class="subtitle">Create engaging quiz questions in seconds</p>
     </div>
 
-    <script src="script.js"></script>
+    <div class="form-container">
+      <div class="input-group">
+        <label for="topic">
+          <span class="label-text">Topic</span>
+          <span class="required">*</span>
+        </label>
+        <input type="text" id="topic" placeholder="Enter topic for quiz generation" required>
+      </div>
+
+      <div class="input-group">
+        <label for="num_questions">
+          <span class="label-text">Number of Questions</span>
+        </label>
+        <input type="number" id="num_questions" value="5" min="1" max="20">
+      </div>
+
+      <button id="generate-btn" class="generate-button">
+        <span class="button-text">Generate Questions</span>
+        <span class="button-loader" style="display: none;">
+          <div class="spinner"></div>
+          Generating...
+        </span>
+      </button>
+    </div>
+
+    <div id="output" class="output-container" style="display: none;">
+      <div class="output-header">
+        <h3>Generated Questions</h3>
+        <button id="copy-btn" class="copy-button" title="Copy to clipboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 16H6C4.89543 16 4 15.1046 4 14V6C4 4.89543 4.89543 4 6 4H14C15.1046 4 16 4.89543 16 6V8M10 20H18C19.1046 20 20 19.1046 20 18V10C20 8.89543 19.1046 8 18 8H10C8.89543 8 8 8.89543 8 10V18C8 19.1046 8.89543 20 10 20Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="output-content" id="output-content"></div>
+    </div>
+
+    <div class="footer">
+      <p>Powered by Groq AI</p>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

@@ -1,25 +1,41 @@
 import os
 from dotenv import load_dotenv
+from flask import Flask, request, render_template, jsonify
 from groq import Groq
 
-# Load environment variables
 load_dotenv()
-
-# Get API key safely
 api_key = os.getenv("GROQ_API_KEY")
+
+app = Flask(__name__)
 
 client = Groq(api_key=api_key)
 
-completion = client.chat.completions.create(
-    model="llama-3.3-70b-versatile",
-    messages=[
-        {"role": "user", "content": "Generate code-based Python questions for beginners."}
-    ],
-    temperature=1,
-    max_completion_tokens=512,
-    top_p=1,
-    stream=True
-)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-for chunk in completion:
-    print(chunk.choices[0].delta.content or "", end="")
+@app.route("/generate-question", methods=["POST"])
+def generate_question():
+    try:
+        data = request.json
+        topic = data.get("topic", "Python basics")
+        num_questions = int(data.get("num_questions", 5))
+        
+        prompt = f"""Generate {num_questions} high-quality quiz questions for students on the topic of {topic}.No explaination"""
+
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=1000,
+            temperature=0.7,
+            top_p=1
+        )
+
+        output = completion.choices[0].message.content
+        return jsonify({"questions": output})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
