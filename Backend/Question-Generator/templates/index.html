@@ -20,7 +20,32 @@
       <p class="subtitle">Create engaging quiz questions in seconds</p>
     </div>
 
-    <div class="form-container">
+    <!-- Mode Selection Cards -->
+    <div class="mode-selection">
+      <div class="mode-card active" data-mode="quick">
+        <div class="mode-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Quick Quiz</h3>
+        <p>Generate simple short answer questions quickly</p>
+      </div>
+      
+      <div class="mode-card" data-mode="custom">
+        <div class="mode-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.4 15C19.2669 15.3996 19.077 15.7733 18.8377 16.1083C18.5985 16.4432 18.3131 16.7351 17.9924 16.9733C17.6717 17.2115 17.3199 17.3932 16.9495 17.5119C16.5792 17.6306 16.1951 17.6848 15.81 17.6725C15.6074 17.6725 15.4124 17.6725 15.2174 17.6725H8.78261C8.58761 17.6725 8.39261 17.6725 8.19 17.6725C7.80492 17.6848 7.42079 17.6306 7.05045 17.5119C6.6801 17.3932 6.3283 17.2115 6.00762 16.9733C5.68694 16.7351 5.40152 16.4432 5.16225 16.1083C4.92298 15.7733 4.73306 15.3996 4.6 15C4.46694 14.6004 4.46694 14.3996 4.6 14C4.73306 13.6004 4.92298 13.2267 5.16225 12.8917C5.40152 12.5568 5.68694 12.2649 6.00762 12.0267C6.3283 11.7885 6.6801 11.6068 7.05045 11.4881C7.42079 11.3694 7.80492 11.3152 8.19 11.3275C8.39261 11.3275 8.58761 11.3275 8.78261 11.3275H15.2174C15.4124 11.3275 15.6074 11.3275 15.81 11.3275C16.1951 11.3152 16.5792 11.3694 16.9495 11.4881C17.3199 11.6068 17.6717 11.7885 17.9924 12.0267C18.3131 12.2649 18.5985 12.5568 18.8377 12.8917C19.077 13.2267 19.2669 13.6004 19.4 14C19.5331 14.3996 19.5331 14.6004 19.4 15Z" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <h3>Customized Quiz</h3>
+        <p>Choose question types and create mixed quizzes</p>
+      </div>
+    </div>
+
+    <!-- Quick Quiz Form -->
+    <div id="quick-quiz-form" class="form-container active">
       <div class="input-group">
         <label for="topic">
           <span class="label-text">Topic</span>
@@ -38,6 +63,53 @@
 
       <button id="generate-btn" class="generate-button">
         <span class="button-text">Generate Questions</span>
+        <span class="button-loader" style="display: none;">
+          <div class="spinner"></div>
+          Generating...
+        </span>
+      </button>
+    </div>
+
+    <!-- Custom Quiz Form -->
+    <div id="custom-quiz-form" class="form-container" style="display: none;">
+      <div class="input-group">
+        <label for="custom-topic">
+          <span class="label-text">Topic</span>
+          <span class="required">*</span>
+        </label>
+        <input type="text" id="custom-topic" placeholder="Enter topic for quiz generation" required>
+      </div>
+
+      <div class="input-group">
+        <label for="custom-num-questions">
+          <span class="label-text">Number of Questions</span>
+        </label>
+        <input type="number" id="custom-num-questions" value="5" min="1" max="20">
+      </div>
+
+      <div class="input-group">
+        <label>Question Types</label>
+        <div class="checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="question-type" value="mcq" checked>
+            <span class="checkmark"></span>
+            Multiple Choice (MCQ)
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="question-type" value="short" checked>
+            <span class="checkmark"></span>
+            Short Answer
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" name="question-type" value="long">
+            <span class="checkmark"></span>
+            Long Answer
+          </label>
+        </div>
+      </div>
+
+      <button id="generate-custom-btn" class="generate-button">
+        <span class="button-text">Generate Custom Quiz</span>
         <span class="button-loader" style="display: none;">
           <div class="spinner"></div>
           Generating...
