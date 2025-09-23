@@ -21,12 +21,58 @@ def generate_question():
         topic = data.get("topic", "Python basics")
         num_questions = int(data.get("num_questions", 5))
         
-        prompt = f"""Generate {num_questions} high-quality quiz questions for students on the topic of {topic}.No explaination"""
+        prompt = f"""Generate {num_questions} high-quality short questions for students on the topic of {topic}. No explanation"""
 
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=1000,
+            temperature=0.7,
+            top_p=1
+        )
+
+        output = completion.choices[0].message.content
+        return jsonify({"questions": output})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/generate-custom-quiz", methods=["POST"])
+def generate_custom_quiz():
+    try:
+        data = request.json
+        topic = data.get("topic", "Python basics")
+        num_questions = int(data.get("num_questions", 5))
+        question_types = data.get("question_types", [])
+        
+        if not question_types:
+            return jsonify({"error": "Please select at least one question type"}), 400
+        
+        # Create prompt based on selected question types
+        type_descriptions = []
+        if "mcq" in question_types:
+            type_descriptions.append("multiple-choice questions with 4 options")
+        if "short" in question_types:
+            type_descriptions.append("short answer questions")
+        if "long" in question_types:
+            type_descriptions.append("long answer/medium questions")
+        
+        type_description = " and ".join(type_descriptions)
+        
+        prompt = f"""Generate {num_questions} high-quality {type_description} for students on the topic of {topic}.
+        
+        Format requirements:
+        - Clearly label each question with its type (MCQ, Short Answer, Long Answer)
+        - For MCQ questions, provide 4 options labeled A, B, C, D and indicate the correct answer
+        - For Short Answer questions, keep answers concise (1-2 sentences)
+        - For Long Answer questions, provide detailed questions that require paragraph-length responses
+        - Number all questions sequentially
+        - Separate different question types with clear headings"""
+
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=2000,
             temperature=0.7,
             top_p=1
         )
