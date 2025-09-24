@@ -21,12 +21,22 @@ def generate_question():
         topic = data.get("topic", "Python basics")
         num_questions = int(data.get("num_questions", 5))
         
-        prompt = f"""Generate {num_questions} high-quality short questions for students on the topic of {topic}. No explanation"""
+        prompt = f"""
+                Generate {num_questions} high-quality quiz questions for students on the topic "{topic}".
+                The quiz must contain a mix of:
+                - Multiple Choice Questions (with 4 options, 1 correct)
+                - Short Answer Questions (2–3 sentences expected)
+                - Long Answer Questions (3–4 sentences expected, more descriptive/analytical)
+                - If the subject requires, include code-based or scenario-based questions.
+
+                Do not provide answers, only the questions.
+                """
+
 
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=1000,
+            max_completion_tokens=8192,
             temperature=0.7,
             top_p=1
         )
@@ -48,7 +58,6 @@ def generate_custom_quiz():
         if not question_types:
             return jsonify({"error": "Please select at least one question type"}), 400
         
-        # Create prompt based on selected question types
         type_descriptions = []
         if "mcq" in question_types:
             type_descriptions.append("multiple-choice questions with 4 options")
@@ -70,7 +79,7 @@ def generate_custom_quiz():
         - Separate different question types with clear headings"""
 
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=2000,
             temperature=0.7,
