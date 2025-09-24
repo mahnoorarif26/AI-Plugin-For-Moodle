@@ -22,15 +22,27 @@ def generate_question():
         num_questions = int(data.get("num_questions", 5))
         
         prompt = f"""
-                Generate {num_questions} high-quality quiz questions for students on the topic "{topic}".
-                The quiz must contain a mix of:
-                - Multiple Choice Questions (with 4 options, 1 correct)
-                - Short Answer Questions (2–3 sentences expected)
-                - Long Answer Questions (3–4 sentences expected, more descriptive/analytical)
-                - If the subject requires, include code-based or scenario-based questions.
+        Generate {num_questions} high-quality quiz questions for students on the topic "{topic}".
+        The quiz must contain a mix of question types(2-3 mcqs,2-3 short question and 1 long).
+        If subject is coding, include code snippets in questions.
 
-                Do not provide answers, only the questions.
-                """
+        IMPORTANT: Return the questions in plain text format, NOT markdown tables.
+        Format each question clearly with:
+        - Question number and type
+        - The question text
+        - Options (for MCQ) labeled A, B, C, D
+
+        Avoid using markdown tables or complex formatting.
+        Use simple text formatting like:
+        1. (MCQ) Your question here?
+           A. Option 1
+           B. Option 2
+           C. Option 3
+           D. Option 4
+
+        Keep it simple and readable.
+        """
+
 
 
         completion = client.chat.completions.create(
@@ -70,13 +82,21 @@ def generate_custom_quiz():
         
         prompt = f"""Generate {num_questions} high-quality {type_description} for students on the topic of {topic}.
         
-        Format requirements:
-        - Clearly label each question with its type (MCQ, Short Answer, Long Answer)
-        - For MCQ questions, provide 4 options labeled A, B, C, D and indicate the correct answer
-        - For Short Answer questions, keep answers concise (1-2 sentences)
-        - For Long Answer questions, provide detailed questions that require paragraph-length responses
-        - Number all questions sequentially
-        - Separate different question types with clear headings"""
+        IMPORTANT: Return the questions in plain text format, NOT markdown tables.
+        Format each question clearly with:
+        - Question number and type
+        - The question text
+        - Options (for MCQ) labeled A, B, C, D
+
+        Avoid using markdown tables or complex formatting.
+        Use simple text formatting like:
+        1. (MCQ) Your question here?
+           A. Option 1
+           B. Option 2
+           C. Option 3
+           D. Option 4
+
+        Keep it simple and readable."""
 
         completion = client.chat.completions.create(
             model="openai/gpt-oss-120b",
