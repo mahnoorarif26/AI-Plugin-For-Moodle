@@ -262,6 +262,7 @@ input:hover {
   100% { transform: rotate(360deg); }
 }
 
+/* Output Container */
 .output-container {
   background: #f7fafc;
   border-radius: 12px;
@@ -297,6 +298,7 @@ input:hover {
   color: #2d3748;
 }
 
+/* Question Boxes Styling */
 .output-content {
   color: #4a5568;
   line-height: 1.6;
@@ -305,39 +307,107 @@ input:hover {
 }
 
 .question-item {
-  margin-bottom: 20px;
-  padding: 15px;
   background: white;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  animation: slideInUp 0.5s ease-out;
+}
+
+.question-item:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 .question-item h4 {
   color: #2d3748;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  position: relative;
+  padding-left: 10px;
+}
+
+.question-item h4::before {
+  content: "Q:";
+  font-weight: 700;
+  color: #667eea;
+  margin-right: 8px;
 }
 
 .question-options {
-  margin-left: 20px;
+  margin: 15px 0;
+  padding-left: 20px;
 }
 
 .question-options div {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  background: #f7fafc;
+  border-radius: 6px;
+  border-left: 3px solid #cbd5e0;
+  transition: all 0.3s ease;
+}
+
+.question-options div:hover {
+  background: #edf2f7;
+  border-left-color: #667eea;
 }
 
 .correct-answer {
-  color: #38a169;
+  background: #f0fff4 !important;
+  border-left: 3px solid #38a169 !important;
+  color: #2f855a;
   font-weight: 600;
+  margin-top: 10px;
+  padding: 12px !important;
 }
 
 .question-type-badge {
   display: inline-block;
   background: #667eea;
   color: white;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
   font-size: 0.8rem;
-  margin-bottom: 8px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Specific colors for different question types */
+.question-type-badge[style*="background: #38a169"] {
+  background: #38a169 !important;
+}
+
+.question-type-badge[style*="background: #d69e2e"] {
+  background: #d69e2e !important;
+}
+
+/* Regular paragraph styling within question boxes */
+.question-item p {
+  margin: 10px 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+.question-item p:first-of-type {
+  margin-top: 0;
+}
+
+.question-item p:last-of-type {
+  margin-bottom: 0;
+}
+
+/* Ensure proper spacing between question boxes */
+.output-content > .question-item:last-child {
+  margin-bottom: 0;
 }
 
 .footer {
@@ -347,6 +417,23 @@ input:hover {
   font-size: 0.9rem;
 }
 
+/* Error Message Styling */
+.error-message {
+  background: #fed7d7;
+  color: #c53030;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #f56565;
+  font-weight: 500;
+}
+
+/* Success Animation */
+.success {
+  animation: success 0.3s ease;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .container {
     padding: 30px 20px;
@@ -364,9 +451,30 @@ input:hover {
   input, .generate-button {
     padding: 14px;
   }
+  
+  .question-item {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .output-container {
+    padding: 20px;
+  }
 }
 
+/* Animations */
 @keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
   from {
     opacity: 0;
     transform: translateY(20px);
@@ -383,6 +491,109 @@ input:hover {
   100% { transform: scale(1); }
 }
 
-.success {
-  animation: success 0.3s ease;
+/* Loading States */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Selection Styles */
+::selection {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+/* Scrollbar Styling */
+.output-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.output-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.output-content::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.output-content::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Table Styling for Markdown Tables */
+.question-table {
+    width: 100%;
+    margin: 20px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+}
+
+.table-header {
+    display: flex;
+    background: #667eea;
+    color: white;
+    font-weight: 600;
+}
+
+.table-row {
+    display: flex;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-row:last-child {
+    border-bottom: none;
+}
+
+.table-cell {
+    flex: 1;
+    padding: 12px;
+    border-right: 1px solid #e2e8f0;
+    line-height: 1.4;
+}
+
+.table-cell:last-child {
+    border-right: none;
+}
+
+.header-cell {
+    font-weight: 600;
+    text-align: center;
+}
+
+.question-cell {
+    font-weight: 600;
+    background: #f7fafc;
+}
+
+.correct-answer-cell {
+    background: #f0fff4;
+    color: #2f855a;
+    font-weight: 600;
+}
+
+/* Ensure tables are responsive */
+@media (max-width: 768px) {
+    .question-table {
+        font-size: 0.9rem;
+    }
+    
+    .table-cell {
+        padding: 8px;
+    }
+    
+    .table-header, .table-row {
+        flex-direction: column;
+    }
+    
+    .table-cell {
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .table-cell:last-child {
+        border-bottom: none;
+    }
 }
