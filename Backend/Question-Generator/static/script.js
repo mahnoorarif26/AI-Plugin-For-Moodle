@@ -55,6 +55,9 @@ class QuestionGenerator {
         
         // Hide output when switching modes
         document.getElementById('output').style.display = 'none';
+        
+        // Clear any existing error messages
+        this.clearErrors();
     }
 
     async generateQuestions() {
@@ -80,6 +83,11 @@ class QuestionGenerator {
             }
 
             const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
             this.displayQuestions(data.questions);
             
         } catch (error) {
@@ -150,10 +158,12 @@ class QuestionGenerator {
             button.disabled = true;
             buttonText.style.display = 'none';
             buttonLoader.style.display = 'flex';
+            button.classList.add('loading');
         } else {
             button.disabled = false;
             buttonText.style.display = 'block';
             buttonLoader.style.display = 'none';
+            button.classList.remove('loading');
         }
     }
 
@@ -162,10 +172,7 @@ class QuestionGenerator {
         document.getElementById('output-content').innerHTML = formattedQuestions;
         document.getElementById('output').style.display = 'block';
     
-        document.getElementById('output').scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest' 
-        });
+        this.scrollToOutput();
     }
 
     displayCustomQuestions(questions) {
@@ -173,69 +180,223 @@ class QuestionGenerator {
         document.getElementById('output-content').innerHTML = formattedQuestions;
         document.getElementById('output').style.display = 'block';
     
-        document.getElementById('output').scrollIntoView({ 
+        this.scrollToOutput();
+    }
+
+    f// In your QuestionGenerator class, replace these methods:
+formatQuestions(questions) {
+    // If the response contains markdown tables, use the table formatter
+    if (questions.includes('|') && questions.includes('---')) {
+        return this.formatMarkdownTable(questions);
+    }
+    
+    const lines = questions.split('\n').filter(line => line.trim());
+    let formatted = '';
+    let currentQuestion = '';
+    
+    lines.forEach((line) => {
+        if (line.match(/^\d+\./) || line.match(/^[Qq]uestion\s+\d+/i)) {
+            if (currentQuestion) {
+                formatted += `</div>`;
+            }
+            currentQuestion = line;
+            formatted += `<div class="question-item">
+                <h4>${this.escapeHtml(line)}</h4>`;
+        } else if (line.trim()) {
+            formatted += `<p>${this.escapeHtml(line)}</p>`;
+        }
+    });
+    
+    if (currentQuestion) {
+        formatted += `</div>`;
+    }
+    
+    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
+}
+
+formatCustomQuestions(questions) {
+    // If the response contains markdown tables, use the table formatter
+    if (questions.includes('|') && questions.includes('---')) {
+        return this.formatMarkdownTable(questions);
+    }
+    
+    const lines = questions.split('\n').filter(line => line.trim());
+    let formatted = '';
+    let currentQuestion = '';
+    let inOptions = false;
+    
+    lines.forEach((line) => {
+        const trimmedLine = line.trim();
+        
+        if (trimmedLine.match(/^\d+\./) || trimmedLine.match(/^(MCQ|Short Answer|Long Answer)/i)) {
+            if (currentQuestion) {
+                if (inOptions) {
+                    formatted += `</div>`;
+                    inOptions = false;
+                }
+                formatted += `</div>`;
+            }
+            
+            let typeBadge = '';
+            if (trimmedLine.includes('MCQ') || trimmedLine.match(/multiple choice/i)) {
+                typeBadge = '<span class="question-type-badge">MCQ</span>';
+            } else if (trimmedLine.includes('Short Answer') || trimmedLine.match(/short answer/i)) {
+                typeBadge = '<span class="question-type-badge" style="background: #38a169;">Short Answer</span>';
+            } else if (trimmedLine.includes('Long Answer') || trimmedLine.match(/long answer/i)) {
+                typeBadge = '<span class="question-type-badge" style="background: #d69e2e;">Long Answer</span>';
+            }
+            
+            currentQuestion = trimmedLine;
+            formatted += `<div class="question-item">
+                ${typeBadge}
+                <h4>${this.escapeHtml(trimmedLine)}</h4>`;
+                
+        } else if (trimmedLine.match(/^[A-D]\./)) {
+            if (!inOptions) {
+                formatted += `<div class="question-options">`;
+                inOptions = true;
+            }
+            formatted += `<div>${this.escapeHtml(trimmedLine)}</div>`;
+            
+        } else if (trimmedLine.match(/correct answer|answer:/i)) {
+            if (inOptions) {
+                formatted += `</div>`;
+                inOptions = false;
+            }
+            formatted += `<div class="correct-answer">${this.escapeHtml(trimmedLine)}</div>`;
+            
+        } else if (trimmedLine) {
+            if (inOptions) {
+                formatted += `</div>`;
+                inOptions = false;
+            }
+            formatted += `<p>${this.escapeHtml(trimmedLine)}</p>`;
+        }
+    });
+    
+    if (inOptions) {
+        formatted += `</div>`;
+    }
+    if (currentQuestion) {
+        formatted += `</div>`;
+    }
+    
+    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
+}
+
+// ADD THESE NEW METHODS TO YOUR QuestionGenerator CLASS:
+formatMarkdownTable(questions) {
+    const lines = questions.split('\n').filter(line => line.trim());
+    let formatted = '';
+    let inTable = false;
+    let tableRows = [];
+    
+    lines.forEach((line) => {
+        const trimmedLine = line.trim();
+        
+        // Detect table start
+        if (trimmedLine.includes('|') && trimmedLine.includes('---')) {
+            inTable = true;
+            return;
+        }
+        
+        // Process table rows
+        if (inTable && trimmedLine.includes('|')) {
+            tableRows.push(trimmedLine);
+        } else if (inTable && !trimmedLine.includes('|')) {
+            // Table ended, process the collected rows
+            formatted += this.processTableRows(tableRows);
+            tableRows = [];
+            inTable = false;
+            
+            // Process non-table content
+            if (trimmedLine) {
+                formatted += `<div class="question-item"><p>${this.escapeHtml(trimmedLine)}</p></div>`;
+            }
+        } else if (!inTable && trimmedLine) {
+            // Regular content
+            if (trimmedLine.match(/^\d+\./) || trimmedLine.match(/^[Qq]uestion\s+\d+/i)) {
+                formatted += `<div class="question-item"><h4>${this.escapeHtml(trimmedLine)}</h4>`;
+            } else {
+                formatted += `<p>${this.escapeHtml(trimmedLine)}</p>`;
+            }
+        }
+    });
+    
+    // Process any remaining table rows
+    if (tableRows.length > 0) {
+        formatted += this.processTableRows(tableRows);
+    }
+    
+    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
+}
+
+processTableRows(rows) {
+    if (rows.length === 0) return '';
+    
+    let formatted = '<div class="question-table">';
+    
+    rows.forEach((row, index) => {
+        if (index === 0) {
+            // Header row
+            formatted += '<div class="table-header">';
+            const cells = row.split('|').filter(cell => cell.trim());
+            cells.forEach(cell => {
+                formatted += `<div class="table-cell header-cell">${this.escapeHtml(cell.trim())}</div>`;
+            });
+            formatted += '</div>';
+        } else {
+            // Data row
+            formatted += '<div class="table-row">';
+            const cells = row.split('|').filter(cell => cell.trim());
+            cells.forEach((cell, cellIndex) => {
+                const cellContent = cell.trim();
+                const isQuestion = cellIndex === 0 && cellContent.match(/^\d+\./);
+                const isCorrectAnswer = cellContent.match(/^\*\*[A-D]\*\*$/);
+                
+                let cellClass = 'table-cell';
+                if (isQuestion) cellClass += ' question-cell';
+                if (isCorrectAnswer) cellClass += ' correct-answer-cell';
+                
+                formatted += `<div class="${cellClass}">${this.formatTableCell(cellContent)}</div>`;
+            });
+            formatted += '</div>';
+        }
+    });
+    
+    formatted += '</div>';
+    return formatted;
+}
+
+formatTableCell(content) {
+    // Format markdown elements
+    let formattedContent = content
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+        .replace(/`(.*?)`/g, '<code>$1</code>') // Code
+        .replace(/<br\s*\/?>/g, '<br>'); // Line breaks
+    
+    return this.escapeHtml(formattedContent);
+}
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    scrollToOutput() {
+        const outputElement = document.getElementById('output');
+        outputElement.scrollIntoView({ 
             behavior: 'smooth', 
             block: 'nearest' 
         });
-    }
-
-    formatQuestions(questions) {
-        const lines = questions.split('\n').filter(line => line.trim());
-        let formatted = '';
         
-        lines.forEach((line, index) => {
-            if (line.match(/^\d+\./)) {
-                formatted += `<div class="question-item">
-                    <h4>${line}</h4>
-                </div>`;
-            } else if (line.trim()) {
-                formatted += `<p>${line}</p>`;
-            }
-        });
-        
-        return formatted || `<p>${questions}</p>`;
-    }
-
-    formatCustomQuestions(questions) {
-        const lines = questions.split('\n').filter(line => line.trim());
-        let formatted = '';
-        let currentQuestion = '';
-        
-        lines.forEach((line) => {
-            if (line.match(/^\d+\./) || line.match(/^(MCQ|Short Answer|Long Answer)/i)) {
-                if (currentQuestion) {
-                    formatted += `</div>`;
-                }
-                
-                // Add question type badge
-                let typeBadge = '';
-                if (line.includes('MCQ') || line.match(/multiple choice/i)) {
-                    typeBadge = '<span class="question-type-badge">MCQ</span>';
-                } else if (line.includes('Short Answer') || line.match(/short answer/i)) {
-                    typeBadge = '<span class="question-type-badge" style="background: #38a169;">Short Answer</span>';
-                } else if (line.includes('Long Answer') || line.match(/long answer/i)) {
-                    typeBadge = '<span class="question-type-badge" style="background: #d69e2e;">Long Answer</span>';
-                }
-                
-                currentQuestion = line;
-                formatted += `<div class="question-item">
-                    ${typeBadge}
-                    <h4>${line}</h4>`;
-            } else if (line.match(/^[A-D]\./)) {
-                formatted += `<div class="question-options">
-                    <div>${line}</div>`;
-            } else if (line.match(/correct answer|answer:/i)) {
-                formatted += `<div class="correct-answer">${line}</div>`;
-            } else if (line.trim()) {
-                formatted += `<p>${line}</p>`;
-            }
-        });
-        
-        if (currentQuestion) {
-            formatted += `</div>`;
-        }
-        
-        return formatted || `<p>${questions}</p>`;
+        // Add subtle animation to highlight the new content
+        outputElement.style.animation = 'none';
+        setTimeout(() => {
+            outputElement.style.animation = 'fadeInUp 0.5s ease-out';
+        }, 10);
     }
 
     async copyToClipboard() {
@@ -243,45 +404,41 @@ class QuestionGenerator {
             const text = document.getElementById('output-content').innerText;
             await navigator.clipboard.writeText(text);
             
-            // Visual feedback
-            const copyBtn = document.getElementById('copy-btn');
-            copyBtn.innerHTML = `
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
-            copyBtn.classList.add('success');
-            
-            setTimeout(() => {
-                copyBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 16H6C4.89543 16 4 15.1046 4 14V6C4 4.89543 4.89543 4 6 4H14C15.1046 4 16 4.89543 16 6V8M10 20H18C19.1046 20 20 19.1046 20 18V10C20 8.89543 19.1046 8 18 8H10C8.89543 8 8 8.89543 8 10V18C8 19.1046 8.89543 20 10 20Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                `;
-                copyBtn.classList.remove('success');
-            }, 2000);
+            this.showCopySuccess();
             
         } catch (err) {
             console.error('Failed to copy text: ', err);
+            this.showError('Failed to copy to clipboard. Please try again.');
         }
     }
 
-    showError(message) {
-        const existingError = document.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
+    showCopySuccess() {
+        const copyBtn = document.getElementById('copy-btn');
+        const originalHTML = copyBtn.innerHTML;
+        
+        copyBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Copied!
+        `;
+        copyBtn.classList.add('success');
+        copyBtn.style.background = '#38a169';
+        copyBtn.style.color = 'white';
+        
+        setTimeout(() => {
+            copyBtn.innerHTML = originalHTML;
+            copyBtn.classList.remove('success');
+            copyBtn.style.background = '';
+            copyBtn.style.color = '';
+        }, 2000);
+    }
 
+    showError(message) {
+        this.clearErrors();
+        
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
-        errorDiv.style.cssText = `
-            background: #fed7d7;
-            color: #c53030;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #f56565;
-        `;
         errorDiv.textContent = message;
 
         const activeForm = this.currentMode === 'quick' ? 
@@ -296,8 +453,169 @@ class QuestionGenerator {
             }
         }, 5000);
     }
+
+    clearErrors() {
+        const existingErrors = document.querySelectorAll('.error-message');
+        existingErrors.forEach(error => error.remove());
+    }
+
+    // Utility method to format question text with better readability
+    formatQuestionText(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold text
+            .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic text
+            .replace(/\n{2,}/g, '</p><p>') // Multiple newlines to paragraph breaks
+            .replace(/\n/g, '<br>'); // Single newlines to line breaks
+    }
+
+    // Method to handle API response errors
+    handleApiError(error) {
+        console.error('API Error:', error);
+        
+        if (error.message.includes('Failed to fetch')) {
+            this.showError('Network error. Please check your connection and try again.');
+        } else if (error.message.includes('429')) {
+            this.showError('Too many requests. Please wait a moment and try again.');
+        } else {
+            this.showError('An unexpected error occurred. Please try again.');
+        }
+    }
+
+    // Method to validate input
+    validateInput(topic, numQuestions) {
+        if (!topic || topic.trim().length === 0) {
+            return 'Please enter a valid topic';
+        }
+        
+        if (topic.length > 500) {
+            return 'Topic is too long. Please keep it under 500 characters.';
+        }
+        
+        if (numQuestions < 1 || numQuestions > 50) {
+            return 'Number of questions must be between 1 and 50.';
+        }
+        
+        return null;
+    }
+
+    // Method to add question numbering
+    addQuestionNumbers(text) {
+        const lines = text.split('\n');
+        let questionCount = 0;
+        let result = [];
+        
+        lines.forEach(line => {
+            if (line.trim().match(/^[Qq]uestion\s+\d+[:.]?/i) || line.trim().match(/^\d+\./)) {
+                questionCount++;
+                result.push(line);
+            } else if (line.trim().match(/^[A-D]\./)) {
+                result.push(`    ${line.trim()}`);
+            } else {
+                result.push(line);
+            }
+        });
+        
+        return result.join('\n');
+    }
 }
 
+// Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new QuestionGenerator();
+    const questionGenerator = new QuestionGenerator();
+    
+    // Add global error handler
+    window.addEventListener('error', (event) => {
+        console.error('Global error:', event.error);
+    });
+    
+    // Add unhandled promise rejection handler
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection:', event.reason);
+    });
+    
+    // Export for debugging (optional)
+    window.questionGenerator = questionGenerator;
 });
+
+// Additional utility functions
+const QuizUtils = {
+    // Sanitize user input
+    sanitizeInput: function(input) {
+        return input.trim().replace(/[<>]/g, '');
+    },
+    
+    // Format numbers with leading zeros
+    formatNumber: function(num, digits = 2) {
+        return num.toString().padStart(digits, '0');
+    },
+    
+    // Debounce function for input events
+    debounce: function(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    // Throttle function for scroll events
+    throttle: function(func, limit) {
+        let inThrottle;
+        return function() {
+            const args = arguments;
+            const context = this;
+            if (!inThrottle) {
+                func.apply(context, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+};
+
+// CSS utility for dynamic styling
+const StyleManager = {
+    addStyles: function(styles) {
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+    },
+    
+    updateTheme: function(theme) {
+        const root = document.documentElement;
+        Object.keys(theme).forEach(key => {
+            root.style.setProperty(`--${key}`, theme[key]);
+        });
+    }
+};
+
+// Add some additional dynamic styles
+StyleManager.addStyles(`
+    .question-item.fade-in {
+        animation: slideInUp 0.6s ease-out;
+    }
+    
+    .question-item.highlight {
+        background: #fffaf0;
+        border-color: #ed8936;
+        box-shadow: 0 4px 12px rgba(237, 137, 54, 0.1);
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.02); }
+        100% { transform: scale(1); }
+    }
+    
+    .pulse {
+        animation: pulse 0.3s ease-in-out;
+    }
+`);
+
+// Export utilities for global access (optional)
+window.QuizUtils = QuizUtils;
+window.StyleManager = StyleManager;
