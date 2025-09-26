@@ -69,34 +69,44 @@ def generate_custom_quiz():
         
         if not question_types:
             return jsonify({"error": "Please select at least one question type"}), 400
-        
+
+        # ✅ Fair distribution of questions across selected types
+        base = num_questions // len(question_types)
+        remainder = num_questions % len(question_types)
+
+        distribution = {qtype: base for qtype in question_types}
+        for i in range(remainder):
+            distribution[question_types[i]] += 1
+
+        # ✅ Build type description string for prompt
         type_descriptions = []
         if "mcq" in question_types:
-            type_descriptions.append("multiple-choice questions with 4 options")
+            type_descriptions.append(f"{distribution['mcq']} multiple-choice questions with 4 options")
         if "short" in question_types:
-            type_descriptions.append("short answer questions")
+            type_descriptions.append(f"{distribution['short']} short answer questions")
         if "long" in question_types:
-            type_descriptions.append("long answer/medium questions")
-        
-        type_description = " and ".join(type_descriptions)
-        
-        prompt = f"""Generate {num_questions} high-quality {type_description} for students on the topic of {topic}.
-        
+            type_descriptions.append(f"{distribution['long']} long answer/medium questions")
+
+        type_description = ", ".join(type_descriptions)
+
+        prompt = f"""Generate exactly {num_questions} quiz questions for students on the topic "{topic}".
+        The quiz should include: {type_description}.
+
         IMPORTANT: Return the questions in plain text format, NOT markdown tables.
         Format each question clearly with:
         - Question number and type
         - The question text
         - Options (for MCQ) labeled A, B, C, D
 
-        Avoid using markdown tables or complex formatting.
-        Use simple text formatting like:
+        Example format:
         1. (MCQ) Your question here?
            A. Option 1
            B. Option 2
            C. Option 3
            D. Option 4
 
-        Keep it simple and readable."""
+        Keep it simple and readable.
+        """
 
         completion = client.chat.completions.create(
             model="openai/gpt-oss-120b",
@@ -111,6 +121,7 @@ def generate_custom_quiz():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
