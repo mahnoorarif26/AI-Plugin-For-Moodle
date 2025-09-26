@@ -183,201 +183,158 @@ class QuestionGenerator {
         this.scrollToOutput();
     }
 
-    f// In your QuestionGenerator class, replace these methods:
-formatQuestions(questions) {
-    // If the response contains markdown tables, use the table formatter
-    if (questions.includes('|') && questions.includes('---')) {
-        return this.formatMarkdownTable(questions);
-    }
-    
-    const lines = questions.split('\n').filter(line => line.trim());
-    let formatted = '';
-    let currentQuestion = '';
-    
-    lines.forEach((line) => {
-        if (line.match(/^\d+\./) || line.match(/^[Qq]uestion\s+\d+/i)) {
-            if (currentQuestion) {
-                formatted += `</div>`;
-            }
-            currentQuestion = line;
-            formatted += `<div class="question-item">
-                <h4>${this.escapeHtml(line)}</h4>`;
-        } else if (line.trim()) {
-            formatted += `<p>${this.escapeHtml(line)}</p>`;
+    formatQuestions(questions) {
+        // If the response contains markdown tables, use the table formatter
+        if (questions.includes('|') && questions.includes('---')) {
+            return this.formatMarkdownTable(questions);
         }
-    });
-    
-    if (currentQuestion) {
-        formatted += `</div>`;
-    }
-    
-    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
-}
-
-formatCustomQuestions(questions) {
-    // If the response contains markdown tables, use the table formatter
-    if (questions.includes('|') && questions.includes('---')) {
-        return this.formatMarkdownTable(questions);
-    }
-    
-    const lines = questions.split('\n').filter(line => line.trim());
-    let formatted = '';
-    let currentQuestion = '';
-    let inOptions = false;
-    
-    lines.forEach((line) => {
-        const trimmedLine = line.trim();
         
-        if (trimmedLine.match(/^\d+\./) || trimmedLine.match(/^(MCQ|Short Answer|Long Answer)/i)) {
-            if (currentQuestion) {
-                if (inOptions) {
+        const lines = questions.split('\n').filter(line => line.trim());
+        let formatted = '';
+        let currentQuestion = '';
+        
+        lines.forEach((line) => {
+            if (line.match(/^\d+\./) || line.match(/^[Qq]uestion\s+\d+/i)) {
+                if (currentQuestion) {
                     formatted += `</div>`;
-                    inOptions = false;
                 }
-                formatted += `</div>`;
+                currentQuestion = line;
+                formatted += `<div class="question-item">
+                    <h4>${this.escapeHtml(line)}</h4>`;
+            } else if (line.trim()) {
+                formatted += `<p>${this.escapeHtml(line)}</p>`;
             }
-            
-            let typeBadge = '';
-            if (trimmedLine.includes('MCQ') || trimmedLine.match(/multiple choice/i)) {
-                typeBadge = '<span class="question-type-badge">MCQ</span>';
-            } else if (trimmedLine.includes('Short Answer') || trimmedLine.match(/short answer/i)) {
-                typeBadge = '<span class="question-type-badge" style="background: #38a169;">Short Answer</span>';
-            } else if (trimmedLine.includes('Long Answer') || trimmedLine.match(/long answer/i)) {
-                typeBadge = '<span class="question-type-badge" style="background: #d69e2e;">Long Answer</span>';
-            }
-            
-            currentQuestion = trimmedLine;
-            formatted += `<div class="question-item">
-                ${typeBadge}
-                <h4>${this.escapeHtml(trimmedLine)}</h4>`;
-                
-        } else if (trimmedLine.match(/^[A-D]\./)) {
-            if (!inOptions) {
-                formatted += `<div class="question-options">`;
-                inOptions = true;
-            }
-            formatted += `<div>${this.escapeHtml(trimmedLine)}</div>`;
-            
-        } else if (trimmedLine.match(/correct answer|answer:/i)) {
-            if (inOptions) {
-                formatted += `</div>`;
-                inOptions = false;
-            }
-            formatted += `<div class="correct-answer">${this.escapeHtml(trimmedLine)}</div>`;
-            
-        } else if (trimmedLine) {
-            if (inOptions) {
-                formatted += `</div>`;
-                inOptions = false;
-            }
-            formatted += `<p>${this.escapeHtml(trimmedLine)}</p>`;
+        });
+        
+        if (currentQuestion) {
+            formatted += `</div>`;
         }
-    });
-    
-    if (inOptions) {
-        formatted += `</div>`;
+        
+        return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
     }
-    if (currentQuestion) {
-        formatted += `</div>`;
-    }
-    
-    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
-}
 
-// ADD THESE NEW METHODS TO YOUR QuestionGenerator CLASS:
-formatMarkdownTable(questions) {
-    const lines = questions.split('\n').filter(line => line.trim());
-    let formatted = '';
-    let inTable = false;
-    let tableRows = [];
-    
-    lines.forEach((line) => {
-        const trimmedLine = line.trim();
+    formatCustomQuestions(text) {
+        const lines = text.split("\n");
+        let formattedHTML = "";
+
+        lines.forEach(line => {
+            const trimmedLine = line.trim();
+
+            // ✅ Match "1. (MCQ)", "2. (Short Answer)", "3. (Long Answer)"
+            if (trimmedLine.match(/^\d+\.\s*\((MCQ|Short|Long)/i)) {
+                let type = "Question";
+
+                if (/MCQ/i.test(trimmedLine)) type = "MCQ";
+                if (/Short/i.test(trimmedLine)) type = "Short Answer";
+                if (/Long/i.test(trimmedLine)) type = "Long Answer";
+
+                formattedHTML += `<p><strong>[${type}]</strong> ${trimmedLine}</p>`;
+            }
+            // ✅ Match options (A. / B. / etc.)
+            else if (trimmedLine.match(/^[A-D]\./)) {
+                formattedHTML += `<p style="margin-left:20px;">${trimmedLine}</p>`;
+            }
+            else if (trimmedLine !== "") {
+                formattedHTML += `<p>${trimmedLine}</p>`;
+            }
+        });
+
+        return formattedHTML;
+    }
+
+    formatMarkdownTable(questions) {
+        const lines = questions.split('\n').filter(line => line.trim());
+        let formatted = '';
+        let inTable = false;
+        let tableRows = [];
         
-        // Detect table start
-        if (trimmedLine.includes('|') && trimmedLine.includes('---')) {
-            inTable = true;
-            return;
-        }
+        lines.forEach((line) => {
+            const trimmedLine = line.trim();
+            
+            // Detect table start
+            if (trimmedLine.includes('|') && trimmedLine.includes('---')) {
+                inTable = true;
+                return;
+            }
+            
+            // Process table rows
+            if (inTable && trimmedLine.includes('|')) {
+                tableRows.push(trimmedLine);
+            } else if (inTable && !trimmedLine.includes('|')) {
+                // Table ended, process the collected rows
+                formatted += this.processTableRows(tableRows);
+                tableRows = [];
+                inTable = false;
+                
+                // Process non-table content
+                if (trimmedLine) {
+                    formatted += `<div class="question-item"><p>${this.escapeHtml(trimmedLine)}</p></div>`;
+                }
+            } else if (!inTable && trimmedLine) {
+                // Regular content
+                if (trimmedLine.match(/^\d+\./) || trimmedLine.match(/^[Qq]uestion\s+\d+/i)) {
+                    formatted += `<div class="question-item"><h4>${this.escapeHtml(trimmedLine)}</h4>`;
+                } else {
+                    formatted += `<p>${this.escapeHtml(trimmedLine)}</p>`;
+                }
+            }
+        });
         
-        // Process table rows
-        if (inTable && trimmedLine.includes('|')) {
-            tableRows.push(trimmedLine);
-        } else if (inTable && !trimmedLine.includes('|')) {
-            // Table ended, process the collected rows
+        // Process any remaining table rows
+        if (tableRows.length > 0) {
             formatted += this.processTableRows(tableRows);
-            tableRows = [];
-            inTable = false;
-            
-            // Process non-table content
-            if (trimmedLine) {
-                formatted += `<div class="question-item"><p>${this.escapeHtml(trimmedLine)}</p></div>`;
-            }
-        } else if (!inTable && trimmedLine) {
-            // Regular content
-            if (trimmedLine.match(/^\d+\./) || trimmedLine.match(/^[Qq]uestion\s+\d+/i)) {
-                formatted += `<div class="question-item"><h4>${this.escapeHtml(trimmedLine)}</h4>`;
-            } else {
-                formatted += `<p>${this.escapeHtml(trimmedLine)}</p>`;
-            }
         }
-    });
-    
-    // Process any remaining table rows
-    if (tableRows.length > 0) {
-        formatted += this.processTableRows(tableRows);
+        
+        return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
     }
-    
-    return formatted || `<div class="question-item"><p>${this.escapeHtml(questions)}</p></div>`;
+
+    processTableRows(rows) {
+        if (rows.length === 0) return '';
+        
+        let formatted = '<div class="question-table">';
+        
+        rows.forEach((row, index) => {
+            if (index === 0) {
+                // Header row
+                formatted += '<div class="table-header">';
+                const cells = row.split('|').filter(cell => cell.trim());
+                cells.forEach(cell => {
+                    formatted += `<div class="table-cell header-cell">${this.escapeHtml(cell.trim())}</div>`;
+                });
+                formatted += '</div>';
+            } else {
+                // Data row
+                formatted += '<div class="table-row">';
+                const cells = row.split('|').filter(cell => cell.trim());
+                cells.forEach((cell, cellIndex) => {
+                    const cellContent = cell.trim();
+                    const isQuestion = cellIndex === 0 && cellContent.match(/^\d+\./);
+                    const isCorrectAnswer = cellContent.match(/^\*\*[A-D]\*\*$/);
+                    
+                    let cellClass = 'table-cell';
+                    if (isQuestion) cellClass += ' question-cell';
+                    if (isCorrectAnswer) cellClass += ' correct-answer-cell';
+                    
+                    formatted += `<div class="${cellClass}">${this.formatTableCell(cellContent)}</div>`;
+                });
+                formatted += '</div>';
+            }
+        });
+        
+        formatted += '</div>';
+        return formatted;
+    }
+
+    formatTableCell(content) {
+    let safeContent = this.escapeHtml(content);
+
+    return safeContent
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/<br\s*\/?>/g, '<br>');
 }
 
-processTableRows(rows) {
-    if (rows.length === 0) return '';
-    
-    let formatted = '<div class="question-table">';
-    
-    rows.forEach((row, index) => {
-        if (index === 0) {
-            // Header row
-            formatted += '<div class="table-header">';
-            const cells = row.split('|').filter(cell => cell.trim());
-            cells.forEach(cell => {
-                formatted += `<div class="table-cell header-cell">${this.escapeHtml(cell.trim())}</div>`;
-            });
-            formatted += '</div>';
-        } else {
-            // Data row
-            formatted += '<div class="table-row">';
-            const cells = row.split('|').filter(cell => cell.trim());
-            cells.forEach((cell, cellIndex) => {
-                const cellContent = cell.trim();
-                const isQuestion = cellIndex === 0 && cellContent.match(/^\d+\./);
-                const isCorrectAnswer = cellContent.match(/^\*\*[A-D]\*\*$/);
-                
-                let cellClass = 'table-cell';
-                if (isQuestion) cellClass += ' question-cell';
-                if (isCorrectAnswer) cellClass += ' correct-answer-cell';
-                
-                formatted += `<div class="${cellClass}">${this.formatTableCell(cellContent)}</div>`;
-            });
-            formatted += '</div>';
-        }
-    });
-    
-    formatted += '</div>';
-    return formatted;
-}
-
-formatTableCell(content) {
-    // Format markdown elements
-    let formattedContent = content
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
-        .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
-        .replace(/`(.*?)`/g, '<code>$1</code>') // Code
-        .replace(/<br\s*\/?>/g, '<br>'); // Line breaks
-    
-    return this.escapeHtml(formattedContent);
-}
 
     escapeHtml(text) {
         const div = document.createElement('div');
@@ -476,8 +433,11 @@ formatTableCell(content) {
             this.showError('Network error. Please check your connection and try again.');
         } else if (error.message.includes('429')) {
             this.showError('Too many requests. Please wait a moment and try again.');
-        } else {
-            this.showError('An unexpected error occurred. Please try again.');
+        } else if (error.message.includes('500')) {
+            this.showError('Server error. Please try again later.');
+        }
+        else {
+            this.handleApiError(error);
         }
     }
 
@@ -491,14 +451,16 @@ formatTableCell(content) {
             return 'Topic is too long. Please keep it under 500 characters.';
         }
         
-        if (numQuestions < 1 || numQuestions > 50) {
-            return 'Number of questions must be between 1 and 50.';
-        }
+        const num = parseInt(numQuestions, 10);
+    if (isNaN(num) || num < 1 || num > 50) {
+        return 'Number of questions must be between 1 and 50.';
+    }
+
         
         return null;
     }
 
-    // Method to add question numbering
+
     addQuestionNumbers(text) {
         const lines = text.split('\n');
         let questionCount = 0;
