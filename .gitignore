@@ -5,10 +5,12 @@ Backend/Question-Generator/.env
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Virtual environment
 venv/
-.env/
+.venv/
 
 # Logs
 *.log
