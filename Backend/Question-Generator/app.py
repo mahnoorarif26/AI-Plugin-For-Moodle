@@ -1,127 +1,118 @@
-import os
+import os, re, json
 from dotenv import load_dotenv
 from flask import Flask, request, render_template, jsonify
 from groq import Groq
 
 load_dotenv()
 api_key = os.getenv("GROQ_API_KEY")
+if not api_key:
+    raise RuntimeError("Missing GROQ_API_KEY in .env")
 
 app = Flask(__name__)
-
 client = Groq(api_key=api_key)
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
-@app.route("/generate-question", methods=["POST"])
-def generate_question():
+@app.route("/generate-quiz", methods=["POST"])
+def generate_quiz():
     try:
-        data = request.json
-        topic = data.get("topic", "Python basics")
-        num_questions = int(data.get("num_questions", 5))
-        
-        prompt = f"""
-        Generate {num_questions} high-quality quiz questions for students on the topic "{topic}".
-        The quiz must contain a mix of question types(2-3 mcqs,2-3 short question and 1 long).
-        If subject is coding, include code snippets in questions.
+        data = request.get_json(force=True) or {}
+        topic = (data.get("topic") or "").strip()
+        if not topic:
+            return jsonify({"ok": False, "error": "Topic is required"}), 400
 
-        IMPORTANT: Return the questions in plain text format, NOT markdown tables.
-        Format each question clearly with:
-        - Question number and type
-        - The question text
-        - Options (for MCQ) labeled A, B, C, D
-
-        Avoid using markdown tables or complex formatting.
-        Use simple text formatting like:
-        1. (MCQ) Your question here?
-           A. Option 1
-           B. Option 2
-           C. Option 3
-           D. Option 4
-
-        Keep it simple and readable.
-        """
-
-
-
-        completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=8192,
-            temperature=0.7,
-            top_p=1
-        )
-
-        output = completion.choices[0].message.content
-        return jsonify({"questions": output})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/generate-custom-quiz", methods=["POST"])
-def generate_custom_quiz():
-    try:
-        data = request.json
-        topic = data.get("topic", "Python basics")
-        num_questions = int(data.get("num_questions", 5))
+        num_questions  = max(3, min(int(data.get("num_questions", 5)), 20))
         question_types = data.get("question_types", [])
-        
-        if not question_types:
-            return jsonify({"error": "Please select at least one question type"}), 400
+        structured     = bool(data.get("structured", False))  # NEW flag
 
-        # ✅ Fair distribution of questions across selected types
-        base = num_questions // len(question_types)
-        remainder = num_questions % len(question_types)
+        # ----- Build composition text -----
+        if question_types:
+            base = num_questions // len(question_types)
+            rem  = num_questions % len(question_types)
+            dist = {t: base for t in question_types}
+            for i in range(rem):
+                dist[question_types[i]] += 1
+            mix = []
+            if "mcq"   in dist: mix.append(f'{dist["mcq"]} MCQs')
+            if "short" in dist: mix.append(f'{dist["short"]} short answers')
+            if "long"  in dist: mix.append(f'{dist["long"]} long/scenario-based')
+            mix_text = ", ".join(mix)
+        else:
+            mix_text = "2–3 MCQs, 2–3 short answers, and 1 scenario-based (if count ≥ 5)"
 
-        distribution = {qtype: base for qtype in question_types}
-        for i in range(remainder):
-            distribution[question_types[i]] += 1
+        # ----- Prompt (plain text vs JSON) -----
+        if not structured:
+            prompt = f"""
+Generate {num_questions} quiz questions on "{topic}".
+Mix: {mix_text}.
+Rules:
+- Balance easy/medium/hard
+- MCQs: 4 options A–D, one correct
+- Short/long: require reasoning
+- For algorithms/programming: include scenarios or code
+Output format (plain text):
 
-        # ✅ Build type description string for prompt
-        type_descriptions = []
-        if "mcq" in question_types:
-            type_descriptions.append(f"{distribution['mcq']} multiple-choice questions with 4 options")
-        if "short" in question_types:
-            type_descriptions.append(f"{distribution['short']} short answer questions")
-        if "long" in question_types:
-            type_descriptions.append(f"{distribution['long']} long answer/medium questions")
+1. (MCQ) Question?
+   A. ...
+   B. ...
+   C. ...
+   D. ...
+"""
+        else:
+            prompt = f"""
+You are a strict quiz generator. Return ONLY a JSON object in this schema:
+{{
+  "topic": "{topic}",
+  "questions": [
+    {{
+      "type": "mcq" | "short" | "long",
+      "prompt": "question text",
+      "options": ["A ...","B ...","C ...","D ..."] | null,
+      "answer": "A"/"B"/"C"/"D" | "reference text",
+      "explanation": "why this answer is correct" | null,
+      "difficulty": "easy" | "medium" | "hard"
+    }}
+  ]
+}}
+Constraints:
+- Total {num_questions} questions
+- Mix: {mix_text}
+- Must balance easy/medium/hard
+- MCQs: exactly 4 options
+- Include scenario-based items if topic relates to algorithms/programming
+Return ONLY the JSON object. Do not include markdown or extra text.
+"""
 
-        type_description = ", ".join(type_descriptions)
-
-        prompt = f"""Generate exactly {num_questions} quiz questions for students on the topic "{topic}".
-        The quiz should include: {type_description}.
-
-        IMPORTANT: Return the questions in plain text format, NOT markdown tables.
-        Format each question clearly with:
-        - Question number and type
-        - The question text
-        - Options (for MCQ) labeled A, B, C, D
-
-        Example format:
-        1. (MCQ) Your question here?
-           A. Option 1
-           B. Option 2
-           C. Option 3
-           D. Option 4
-
-        Keep it simple and readable.
-        """
-
+        # ----- Call Groq -----
         completion = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=2000,
-            temperature=0.7,
-            top_p=1
+            temperature=0.6,
         )
+        raw = completion.choices[0].message.content or ""
 
-        output = completion.choices[0].message.content
-        return jsonify({"questions": output})
+        # ----- Return plain text mode -----
+        if not structured:
+            return jsonify({"ok": True, "format": "text", "questions": raw})
+
+        # ----- Try JSON parse, fallback to text -----
+        m = re.search(r"\{.*\}", raw, flags=re.S)
+        if not m:
+            return jsonify({"ok": True, "format": "text", "questions": raw,
+                            "note": "Model did not return JSON; fallback to text."})
+
+        try:
+            obj = json.loads(m.group(0))
+            return jsonify({"ok": True, "format": "json", "json": obj})
+        except Exception:
+            return jsonify({"ok": True, "format": "text", "questions": raw,
+                            "note": "JSON parse failed; fallback to text."})
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
