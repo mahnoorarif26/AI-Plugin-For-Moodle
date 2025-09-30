@@ -1,90 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>AI Quiz Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Glassy Scrolling Top Banner</title>
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="container">
-    <h1>AI Quiz Generator</h1>
-    <p class="subtitle">Create quizzes instantly</p>
+  <!-- Top Glassy Scrolling Banner -->
+  <header class="banner" role="banner" aria-label="Scrolling welcome banner">
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span class="marquee__text">Welcome • Welcome • Welcome • Welcome • Welcome •</span>
+        <span class="marquee__text">Welcome to AI Plugin For Moodle</span>
+        <span class="marquee__text">Where you can generate Quizzes And Assignments as well</span>
+        <span class="marquee__text">Our Plugin also Autograde Quizzes and Assignment for Real Time Student Analysis •</span>
+      </div>
+    </div>
+  </header>
 
-    <!-- Two-column layout -->
-    <div class="quiz-layout">
-      <!-- LEFT: Forms -->
-      <div class="quiz-form">
-        <!-- Mode toggle -->
-        <div class="mode-selection">
-          <button id="mode-quick" class="active">Quick Quiz</button>
-          <button id="mode-custom">Custom Quiz</button>
-        </div>
-
-        <!-- Quick quiz form -->
-        <div id="quick-form" class="form active">
-          <label for="topic">Topic</label>
-          <input type="text" id="topic" placeholder="e.g. Analysis of Algorithms" />
-
-          <label for="num_questions">Number of Questions</label>
-          <input type="number" id="num_questions" value="5" min="3" max="20" />
-
-          <div class="input-group" style="margin-top:8px;">
-            <label class="checkbox-row">
-              <input type="checkbox" id="structured-toggle-quick" />
-              <span>Generate with structured JSON (includes answers + difficulty)</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Custom quiz form -->
-        <div id="custom-form" class="form" style="display:none;">
-          <label for="custom-topic">Topic</label>
-          <input type="text" id="custom-topic" placeholder="e.g. Data Structures" />
-
-          <label for="custom-num-questions">Number of Questions</label>
-          <input type="number" id="custom-num-questions" value="5" min="3" max="20" />
-
-          <div class="input-group" style="margin-top:8px;">
-            <label class="checkbox-row">
-              <input type="checkbox" id="structured-toggle-custom" />
-              <span>Generate with structured JSON (includes answers + difficulty)</span>
-            </label>
-          </div>
-
-          <div class="input-group" style="margin-top:12px;">
-            <div class="label-row">
-              <span>Question Types</span>
-            </div>
-            <div class="checkbox-group">
-              <label class="checkbox-row">
-                <input type="checkbox" name="question-type" value="mcq" checked />
-                <span>MCQ</span>
-              </label>
-              <label class="checkbox-row">
-                <input type="checkbox" name="question-type" value="short" checked />
-                <span>Short Answer</span>
-              </label>
-              <label class="checkbox-row">
-                <input type="checkbox" name="question-type" value="long" />
-                <span>Long Answer</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Generate button -->
-        <button id="generate-btn" class="generate-button">Generate Quiz</button>
+  <!-- Cards -->
+  <main>
+    <div class="cards-container">
+      <!-- Card 1: AI-Powered Quiz (functional) -->
+      <div class="quiz-card" id="card-auto">
+        <i class='bx bx-brain card-icon'></i>
+        <h2>AI-Powered Quiz</h2>
+        <p>Upload a PDF and generate questions automatically with your chosen difficulty mix and types.</p>
+        <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
       </div>
 
-      <!-- RIGHT: Output -->
-      <div class="quiz-output" id="output" style="display:none;">
-        <h2>Generated Quiz</h2>
-        <div id="output-content"></div>
+      <!-- Card 2: Customize (placeholder for now) -->
+      <div class="quiz-card">
+        <i class='bx bx-slider-alt card-icon'></i>
+        <h2>Customize Quiz</h2>
+        <p>Pick topics and sections, control the exact distribution and Bloom levels.</p>
+        <button class="generate-btn" disabled title="Coming soon">Customize Now</button>
       </div>
+
+      <!-- Card 3: Manual (placeholder for now) -->
+      <div class="quiz-card">
+        <i class='bx bx-edit card-icon'></i>
+        <h2>Manual Creation</h2>
+        <p>Create questions from scratch with full control.</p>
+        <button class="generate-btn" disabled title="Coming soon">Start Creating</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Modal: Auto PDF Options -->
+  <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitleAuto">Generate Quiz from PDF</h3>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btn-cancel">Close</button>
+          <button class="btn primary" id="btn-generate">Generate</button>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="section-title">1) Upload PDF</div>
+      <div id="uploader" class="uploader">
+        <b>Drop PDF here</b> or click to select
+        <small>Accepted: .pdf (max ~25MB)</small>
+        <input id="fileInput" type="file" accept="application/pdf" hidden />
+      </div>
+
+      <!-- Options -->
+      <div class="section-title">2) Options</div>
+      <div class="form-row">
+        <div class="field">
+          <label class="label">Number of Questions</label>
+          <input id="numQuestions" type="number" min="1" max="100" placeholder="Auto (leave empty)" />
+          <div class="hint">Leave empty for auto-detected length.</div>
+        </div>
+
+        <div class="field">
+          <label class="label">Difficulty Mode</label>
+          <select id="difficultyMode">
+            <option value="auto">Auto (AI decides)</option>
+            <option value="custom">Custom mix</option>
+          </select>
+          <div class="hint">Choose "Custom" to set easy/medium/hard.</div>
+        </div>
+      </div>
+
+      <!-- Custom difficulty sliders -->
+      <div id="diffRow" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Easy %</label>
+          <input id="easyPct" type="number" min="0" max="100" value="30" />
+        </div>
+        <div class="field">
+          <label class="label">Medium %</label>
+          <input id="medPct" type="number" min="0" max="100" value="50" />
+        </div>
+      </div>
+      <div id="diffRow2" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Hard %</label>
+          <input id="hardPct" type="number" min="0" max="100" value="20" />
+        </div>
+        <div class="field">
+          <label class="label">Validate Mix</label>
+          <button class="btn" id="btn-validate" type="button">Sum = 100%</button>
+        </div>
+      </div>
+
+      <div class="section-title">3) Question Types</div>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="tMCQ" checked /> MCQ</label>
+        <label class="chip"><input type="checkbox" id="tTF" /> True/False</label>
+        <label class="chip"><input type="checkbox" id="tShort" /> Short Answer</label>
+        <label class="chip"><input type="checkbox" id="tLong" /> Long Answer</label>
+      </div>
+
+      <div class="progress" id="progress"><div></div></div>
     </div>
   </div>
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{{ url_for('static', filename='modal.js') }}"></script> 
 </body>
 </html>
