@@ -1,118 +1,137 @@
-import os, re, json
+import json
+import os
 from dotenv import load_dotenv
-from flask import Flask, request, render_template, jsonify
-from groq import Groq
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
+
+from utils import (
+    extract_pdf_text,
+    split_into_chunks,
+    build_user_prompt,
+    SYSTEM_PROMPT,
+    call_groq_json,
+)
+from utils.groq_utils import _allocate_counts, filter_and_trim_questions  # internal helpers
 
 load_dotenv()
-api_key = os.getenv("GROQ_API_KEY")
-if not api_key:
-    raise RuntimeError("Missing GROQ_API_KEY in .env")
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY is missing in environment (.env).")
 
 app = Flask(__name__)
-client = Groq(api_key=api_key)
-
-@app.route("/")
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/generate-quiz", methods=["POST"])
-def generate_quiz():
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"ok": True})
+
+@app.route("/api/quiz/from-pdf", methods=["POST"])
+def quiz_from_pdf():
     try:
-        data = request.get_json(force=True) or {}
-        topic = (data.get("topic") or "").strip()
-        if not topic:
-            return jsonify({"ok": False, "error": "Topic is required"}), 400
+        # ---- file (PDF) ----
+        if "file" not in request.files:
+            return ("Missing file (multipart field 'file')", 400)
 
-        num_questions  = max(3, min(int(data.get("num_questions", 5)), 20))
-        question_types = data.get("question_types", [])
-        structured     = bool(data.get("structured", False))  # NEW flag
+        file = request.files["file"]
+        if not file or file.filename == "":
+            return ("Empty file", 400)
 
-        # ----- Build composition text -----
-        if question_types:
-            base = num_questions // len(question_types)
-            rem  = num_questions % len(question_types)
-            dist = {t: base for t in question_types}
-            for i in range(rem):
-                dist[question_types[i]] += 1
-            mix = []
-            if "mcq"   in dist: mix.append(f'{dist["mcq"]} MCQs')
-            if "short" in dist: mix.append(f'{dist["short"]} short answers')
-            if "long"  in dist: mix.append(f'{dist["long"]} long/scenario-based')
-            mix_text = ", ".join(mix)
-        else:
-            mix_text = "2–3 MCQs, 2–3 short answers, and 1 scenario-based (if count ≥ 5)"
+        # Windows/Chrome sometimes sends octet-stream; accept by extension too
+        if not (file.mimetype == "application/pdf" or file.filename.lower().endswith(".pdf")):
+            return ("Only PDF accepted (.pdf)", 400)
 
-        # ----- Prompt (plain text vs JSON) -----
-        if not structured:
-            prompt = f"""
-Generate {num_questions} quiz questions on "{topic}".
-Mix: {mix_text}.
-Rules:
-- Balance easy/medium/hard
-- MCQs: 4 options A–D, one correct
-- Short/long: require reasoning
-- For algorithms/programming: include scenarios or code
-Output format (plain text):
+        # ---- options (JSON) ----
+        options_raw = request.form.get("options")
+        if not options_raw:
+            # Some browsers send 'options' as a file part; accept that too
+            opt_file = request.files.get("options")
+            if opt_file:
+                try:
+                    options_raw = opt_file.read().decode("utf-8", "ignore")
+                except Exception:
+                    options_raw = None
 
-1. (MCQ) Question?
-   A. ...
-   B. ...
-   C. ...
-   D. ...
-"""
-        else:
-            prompt = f"""
-You are a strict quiz generator. Return ONLY a JSON object in this schema:
-{{
-  "topic": "{topic}",
-  "questions": [
-    {{
-      "type": "mcq" | "short" | "long",
-      "prompt": "question text",
-      "options": ["A ...","B ...","C ...","D ..."] | null,
-      "answer": "A"/"B"/"C"/"D" | "reference text",
-      "explanation": "why this answer is correct" | null,
-      "difficulty": "easy" | "medium" | "hard"
-    }}
-  ]
-}}
-Constraints:
-- Total {num_questions} questions
-- Mix: {mix_text}
-- Must balance easy/medium/hard
-- MCQs: exactly 4 options
-- Include scenario-based items if topic relates to algorithms/programming
-Return ONLY the JSON object. Do not include markdown or extra text.
-"""
-
-        # ----- Call Groq -----
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
-            temperature=0.6,
-        )
-        raw = completion.choices[0].message.content or ""
-
-        # ----- Return plain text mode -----
-        if not structured:
-            return jsonify({"ok": True, "format": "text", "questions": raw})
-
-        # ----- Try JSON parse, fallback to text -----
-        m = re.search(r"\{.*\}", raw, flags=re.S)
-        if not m:
-            return jsonify({"ok": True, "format": "text", "questions": raw,
-                            "note": "Model did not return JSON; fallback to text."})
+        if not options_raw:
+            return ("Missing options (multipart field 'options')", 400)
 
         try:
-            obj = json.loads(m.group(0))
-            return jsonify({"ok": True, "format": "json", "json": obj})
+            options = json.loads(options_raw)
         except Exception:
-            return jsonify({"ok": True, "format": "text", "questions": raw,
-                            "note": "JSON parse failed; fallback to text."})
+            return ("Invalid JSON in 'options'", 400)
 
+        num_questions = options.get("num_questions")  # can be None
+        qtypes = options.get("question_types", [])
+        diff   = options.get("difficulty", {"mode": "auto"})
+        diff_mode = diff.get("mode", "auto")
+
+        # ---- PDF -> text ----
+        text = extract_pdf_text(file)
+        if not text.strip():
+            return ("Could not extract text from PDF", 400)
+
+        chunks = split_into_chunks(text)
+
+        # ---- difficulty mix ----
+        mix_counts = {}
+        if diff_mode == "custom":
+            mix_counts = _allocate_counts(
+                total=num_questions if num_questions is not None else 0,
+                easy=int(diff.get("easy", 0)),
+                med=int(diff.get("medium", 0)),
+                hard=int(diff.get("hard", 0)),
+            )
+
+        # ---- LLM call ----
+        user_prompt = build_user_prompt(
+            pdf_chunks=chunks,
+            num_questions=num_questions,
+            qtypes=qtypes,
+            difficulty_mode=diff_mode,
+            mix_counts=mix_counts,
+        )
+
+        llm_json = call_groq_json(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            api_key=GROQ_API_KEY,
+        )
+
+        questions = llm_json.get("questions", [])
+        questions = filter_and_trim_questions(
+            questions=questions,
+            allowed_types=qtypes,
+            difficulty_mode=diff_mode,
+            mix_counts=mix_counts,
+            num_questions=num_questions,
+        )
+
+        result = {
+            "questions": questions,
+            "metadata": {
+                "model": "llama-3.3-70b-versatile",
+                "difficulty_mode": diff_mode,
+                "counts_requested": {
+                    "total": num_questions,
+                    **({
+                        "easy":   mix_counts.get("easy"),
+                        "medium": mix_counts.get("medium"),
+                        "hard":   mix_counts.get("hard"),
+                    } if diff_mode == "custom" else {})
+                },
+                "source_note": llm_json.get("source_note", ""),
+            }
+        }
+        return jsonify(result), 200
+
+    except json.JSONDecodeError:
+        return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return (f"Server error: {str(e)}", 500)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Use 0.0.0.0 if you want to reach it from your phone/laptop on LAN
+    app.run(host="127.0.0.1", port=5000, debug=True)
