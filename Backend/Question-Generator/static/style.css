@@ -372,3 +372,42 @@ select{
   display:none; 
   z-index:50;
 }
+/* ===== QUIZ OUTPUT ===== */
+#quiz-section{
+  max-width: 1200px;
+  margin: 28px auto 0 auto;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+  padding: 20px;
+}
+.quiz-out-head{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin-bottom: 12px;
+}
+.quiz-out{
+  display:grid; grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 12px;
+}
+.quiz-item{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:14px;
+  background:#fff;
+}
+.quiz-item h4{
+  margin:0 0 6px 0; font-size:15px; color:#111827;
+}
+.quiz-meta{
+  font-size:12px; color:#64748b; margin-bottom:8px;
+}
+.quiz-opts{ margin:8px 0 0 0; padding-left:18px; }
+.quiz-opts li{ margin:3px 0; }
+.correct{
+  font-weight:600;
+}
+.incorrect{
+  color:#dc2626;
+  font-weight:600;
+}
