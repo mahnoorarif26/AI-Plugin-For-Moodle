@@ -1,6 +1,7 @@
 /* ===========================
    Modal Management
 =========================== */
+let __lastQuizData = null;
 
 class ModalManager {
   constructor() {
@@ -119,10 +120,12 @@ class ModalManager {
       return; 
     }
     
-    if(file.type !== 'application/pdf'){ 
-      showToast('Only PDF is accepted.'); 
-      return; 
-    }
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf){
+      showToast('Only PDF (.pdf) is accepted.');
+      return;
+}
+
 
     const qCount = numQuestions?.value ? parseInt(numQuestions.value, 10) : null;
     if(qCount !== null && (qCount < 1 || qCount > 100)){ 
@@ -141,32 +144,38 @@ class ModalManager {
       return; 
     }
 
-    const payload = {
-      num_questions: qCount,
-      question_types: types,
-      difficulty: (difficultyMode?.value === 'auto')
-        ? { mode: 'auto' }
-        : { 
-            mode: 'custom', 
-            easy: +easyPct?.value||0, 
-            medium: +medPct?.value||0, 
-            hard: +hardPct?.value||0 
-          }
-    };
-
     // If custom difficulty, enforce sum = 100
-    if(payload.difficulty.mode === 'custom'){
-      const sum = payload.difficulty.easy + payload.difficulty.medium + payload.difficulty.hard;
-      if(sum !== 100){ 
-        showToast('Difficulty mix must sum to 100%.'); 
-        return; 
-      }
-    }
+      // Build payload object
+      const payload = {
+        num_questions: qCount,                // number
+        question_types: types,                // ["mcq","true_false","short","long"]
+        difficulty: (difficultyMode?.value === 'auto')
+          ? { mode: 'auto' }
+          : {
+              mode: 'custom',
+              easy:   +easyPct?.value || 0,
+              medium: +medPct?.value || 0,
+              hard:   +hardPct?.value || 0
+            }
+      };
 
-    // Build multipart form-data
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('options', JSON.stringify(payload));
+      // Optional: enforce custom mix sums to 100
+      if (payload.difficulty.mode === 'custom') {
+        const sum = payload.difficulty.easy + payload.difficulty.medium + payload.difficulty.hard;
+        if (sum !== 100) {
+          showToast('Difficulty mix must sum to 100%.');
+          return;
+        }
+      }
+
+      // Build multipart form-data (IMPORTANT: exactly these 2 keys)
+      const fd = new FormData();
+      fd.append('file', file);                         // <-- name must be 'file'
+      fd.append('options', JSON.stringify(payload));   // <-- name must be 'options'
+
+      const res = await fetch(API_BASE + ENDPOINT, { method: 'POST', body: fd });
+
+
 
     try {
       setProgress(8);
@@ -183,13 +192,18 @@ class ModalManager {
 
       const data = await res.json();
       setProgress(100);
-      showToast('Quiz generated ✅');
-      
-      // You can handle the response data here
-      console.log('Generated quiz:', data);
-      
-      // Optional: close modal after success
-      // this.close();
+
+      if (!data || !Array.isArray(data.questions) || data.questions.length === 0){
+        showToast('Generated, but no questions returned.');
+        console.warn('Empty questions payload:', data);
+      } else {
+        __lastQuizData = data;
+        renderQuiz(data.questions, data.metadata);
+        showToast(`Quiz generated ✅ (${data.questions.length} questions)`);
+        // Close the modal so they see the quiz
+        this.close();
+}
+
 
     } catch(err) {
       console.error('Generation error:', err);
@@ -204,3 +218,104 @@ class ModalManager {
 document.addEventListener('DOMContentLoaded', function() {
   new ModalManager();
 });
+
+function renderQuiz(questions, metadata){
+  const section = document.getElementById('quiz-section');
+  const container = document.getElementById('quiz-container');
+  if (!section || !container) return;
+
+  container.innerHTML = "";
+
+  questions.forEach((q, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'quiz-item';
+
+    // Normalize fields (defensive)
+    const type = (q.type || q.question_type || '').toString().toLowerCase();
+    const prompt = q.question || q.prompt || q.text || '';
+    const diff = q.difficulty || q.level || '';
+    const opts  = q.options || q.choices || [];
+    const ans   = q.answer || q.correct || q.correct_option || '';
+    const expl  = q.explanation || q.rationale || '';
+
+    // Build HTML
+    const metaBits = [];
+    if (type) metaBits.push(type.toUpperCase());
+    if (diff) metaBits.push(`Difficulty: ${diff}`);
+    const meta = metaBits.length ? `<div class="quiz-meta">${metaBits.join(' • ')}</div>` : '';
+
+    let optsHtml = '';
+    if (Array.isArray(opts) && opts.length){
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      optsHtml = `<ol class="quiz-opts">${opts.map((opt, idx) => {
+        const letter = letters[idx] || String(idx + 1) + '.';
+        const isCorrect = (typeof ans === 'string' && (ans.trim() === opt.trim() || ans.trim().toLowerCase() === letter.toLowerCase()))
+                       || (typeof ans === 'number' && ans === idx)
+                       || (Array.isArray(ans) && ans.includes(idx));
+        return `<li${isCorrect ? ' class="correct"' : ''}>${letter}. ${escapeHtml(opt)}</li>`;
+      }).join('')}</ol>`;
+    }
+
+    const answerBlock = ans ? `<div><b>Answer:</b> ${escapeHtml(formatAnswer(ans))}</div>` : '';
+    const explanation = expl ? `<div><b>Explanation:</b> ${escapeHtml(expl)}</div>` : '';
+
+    wrap.innerHTML = `
+      <h4>Q${i+1}. ${escapeHtml(prompt)}</h4>
+      ${meta}
+      ${optsHtml}
+      ${answerBlock}
+      ${explanation}
+    `;
+
+    container.appendChild(wrap);
+  });
+
+  // Export buttons
+  const copyBtn = document.getElementById('btn-copy-quiz');
+  const saveBtn = document.getElementById('btn-save-json');
+  copyBtn?.addEventListener('click', copyQuizAsText, { once: true });
+  saveBtn?.addEventListener('click', saveQuizJson, { once: true });
+
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyQuizAsText(){
+  if (!__lastQuizData?.questions?.length) return;
+  const lines = [];
+  __lastQuizData.questions.forEach((q, i) => {
+    lines.push(`Q${i+1}. ${q.question || q.prompt || q.text || ''}`);
+    if (Array.isArray(q.options)){
+      q.options.forEach((opt, idx) => lines.push(`   ${String.fromCharCode(65+idx)}. ${opt}`));
+    }
+    if (q.answer !== undefined) lines.push(`Answer: ${formatAnswer(q.answer)}`);
+    if (q.explanation) lines.push(`Explanation: ${q.explanation}`);
+    lines.push('');
+  });
+  const text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(() => showToast('Copied quiz to clipboard'));
+}
+
+function saveQuizJson(){
+  if (!__lastQuizData) return;
+  const blob = new Blob([JSON.stringify(__lastQuizData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'quiz.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Saved quiz.json');
+}
+
+// helpers
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function formatAnswer(ans){
+  if (Array.isArray(ans)) return ans.join(', ');
+  if (typeof ans === 'number') return String.fromCharCode(65 + ans); // 0->A
+  return String(ans);
+}
