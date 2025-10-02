@@ -31,12 +31,12 @@
         <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
       </div>
 
-      <!-- Card 2: Customize (placeholder for now) -->
+      <!-- Card 2: Customize -->
       <div class="quiz-card">
         <i class='bx bx-slider-alt card-icon'></i>
         <h2>Customize Quiz</h2>
-        <p>Pick topics and sections, control the exact distribution and Bloom levels.</p>
-        <button class="generate-btn" disabled title="Coming soon">Customize Now</button>
+        <p>Pick exact counts per type, plus scenario/code flags.</p>
+        <button class="generate-btn" id="btn-open-custom">Customize Now</button>
       </div>
 
       <!-- Card 3: Manual (placeholder for now) -->
@@ -47,18 +47,18 @@
         <button class="generate-btn" disabled title="Coming soon">Start Creating</button>
       </div>
     </div>
-    <!-- Generated Quiz Output -->
-      <section id="quiz-section" aria-live="polite" style="display:none">
-        <div class="quiz-out-head">
-          <h2>Generated Quiz</h2>
-          <div class="quiz-actions">
-            <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
-            <button class="btn" id="btn-save-json" type="button">Save JSON</button>
-          </div>
-        </div>
-        <div id="quiz-container" class="quiz-out"></div>
-      </section>
 
+    <!-- Generated Quiz Output -->
+    <section id="quiz-section" aria-live="polite" style="display:none">
+      <div class="quiz-out-head">
+        <h2>Generated Quiz</h2>
+        <div class="quiz-actions">
+          <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
+          <button class="btn" id="btn-save-json" type="button">Save JSON</button>
+        </div>
+      </div>
+      <div id="quiz-container" class="quiz-out"></div>
+    </section>
   </main>
 
   <!-- Toast -->
@@ -136,7 +136,93 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-  <script src="{{ url_for('static', filename='modal.js') }}"></script> 
+  <!-- Modal: CUSTOM PDF Options -->
+  <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btn-cancel-custom">Close</button>
+          <button class="btn primary" id="btn-generate-custom">Generate</button>
+        </div>
+      </div>
+
+      <!-- Upload -->
+      <div class="section-title">1) Upload PDF</div>
+      <div id="uploader-custom" class="uploader">
+        <b>Drop PDF here</b> or click to select
+        <small>Accepted: .pdf (max ~25MB)</small>
+        <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
+      </div>
+
+      <!-- Counts per type -->
+      <div class="section-title">2) Question Counts</div>
+      <div class="counts-grid">
+        <div class="field">
+          <label class="label" for="mcqCount">MCQ</label>
+          <input id="mcqCount" type="number" min="0" max="200" value="5" />
+        </div>
+        <div class="field">
+          <label class="label" for="tfCount">True / False</label>
+          <input id="tfCount" type="number" min="0" max="200" value="3" />
+        </div>
+        <div class="field">
+          <label class="label" for="shortCount">Short</label>
+          <input id="shortCount" type="number" min="0" max="200" value="2" />
+        </div>
+        <div class="field">
+          <label class="label" for="longCount">Long</label>
+          <input id="longCount" type="number" min="0" max="200" value="1" />
+        </div>
+      </div>
+
+      <!-- Flags -->
+      <div class="section-title">3) Extras</div>
+      <div class="chips">
+        <label class="chip"><input type="checkbox" id="cbScenario" /> Scenario-based questions</label>
+        <label class="chip"><input type="checkbox" id="cbCode" /> Code-snippet questions</label>
+      </div>
+
+      <!-- Optional difficulty mix -->
+      <div class="section-title">4) Difficulty (optional)</div>
+      <div class="form-row">
+        <div class="field">
+          <label class="label">Mode</label>
+          <select id="difficultyModeCustom">
+            <option value="auto">Auto (AI decides)</option>
+            <option value="custom">Custom % mix</option>
+          </select>
+          <div class="hint">Use custom only if you want a specific E/M/H distribution.</div>
+        </div>
+        <div class="field">
+          <label class="label">Validate</label>
+          <button class="btn" id="btn-validate-mix" type="button">Sum = 100%</button>
+        </div>
+      </div>
+      <div id="diffRowC1" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Easy %</label>
+          <input id="easyPctC" type="number" min="0" max="100" value="30" />
+        </div>
+        <div class="field">
+          <label class="label">Medium %</label>
+          <input id="medPctC" type="number" min="0" max="100" value="50" />
+        </div>
+      </div>
+      <div id="diffRowC2" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Hard %</label>
+          <input id="hardPctC" type="number" min="0" max="100" value="20" />
+        </div>
+      </div>
+
+      <div class="progress" id="progress-custom"><div></div></div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+
 </body>
 </html>
