@@ -2,6 +2,9 @@
 .env
 Backend/Question-Generator/.env
 
+# Firebase service account key
+Backend/Question-Generator/serviceAccountKey.json
+
 # Python cache
 __pycache__/
 *.pyc
