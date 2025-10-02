@@ -1,7 +1,10 @@
 /* ===========================
-   Modal Management
+    Modal Management
 =========================== */
 let __lastQuizData = null;
+
+// Assuming showToast, setProgress, resetProgress, API_BASE, and ENDPOINT are defined globally or in index.html script tags
+// And renderQuiz is defined below
 
 class ModalManager {
   constructor() {
@@ -124,7 +127,7 @@ class ModalManager {
     if (!isPdf){
       showToast('Only PDF (.pdf) is accepted.');
       return;
-}
+    }
 
 
     const qCount = numQuestions?.value ? parseInt(numQuestions.value, 10) : null;
@@ -144,38 +147,33 @@ class ModalManager {
       return; 
     }
 
-    // If custom difficulty, enforce sum = 100
-      // Build payload object
-      const payload = {
-        num_questions: qCount,                // number
-        question_types: types,                // ["mcq","true_false","short","long"]
-        difficulty: (difficultyMode?.value === 'auto')
-          ? { mode: 'auto' }
-          : {
-              mode: 'custom',
-              easy:   +easyPct?.value || 0,
-              medium: +medPct?.value || 0,
-              hard:   +hardPct?.value || 0
-            }
-      };
+    // Build payload object
+    const payload = {
+      num_questions: qCount,                  // number
+      question_types: types,                  // ["mcq","true_false","short","long"]
+      difficulty: (difficultyMode?.value === 'auto')
+        ? { mode: 'auto' }
+        : {
+            mode: 'custom',
+            easy:   +easyPct?.value || 0,
+            medium: +medPct?.value || 0,
+            hard:   +hardPct?.value || 0
+          }
+    };
 
-      // Optional: enforce custom mix sums to 100
-      if (payload.difficulty.mode === 'custom') {
-        const sum = payload.difficulty.easy + payload.difficulty.medium + payload.difficulty.hard;
-        if (sum !== 100) {
-          showToast('Difficulty mix must sum to 100%.');
-          return;
-        }
+    // Optional: enforce custom mix sums to 100
+    if (payload.difficulty.mode === 'custom') {
+      const sum = payload.difficulty.easy + payload.difficulty.medium + payload.difficulty.hard;
+      if (sum !== 100) {
+        showToast('Difficulty mix must sum to 100%.');
+        return;
       }
+    }
 
-      // Build multipart form-data (IMPORTANT: exactly these 2 keys)
-      const fd = new FormData();
-      fd.append('file', file);                         // <-- name must be 'file'
-      fd.append('options', JSON.stringify(payload));   // <-- name must be 'options'
-
-      const res = await fetch(API_BASE + ENDPOINT, { method: 'POST', body: fd });
-
-
+    // Build multipart form-data (IMPORTANT: exactly these 2 keys)
+    const fd = new FormData();
+    fd.append('file', file);                  // <-- name must be 'file'
+    fd.append('options', JSON.stringify(payload));  // <-- name must be 'options'
 
     try {
       setProgress(8);
@@ -199,11 +197,21 @@ class ModalManager {
       } else {
         __lastQuizData = data;
         renderQuiz(data.questions, data.metadata);
-        showToast(`Quiz generated ✅ (${data.questions.length} questions)`);
+        
+        // === NEW LOGIC: Display the Firebase ID ===
+        const firebaseId = data.metadata?.firebase_quiz_id;
+        let toastMessage = `Quiz generated ✅ (${data.questions.length} questions)`;
+        if (firebaseId) {
+          // Truncate the ID for a cleaner toast display
+          const shortId = firebaseId.substring(0, 8); 
+          toastMessage += ` (Saved to DB: ${shortId}...)`;
+        }
+        showToast(toastMessage);
+        // ==========================================
+        
         // Close the modal so they see the quiz
         this.close();
-}
-
+      }
 
     } catch(err) {
       console.error('Generation error:', err);
@@ -250,8 +258,8 @@ function renderQuiz(questions, metadata){
       optsHtml = `<ol class="quiz-opts">${opts.map((opt, idx) => {
         const letter = letters[idx] || String(idx + 1) + '.';
         const isCorrect = (typeof ans === 'string' && (ans.trim() === opt.trim() || ans.trim().toLowerCase() === letter.toLowerCase()))
-                       || (typeof ans === 'number' && ans === idx)
-                       || (Array.isArray(ans) && ans.includes(idx));
+                         || (typeof ans === 'number' && ans === idx)
+                         || (Array.isArray(ans) && ans.includes(idx));
         return `<li${isCorrect ? ' class="correct"' : ''}>${letter}. ${escapeHtml(opt)}</li>`;
       }).join('')}</ol>`;
     }
@@ -273,16 +281,37 @@ function renderQuiz(questions, metadata){
   // Export buttons
   const copyBtn = document.getElementById('btn-copy-quiz');
   const saveBtn = document.getElementById('btn-save-json');
-  copyBtn?.addEventListener('click', copyQuizAsText, { once: true });
-  saveBtn?.addEventListener('click', saveQuizJson, { once: true });
+  // Re-attach event listeners correctly for dynamic content
+  copyBtn?.removeEventListener('click', copyQuizAsText);
+  saveBtn?.removeEventListener('click', saveQuizJson);
+  copyBtn?.addEventListener('click', copyQuizAsText);
+  saveBtn?.addEventListener('click', saveQuizJson);
 
-  section.style.display = 'block';
-  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const metaEl = document.getElementById('quiz-metadata');
+  if (metaEl && metadata){
+    const model = metadata.model || 'Unknown Model';
+    const totalQ = questions.length;
+    const dbId = metadata.firebase_quiz_id ? ` (DB ID: ${metadata.firebase_quiz_id})` : '';
+    metaEl.innerHTML = `<p>Generated ${totalQ} questions using ${model}.${dbId}</p>`;
+  }
+
+  const quizSection = document.getElementById('quiz-section');
+  if (quizSection) {
+    quizSection.style.display = 'block';
+    quizSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 function copyQuizAsText(){
   if (!__lastQuizData?.questions?.length) return;
   const lines = [];
+  lines.push('--- Quiz Metadata ---');
+  lines.push(`Model: ${__lastQuizData.metadata.model}`);
+  if (__lastQuizData.metadata.firebase_quiz_id){
+    lines.push(`Database ID: ${__lastQuizData.metadata.firebase_quiz_id}`);
+  }
+  lines.push('--- Questions ---');
+
   __lastQuizData.questions.forEach((q, i) => {
     lines.push(`Q${i+1}. ${q.question || q.prompt || q.text || ''}`);
     if (Array.isArray(q.options)){
@@ -293,7 +322,22 @@ function copyQuizAsText(){
     lines.push('');
   });
   const text = lines.join('\n');
-  navigator.clipboard.writeText(text).then(() => showToast('Copied quiz to clipboard'));
+  
+  // Use document.execCommand('copy') as navigator.clipboard.writeText() may not work in iframes
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  
+  try {
+    document.execCommand('copy');
+    showToast('Copied quiz to clipboard');
+  } catch (err) {
+    console.error('Failed to copy text:', err);
+    showToast('Failed to copy to clipboard.');
+  }
+  document.body.removeChild(textArea);
 }
 
 function saveQuizJson(){
