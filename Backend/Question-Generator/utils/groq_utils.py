@@ -12,54 +12,54 @@ high-quality quiz questions in strict JSON (no prose outside JSON).
 Question types you may use:
 - mcq: Multiple choice (exactly 4 options, with one correct answer; include explanation).
 - true_false: A statement marked true or false; include explanation.
-- short: Short answer (1–3 sentences).
-- long: Long answer (4–8 sentences or key points).
+- short: Short answer (1-3 sentences).
+- long: Long answer (4-8 sentences or key points).
 
 Difficulty guidelines:
 - easy: direct recall/definitions/examples from text
-- medium: understanding/application across 1–2 paragraphs
+- medium: understanding/application across 1-2 paragraphs
 - hard: inference/synthesis/edge cases, multi-part reasoning
 
 ALWAYS return a single JSON object with:
 {
-  "questions": [
+ "questions": [
     {
       "id": "q1",
       "type": "mcq|true_false|short|long",
       "prompt": "string",
-      "options": ["A","B","C","D"],        // only for mcq; exactly 4
-      "answer": "string|0|1|2|3|true|false",
-      "explanation": "string (why/derivation, if applicable)",
-      "difficulty": "easy|medium|hard",
-      "tags": ["topic","subtopic"]
-    }
-  ],
-  "source_note": "brief note about which parts of the PDF were used"
+      "options": ["A","B","C","D"],      // only for mcq; exactly 4
+     "answer": "string|0|1|2|3|true|false",
+     "explanation": "string (why/derivation, if applicable)",
+     "difficulty": "easy|medium|hard",
+     "tags": ["topic","subtopic"]
+    },
+    ... 
+],
+"source_note": "brief note about which parts of the PDF were used"
 }
 
 No backticks. No commentary. Output must be valid JSON ONLY.
 """
 
 def build_user_prompt(pdf_chunks,
-                      num_questions,
-                      qtypes,
-                      difficulty_mode,
-                      mix_counts):
-    # Types
+                    num_questions,
+                    qtypes,
+                    difficulty_mode,
+                    mix_counts):
+
     type_line = (
         f"Allowed types: {', '.join(qtypes)}."
-        if qtypes else
+         if qtypes else
         "Allowed types: mcq, true_false, short, long."
-    )
+ )
 
-    # Count
     count_line = (
         "Number of questions: auto (choose a sensible count based on content length, typically 10–25)."
         if num_questions is None else
-        f"Number of questions: {num_questions}."
+         f"Number of questions: {num_questions}."
     )
 
-    # Difficulty
+
     if difficulty_mode == "auto":
         diff_line = "Difficulty mix: auto (balanced across easy/medium/hard)."
     else:
@@ -70,16 +70,33 @@ def build_user_prompt(pdf_chunks,
             f"hard={mix_counts.get('hard',0)}."
         )
 
+    # === NEW LOGIC TO ENFORCE 2-3 MCQ / 4-5 SHORT SPLIT IN AUTO MODE ===
+    # This targets the default 'Auto' mode where num_questions is set (e.g., 8) and only mcq/short are selected.
+    specific_ratio_line = ""
+    if (difficulty_mode == "auto" and 
+    num_questions is not None and
+        len(qtypes) == 2 and
+        "mcq" in qtypes and 
+        "short" in qtypes and 
+        6 <= num_questions <= 9):
+        # Inject instruction to meet the required 2-3 MCQ and 4-5 Short Answer range.
+        specific_ratio_line = (
+             "Crucially, you must prioritize the question types to meet the target range: "
+            "generate 2 to 3 Multiple Choice Questions (MCQ) and 4 to 5 Short Answer questions. "
+             "Ensure the total number of generated questions equals the requested number."
+        )
+    # ===================================================================
+
     # Keep first few chunks to respect context limits
     head_chunks = pdf_chunks[:6]
     joined = "\n\n".join(f"[PDF chunk {i+1}]\n{c}" for i, c in enumerate(head_chunks))
-
     return f"""
-You are given excerpts from a PDF (course/assignment/notes). Generate quiz questions strictly from this material.
+        You are given excerpts from a PDF (course/assignment/notes). Generate quiz questions strictly from this material.
 
 {count_line}
 {type_line}
 {diff_line}
+{specific_ratio_line}
 
 Use clear, unambiguous academic wording. Avoid trick questions unless needed for "hard".
 Distribute tags meaningfully (e.g., chapter names, key concepts).
@@ -89,6 +106,7 @@ PDF EXCERPTS START
 {joined}
 PDF EXCERPTS END
 """.strip()
+
 
 def _allocate_counts(total: int, easy: int, med: int, hard: int) -> dict:
     """Convert percentages to integer counts that sum to total."""
