@@ -179,7 +179,6 @@ class CustomizeModal {
   }
 }
 
-// Initialize CustomizeModal when DOM is loaded
 document.addEventListener('DOMContentLoaded', function () {
-  new CustomizeModal(); // NEW customize flow
+  new CustomizeModal(); 
 });
