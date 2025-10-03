@@ -2,13 +2,18 @@
 .env
 Backend/Question-Generator/.env
 
+# Firebase service account key
+Backend/Question-Generator/serviceAccountKey.json
+
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Virtual environment
 venv/
-.env/
+.venv/
 
 # Logs
 *.log
