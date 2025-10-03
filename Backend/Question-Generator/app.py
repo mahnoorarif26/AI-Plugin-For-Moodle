@@ -21,6 +21,7 @@ if not GROQ_API_KEY:
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -63,9 +64,9 @@ def quiz_from_pdf():
         except Exception:
             return ("Invalid JSON in 'options'", 400)
 
-        num_questions = options.get("num_questions")  # can be None
-        qtypes = options.get("question_types", [])
-        diff   = options.get("difficulty", {"mode": "auto"})
+        num_questions = options.get("num_questions", 8)  # Default to 8 questions if not provided
+        qtypes = options.get("question_types", ["mcq", "short"])  # Default to MCQs and short answer questions
+        diff = options.get("difficulty", {"mode": "auto"})
         diff_mode = diff.get("mode", "auto")
 
         # ---- PDF -> text ----
@@ -75,21 +76,21 @@ def quiz_from_pdf():
 
         chunks = split_into_chunks(text)
 
-        # ---- difficulty mix ----
+        # ---- difficulty mix (default custom mix if "custom" mode is selected) ----
         mix_counts = {}
         if diff_mode == "custom":
             mix_counts = _allocate_counts(
                 total=num_questions if num_questions is not None else 0,
-                easy=int(diff.get("easy", 0)),
-                med=int(diff.get("medium", 0)),
-                hard=int(diff.get("hard", 0)),
+                easy=int(diff.get("easy", 30)),
+                med=int(diff.get("medium", 50)),
+                hard=int(diff.get("hard", 20)),
             )
 
         # ---- LLM call ----
         user_prompt = build_user_prompt(
             pdf_chunks=chunks,
             num_questions=num_questions,
-            qtypes=qtypes,
+            qtypes=qtypes,  # Only MCQs and short-answer questions
             difficulty_mode=diff_mode,
             mix_counts=mix_counts,
         )
