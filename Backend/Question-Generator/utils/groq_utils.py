@@ -4,7 +4,7 @@ import os
 from groq import Groq
 
 # Choose a sensible default model here so .env only needs the API key
-DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 
 SYSTEM_PROMPT = """You are an expert exam-setter. You will read the provided PDF excerpts and generate
 high-quality quiz questions in strict JSON (no prose outside JSON).
@@ -54,7 +54,7 @@ def build_user_prompt(pdf_chunks,
  )
 
     count_line = (
-        "Number of questions: auto (choose a sensible count based on content length, typically 10–25)."
+        "Number of questions: auto (choose a sensible count based on content length, typically 10-25)."
         if num_questions is None else
          f"Number of questions: {num_questions}."
     )
@@ -73,23 +73,18 @@ def build_user_prompt(pdf_chunks,
     # === NEW LOGIC TO ENFORCE 2-3 MCQ / 4-5 SHORT SPLIT IN AUTO MODE ===
     # This targets the default 'Auto' mode where num_questions is set (e.g., 8) and only mcq/short are selected.
     specific_ratio_line = ""
-    if (difficulty_mode == "auto" and 
-    num_questions is not None and
-        len(qtypes) == 2 and
-        "mcq" in qtypes and 
-        "short" in qtypes and 
-        6 <= num_questions <= 9):
-        # Inject instruction to meet the required 2-3 MCQ and 4-5 Short Answer range.
-        specific_ratio_line = (
-             "Crucially, you must prioritize the question types to meet the target range: "
-            "generate 2 to 3 Multiple Choice Questions (MCQ) and 4 to 5 Short Answer questions. "
-             "Ensure the total number of generated questions equals the requested number."
-        )
-    # ===================================================================
+    if difficulty_mode == "auto" and num_questions is not None:
+        # Enforce 1-2 MCQs and then fill with short-answer questions
+        if "mcq" in qtypes and "short" in qtypes:
+            specific_ratio_line = (
+                "Crucially, generate 1 to 2 Multiple Choice Questions (MCQ), "
+                "followed by short-answer questions to meet the total number of questions."
+            )
 
-    # Keep first few chunks to respect context limits
-    head_chunks = pdf_chunks[:6]
+    # Ensure chunks and context
+    head_chunks = pdf_chunks[:6]  # Limit to 6 chunks, ensure prompt does not exceed limits
     joined = "\n\n".join(f"[PDF chunk {i+1}]\n{c}" for i, c in enumerate(head_chunks))
+
     return f"""
         You are given excerpts from a PDF (course/assignment/notes). Generate quiz questions strictly from this material.
 
@@ -98,34 +93,41 @@ def build_user_prompt(pdf_chunks,
 {diff_line}
 {specific_ratio_line}
 
-Use clear, unambiguous academic wording. Avoid trick questions unless needed for "hard".
-Distribute tags meaningfully (e.g., chapter names, key concepts).
-Vary verbs (define, explain, compare, derive, choose best).
-
 PDF EXCERPTS START
 {joined}
 PDF EXCERPTS END
 """.strip()
 
 
-def _allocate_counts(total: int, easy: int, med: int, hard: int) -> dict:
-    """Convert percentages to integer counts that sum to total."""
-    if total is None:
-        return {}
-    raw = {
-        "easy":   total * (easy/100),
-        "medium": total * (med/100),
-        "hard":   total * (hard/100),
+def _allocate_counts(total_questions: int):
+    """
+    Allocate counts for each question type.
+    Always enforce at least 1 MCQ, rest distributed.
+    """
+    counts = {
+        "mcq": 1,  # Always enforce at least 1 MCQ
+        "true_false": 0,
+        "short": 0,
+        "long": 0
     }
-    counts = {k: int(round(v)) for k, v in raw.items()}
-    drift = total - sum(counts.values())
-    order = sorted(raw, key=lambda k: raw[k] - math.floor(raw[k]), reverse=True)
-    for k in order:
-        if drift == 0:
-            break
-        counts[k] += 1 if drift > 0 else -1
-        drift += -1 if drift > 0 else 1
+    
+    remaining = total_questions - counts["mcq"]
+    
+    # If not enough remaining questions for the types, ensure MCQ is still the priority
+    if remaining <= 0:
+        return counts
+
+    counts["short"] = max(1, remaining // 2)
+    counts["true_false"] = remaining // 3
+    counts["long"] = remaining - counts["short"] - counts["true_false"]
+
+    for k in counts:
+        if counts[k] < 0:
+            counts[k] = 0
+
     return counts
+
+
 
 def enforce_custom_mix(questions, mix_counts, num_questions):
     """Trim/arrange questions to respect custom difficulty counts."""
