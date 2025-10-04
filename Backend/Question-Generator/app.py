@@ -3,6 +3,11 @@ import os
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
+# === NEW IMPORTS FOR FIREBASE ===
+import firebase_admin
+from firebase_admin import credentials, firestore
+from datetime import datetime
+# ================================
 
 from utils import (
     extract_pdf_text,
@@ -16,8 +21,51 @@ from utils.groq_utils import _allocate_counts, filter_and_trim_questions  # inte
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# === NEW CONFIG FOR FIREBASE KEY PATH ===
+# NOTE: You MUST create a .env variable called FIREBASE_SERVICE_ACCOUNT_PATH
+# pointing to your downloaded Firebase Service Account JSON key.
+# For local testing, you can use a default path like below, but update it.
+FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccountKey.json")
+# ========================================
+
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is missing in environment (.env).")
+
+# ===========================
+# FIREBASE SETUP
+# ===========================
+db = None
+try:
+    # Initialize the Firebase App using the service account key
+    cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
+    firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    print("Firebase App Initialized successfully.")
+except Exception as e:
+    # This print statement ensures you know if Firestore is active
+    print(f"WARNING: Firebase failed to initialize. Quizzes will NOT be saved to Firestore. Please check your FIREBASE_SERVICE_ACCOUNT_PATH. Error: {e}")
+    db = None # Set db to None if initialization fails
+
+# Function to save the quiz data
+def save_quiz_to_firestore(quiz_data: dict):
+    if db is None:
+        print("Error: Firestore client is not available. Skipping save operation.")
+        return None
+    
+    try:
+        # Store the complete quiz result object
+        # The .add() method creates a new document with an auto-generated ID
+        doc_ref = db.collection('ai_quizzes').add({
+            **quiz_data,
+            "created_at": datetime.now(),
+        })
+        # doc_ref is a tuple (write_time, DocumentReference). We need the ID from the reference.
+        return doc_ref[1].id
+    except Exception as e:
+        print(f"Error saving quiz to Firestore: {e}")
+        return None
+# ===========================
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -126,6 +174,14 @@ def quiz_from_pdf():
                 "source_note": llm_json.get("source_note", ""),
             }
         }
+        
+        # === NEW LOGIC: Save to Firestore ===
+        firebase_id = save_quiz_to_firestore(result)
+        if firebase_id:
+            # Add the unique Firebase ID to the response metadata
+            result["metadata"]["firebase_quiz_id"] = firebase_id
+        # ==================================
+
         return jsonify(result), 200
 
     except json.JSONDecodeError:
