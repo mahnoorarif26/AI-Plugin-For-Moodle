@@ -131,7 +131,7 @@ class CustomizeModal {
       difficulty = { mode: 'custom', easy, medium: med, hard };
     }
 
-    // final options payload
+   
     const options = {
       num_questions: total, // optional for your backend; keeps UI consistent
       question_types, // ["mcq","true_false","short","long"] (selected only)
@@ -140,13 +140,13 @@ class CustomizeModal {
       },
       scenario_based: !!this.cbScenario?.checked,
       code_snippet: !!this.cbCode?.checked,
-      difficulty // auto or custom %
+      difficulty 
     };
 
-    // send request
+    
     const fd = new FormData();
-    fd.append('file', file); // name MUST be 'file'
-    fd.append('options', JSON.stringify(options)); // name MUST be 'options'
+    fd.append('file', file); 
+    fd.append('options', JSON.stringify(options)); 
 
     try {
       this.setProgress(10);

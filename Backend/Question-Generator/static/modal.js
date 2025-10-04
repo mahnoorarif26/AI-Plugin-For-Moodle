@@ -103,7 +103,7 @@ class ModalManager {
         return;
       }
 
-      __lastQuizData = data; // Assign the API response to __lastQuizData
+      __lastQuizData = data; 
       renderQuiz(data.questions, data.metadata);
       this.close();
       showToast(`AI-powered quiz generated ✅ (${data.questions.length} questions)`);
