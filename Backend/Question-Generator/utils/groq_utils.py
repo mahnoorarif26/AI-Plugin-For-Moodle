@@ -4,7 +4,7 @@ import os
 from groq import Groq
 
 # Choose a sensible default model here so .env only needs the API key
-DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
 SYSTEM_PROMPT = """You are an expert exam-setter. You will read the provided PDF excerpts and generate
 high-quality quiz questions in strict JSON (no prose outside JSON).
@@ -236,3 +236,101 @@ def call_groq_json(system_prompt: str, user_prompt: str, api_key: str, model: st
     )
     content = chat.choices[0].message.content
     return json.loads(content)
+# ================================
+# Subtopic extraction + targeted quiz
+# ================================
+def extract_subtopics_llm(doc_text: str, model: str | None = None, api_key: str | None = None) -> list[str]:
+    """
+    Return a clean list of subtopic titles (short, distinct).
+    """
+    system = (
+        "Extract clean, distinct subtopics from an academic document. "
+        "Return ONLY JSON with {\"subtopics\": [\"...\"]}. Titles must be concise (≤ 8 words)."
+    )
+    user = (
+        "From the following text, list 10–25 key subtopics as concise titles. "
+        "Avoid duplicates and remove obvious noise like headers/footers.\n\n"
+        f"TEXT:\n{doc_text[:12000]}"
+    )
+
+    try:
+        out = call_groq_json(system, user, api_key=api_key, model=model, max_tokens=1200)
+        arr = out.get("subtopics", [])
+        # de-dup + trim empties
+        cleaned = []
+        seen = set()
+        for t in arr:
+            if not isinstance(t, str):
+                continue
+            s = t.strip()
+            if len(s) >= 2 and s.lower() not in seen:
+                seen.add(s.lower())
+                cleaned.append(s[:120])
+        return cleaned[:30]
+    except Exception:
+        return []
+
+
+def generate_quiz_from_subtopics_llm(full_text: str, chosen_subtopics: list[str], count_per: int = 2,
+                                     model: str | None = None, api_key: str | None = None) -> dict:
+    """
+    Build a targeted prompt constrained to the selected subtopics, mixing types naturally.
+    Returns a dict like {"questions":[...]} (your renderer already supports it).
+    """
+    # small heuristic “retrieval”: take lines containing the subtopic text
+    lines = [ln for ln in full_text.splitlines() if ln.strip()]
+    import re
+    selected = []
+    for st in chosen_subtopics:
+        pat = re.compile(re.escape(st), re.IGNORECASE)
+        hits = [ln for ln in lines if pat.search(ln)]
+        selected.extend(hits[:60])  # budget per subtopic
+
+    if not selected:
+        selected = lines[:400]
+
+    total = max(1, count_per * max(1, len(chosen_subtopics)))
+
+    system_prompt = """You are an expert exam-setter. Output STRICT JSON ONLY.
+
+Only use the provided excerpts. Make questions self-contained (no 'as above' or 'as mentioned').
+Allowed types:
+- mcq (4 options A/B/C/D, exactly one correct; include explanation)
+- true_false (with explanation)
+- short (1–3 sentences)
+
+Vary question types naturally and avoid repeating the subtopic wording verbatim.
+"""
+
+    # ⬇️ Precompute the joined excerpts to avoid backslashes inside f-string expressions
+    joined_selected = "\n".join(selected)[:14000]
+
+    # ⬇️ Build the prompt WITHOUT putting literal braces inside an f-string
+    user_prompt = (
+        "Create " + str(total) + " questions focusing ONLY on these subtopics:\n"
+        + str(chosen_subtopics) + "\n\n"
+        "Relevant EXCERPTS:\n"
+        + joined_selected + "\n\n"
+        "Return JSON:\n"
+        "{\n"
+        '  "questions": [\n'
+        "    {\n"
+        '      "id": "q1",\n'
+        '      "type": "mcq|true_false|short",\n'
+        '      "prompt": "string",\n'
+        '      "options": ["A","B","C","D"],\n'
+        '      "answer": "A|B|C|D|True|False|string",\n'
+        '      "explanation": "why it is correct"\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+    )
+
+    try:
+        out = call_groq_json(system_prompt, user_prompt, api_key=api_key, model=model, max_tokens=3500)
+        if isinstance(out, dict) and "questions" in out:
+            return out
+        return {"questions": []}
+    except Exception:
+        return {"questions": []}
+
