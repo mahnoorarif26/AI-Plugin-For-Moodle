@@ -139,6 +139,19 @@
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
       </div>
+       <!-- Subtopics detection UI (hidden until detected) -->
+      <div style="margin-top:12px;">
+        <button id="btn-detect-subtopics" type="button" class="btn">Detect Subtopics</button>
+      </div>
+
+      <div id="subtopics-section" style="display:none; margin-top:10px;">
+        <p><strong>Select subtopics:</strong></p>
+        <div id="subtopics-list" class="subtopics-list"></div>
+        <label style="display:block; margin-top:8px;">
+          Questions per subtopic:
+          <input id="count-per-subtopic" type="number" min="1" value="2" style="width:60px;">
+        </label>
+      </div>
 
       <div class="section-title">2) Question Counts</div>
       <div class="counts-grid">
