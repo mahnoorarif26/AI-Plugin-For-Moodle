@@ -8,6 +8,14 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
 # ================================
+# ⬇️ add with your other imports (near the top)
+from typing import List, Dict
+import re
+import uuid
+
+# simple in-memory store for uploaded pdf text
+_SUBTOPIC_UPLOADS: Dict[str, str] = {}
+
 
 from utils import (
     extract_pdf_text,
@@ -188,6 +196,107 @@ def quiz_from_pdf():
         return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
         return (f"Server error: {str(e)}", 500)
+    
+@app.post("/api/custom/extract-subtopics")
+def extract_subtopics():
+    """
+    multipart/form-data: file=<pdf>
+    -> { upload_id, subtopics: [str], filename }
+    """
+    try:
+        if "file" not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files["file"]
+        if not file.filename.lower().endswith(".pdf"):
+            return jsonify({"error": "Only PDF files are supported"}), 400
+
+        # use your existing extractor
+        text = extract_pdf_text(file)
+        if not text or len(text.strip()) < 50:
+            return jsonify({"error": "Could not read enough text from PDF"}), 400
+
+        # use LLM helper first; fallback to regexy guesses
+        from utils.groq_utils import extract_subtopics_llm
+        subtopics = extract_subtopics_llm(text)
+
+        if not subtopics:
+            # very light heuristic fallback: pick heading-like lines
+            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+            guesses = []
+            for ln in lines:
+                if re.match(r"^\d+(\.\d+)*\s", ln) or re.match(r"^[A-Z][A-Za-z0-9 ,\-:]{5,}$", ln):
+                    guesses.append(ln[:120])
+            subtopics = list(dict.fromkeys(guesses))[:20]
+
+        upload_id = str(uuid.uuid4())
+        _SUBTOPIC_UPLOADS[upload_id] = text
+
+        return jsonify({
+            "upload_id": upload_id,
+            "filename": file.filename,
+            "subtopics": subtopics[:30]
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to extract subtopics: {e}"}), 500
+
+
+@app.post("/api/custom/quiz-from-subtopics")
+def quiz_from_subtopics():
+    """
+    JSON: { upload_id: str, subtopics: [str], count_per_subtopic?: int }
+    -> { questions: [...], metadata: {...} }
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        upload_id = data.get("upload_id")
+        picked: List[str] = data.get("subtopics") or []
+        count_per = int(data.get("count_per_subtopic") or 2)
+
+        if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
+            return jsonify({"error": "Invalid or missing upload_id"}), 400
+        if not picked:
+            return jsonify({"error": "No subtopics selected"}), 400
+        if count_per < 1:
+            count_per = 1
+
+        full_text = _SUBTOPIC_UPLOADS[upload_id]
+
+        # generate targeted quiz via LLM helper
+        from utils.groq_utils import generate_quiz_from_subtopics_llm
+        llm = generate_quiz_from_subtopics_llm(
+            full_text=full_text,
+            chosen_subtopics=picked,
+            count_per=count_per,
+            api_key=GROQ_API_KEY
+        )
+        questions = llm.get("questions", [])
+
+        # Return in the same shape your renderer expects
+        result = {
+            "questions": questions,
+            "metadata": {
+                "mode": "custom_subtopics",
+                "source_file": data.get("source_file") or "Uploaded PDF",
+                "subtopics": picked,
+                "generated_at": datetime.now().isoformat()
+            }
+        }
+
+        # optional: save in Firestore if available (reuse your function)
+        if db is not None:
+            firebase_id = save_quiz_to_firestore(result)
+            if firebase_id:
+                result["metadata"]["firebase_quiz_id"] = firebase_id
+
+        return jsonify(result), 200
+
+    except json.JSONDecodeError:
+        return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
+    except Exception as e:
+        return (f"Server error: {str(e)}", 500)
+
 
 if __name__ == "__main__":
     # Use 0.0.0.0 if you want to reach it from your phone/laptop on LAN
