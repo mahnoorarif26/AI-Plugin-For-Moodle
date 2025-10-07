@@ -25,7 +25,7 @@
       <div class="quiz-card" id="card-auto">
         <i class='bx bx-brain card-icon'></i>
         <h2>AI-Powered Quiz</h2>
-        <p>Upload a PDF and generate a quiz with 2-3 MCQs and 3-4 Short Answer questions automatically.</p>
+        <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
         <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
       </div>
 
@@ -77,45 +77,6 @@
         <b>Drop PDF here</b> or click to select
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInput" type="file" accept="application/pdf" hidden />
-      </div>
-
-      <div class="section-title">2) Options</div>
-      <div class="form-row">
-        <div class="field">
-          <label class="label">Number of Questions</label>
-          <input id="numQuestions" type="number" min="1" max="100" value="8" placeholder="Auto (leave empty)" />
-          <div class="hint">Leave empty for auto-detected length.</div>
-        </div>
-
-        <div class="field">
-          <label class="label">Difficulty Mode</label>
-          <select id="difficultyMode">
-            <option value="auto">Auto (AI decides)</option>
-            <option value="custom">Custom mix</option>
-          </select>
-          <div class="hint">Choose "Custom" to set easy/medium/hard.</div>
-        </div>
-      </div>
-
-      <div id="diffRow" class="form-row" style="display:none">
-        <div class="field">
-          <label class="label">Easy %</label>
-          <input id="easyPct" type="number" min="0" max="100" value="30" />
-        </div>
-        <div class="field">
-          <label class="label">Medium %</label>
-          <input id="medPct" type="number" min="0" max="100" value="50" />
-        </div>
-      </div>
-      <div id="diffRow2" class="form-row" style="display:none">
-        <div class="field">
-          <label class="label">Hard %</label>
-          <input id="hardPct" type="number" min="0" max="100" value="20" />
-        </div>
-        <div class="field">
-          <label class="label">Validate Mix</label>
-          <button class="btn" id="btn-validate" type="button">Sum = 100%</button>
-        </div>
       </div>
 
       <div class="progress" id="progress"><div></div></div>
