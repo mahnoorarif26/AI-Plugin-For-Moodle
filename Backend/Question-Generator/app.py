@@ -4,8 +4,8 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 # === NEW IMPORTS FOR FIREBASE ===
-import firebase_admin
-from firebase_admin import credentials, firestore
+#import firebase_admin
+#from firebase_admin import credentials, firestore
 from datetime import datetime
 # ================================
 # ⬇️ add with your other imports (near the top)
@@ -23,8 +23,10 @@ from utils import (
     build_user_prompt,
     SYSTEM_PROMPT,
     call_groq_json,
+      # <-- Added missing import
+      # <-- Added missing import for subtopic extraction
 )
-from utils.groq_utils import _allocate_counts, filter_and_trim_questions  # internal helpers
+from utils.groq_utils import _allocate_counts, filter_and_trim_questions ,extract_subtopics_llm,generate_quiz_from_subtopics_llm # internal helpers
 
 load_dotenv()
 
@@ -45,9 +47,9 @@ if not GROQ_API_KEY:
 db = None
 try:
     # Initialize the Firebase App using the service account key
-    cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
+    #cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
+    #firebase_admin.initialize_app(cred)
+    #db = firestore.client()
     print("Firebase App Initialized successfully.")
 except Exception as e:
     # This print statement ensures you know if Firestore is active
@@ -196,107 +198,63 @@ def quiz_from_pdf():
         return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
         return (f"Server error: {str(e)}", 500)
-    
-@app.post("/api/custom/extract-subtopics")
+
+@app.route("/api/custom/extract-subtopics", methods=["POST"])
 def extract_subtopics():
-    """
-    multipart/form-data: file=<pdf>
-    -> { upload_id, subtopics: [str], filename }
-    """
-    try:
-        if "file" not in request.files:
-            return jsonify({"error": "No file provided"}), 400
+    if "file" not in request.files:
+        return jsonify({"error": "Missing file (multipart field 'file')"}), 400
+    f = request.files["file"]
+    if not (f.mimetype == "application/pdf" or f.filename.lower().endswith(".pdf")):
+        return jsonify({"error": "Only PDF accepted (.pdf)"}), 400
 
-        file = request.files["file"]
-        if not file.filename.lower().endswith(".pdf"):
-            return jsonify({"error": "Only PDF files are supported"}), 400
+    text = extract_pdf_text(f)
+    if not text.strip():
+        return jsonify({"error": "Could not extract text from PDF"}), 400
 
-        # use your existing extractor
-        text = extract_pdf_text(file)
-        if not text or len(text.strip()) < 50:
-            return jsonify({"error": "Could not read enough text from PDF"}), 400
+    upload_id = str(uuid.uuid4())
+    _SUBTOPIC_UPLOADS[upload_id] = text
 
-        # use LLM helper first; fallback to regexy guesses
-        from utils.groq_utils import extract_subtopics_llm
-        subtopics = extract_subtopics_llm(text)
+    subs = extract_subtopics_llm(
+        doc_text=text,
+        api_key=GROQ_API_KEY
+    )
 
-        if not subtopics:
-            # very light heuristic fallback: pick heading-like lines
-            lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-            guesses = []
-            for ln in lines:
-                if re.match(r"^\d+(\.\d+)*\s", ln) or re.match(r"^[A-Z][A-Za-z0-9 ,\-:]{5,}$", ln):
-                    guesses.append(ln[:120])
-            subtopics = list(dict.fromkeys(guesses))[:20]
-
-        upload_id = str(uuid.uuid4())
-        _SUBTOPIC_UPLOADS[upload_id] = text
-
-        return jsonify({
-            "upload_id": upload_id,
-            "filename": file.filename,
-            "subtopics": subtopics[:30]
-        }), 200
-
-    except Exception as e:
-        return jsonify({"error": f"Failed to extract subtopics: {e}"}), 500
+    return jsonify({"upload_id": upload_id, "subtopics": subs}), 200
 
 
-@app.post("/api/custom/quiz-from-subtopics")
+@app.route("/api/custom/quiz-from-subtopics", methods=["POST"])
 def quiz_from_subtopics():
-    """
-    JSON: { upload_id: str, subtopics: [str], count_per_subtopic?: int }
-    -> { questions: [...], metadata: {...} }
-    """
-    try:
-        data = request.get_json(force=True, silent=True) or {}
-        upload_id = data.get("upload_id")
-        picked: List[str] = data.get("subtopics") or []
-        count_per = int(data.get("count_per_subtopic") or 2)
+    payload = request.get_json(silent=True) or {}
+    upload_id = payload.get("upload_id")
+    chosen = payload.get("subtopics") or []
+    count_per = int(payload.get("count_per_subtopic") or 2)
 
-        if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
-            return jsonify({"error": "Invalid or missing upload_id"}), 400
-        if not picked:
-            return jsonify({"error": "No subtopics selected"}), 400
-        if count_per < 1:
-            count_per = 1
+    if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
+        return jsonify({"error": "Invalid or expired upload_id; run subtopic detection again."}), 400
+    if not chosen:
+        return jsonify({"error": "No subtopics provided"}), 400
+    if count_per <= 0:
+        return jsonify({"error": "count_per_subtopic must be >= 1"}), 400
 
-        full_text = _SUBTOPIC_UPLOADS[upload_id]
+    full_text = _SUBTOPIC_UPLOADS[upload_id]
 
-        # generate targeted quiz via LLM helper
-        from utils.groq_utils import generate_quiz_from_subtopics_llm
-        llm = generate_quiz_from_subtopics_llm(
-            full_text=full_text,
-            chosen_subtopics=picked,
-            count_per=count_per,
-            api_key=GROQ_API_KEY
-        )
-        questions = llm.get("questions", [])
+    out = generate_quiz_from_subtopics_llm(
+        full_text=full_text,
+        chosen_subtopics=chosen,
+        count_per=count_per,
+        api_key=GROQ_API_KEY
+    )
 
-        # Return in the same shape your renderer expects
-        result = {
-            "questions": questions,
-            "metadata": {
-                "mode": "custom_subtopics",
-                "source_file": data.get("source_file") or "Uploaded PDF",
-                "subtopics": picked,
-                "generated_at": datetime.now().isoformat()
-            }
+    result = {
+        "questions": out.get("questions", []),
+        "metadata": {
+            "source": "subtopics",
+            "upload_id": upload_id,
+            "count_per_subtopic": count_per,
+            "selected_subtopics": chosen
         }
-
-        # optional: save in Firestore if available (reuse your function)
-        if db is not None:
-            firebase_id = save_quiz_to_firestore(result)
-            if firebase_id:
-                result["metadata"]["firebase_quiz_id"] = firebase_id
-
-        return jsonify(result), 200
-
-    except json.JSONDecodeError:
-        return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
-    except Exception as e:
-        return (f"Server error: {str(e)}", 500)
-
+    }
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     # Use 0.0.0.0 if you want to reach it from your phone/laptop on LAN
