@@ -99,34 +99,30 @@ PDF EXCERPTS END
 """.strip()
 
 
-def _allocate_counts(total_questions: int):
+def _allocate_counts(total_questions: int, easy: int = 30, med: int = 50, hard: int = 20):
     """
-    Allocate counts for each question type.
-    Always enforce at least 1 MCQ, rest distributed.
+    Allocate counts for each difficulty level based on percentages.
     """
+    total_percent = easy + med + hard
+    if total_percent == 0:
+        return {"easy": 0, "medium": 0, "hard": 0}
+    
     counts = {
-        "mcq": 1,  # Always enforce at least 1 MCQ
-        "true_false": 0,
-        "short": 0,
-        "long": 0
+        "easy": max(0, round(total_questions * easy / total_percent)),
+        "medium": max(0, round(total_questions * med / total_percent)),
+        "hard": max(0, round(total_questions * hard / total_percent))
     }
     
-    remaining = total_questions - counts["mcq"]
+    # Adjust for rounding errors
+    total_allocated = counts["easy"] + counts["medium"] + counts["hard"]
+    if total_allocated != total_questions:
+        diff = total_questions - total_allocated
+        if diff > 0:
+            counts["medium"] += diff
+        else:
+            counts["hard"] = max(0, counts["hard"] + diff)
     
-    # If not enough remaining questions for the types, ensure MCQ is still the priority
-    if remaining <= 0:
-        return counts
-
-    counts["short"] = max(1, remaining // 2)
-    counts["true_false"] = remaining // 3
-    counts["long"] = remaining - counts["short"] - counts["true_false"]
-
-    for k in counts:
-        if counts[k] < 0:
-            counts[k] = 0
-
     return counts
-
 
 
 def enforce_custom_mix(questions, mix_counts, num_questions):
@@ -236,10 +232,11 @@ def call_groq_json(system_prompt: str, user_prompt: str, api_key: str, model: st
     )
     content = chat.choices[0].message.content
     return json.loads(content)
+
 # ================================
 # Subtopic extraction + targeted quiz
 # ================================
-def extract_subtopics_llm(doc_text: str, model: str | None = None, api_key: str | None = None) -> list[str]:
+def extract_subtopics_llm(doc_text: str, api_key: str | None = None, model: str | None = None) -> list[str]:
     """
     Return a clean list of subtopic titles (short, distinct).
     """
@@ -272,12 +269,12 @@ def extract_subtopics_llm(doc_text: str, model: str | None = None, api_key: str 
 
 
 def generate_quiz_from_subtopics_llm(full_text: str, chosen_subtopics: list[str], count_per: int = 2,
-                                     model: str | None = None, api_key: str | None = None) -> dict:
+                                     api_key: str | None = None, model: str | None = None) -> dict:
     """
     Build a targeted prompt constrained to the selected subtopics, mixing types naturally.
     Returns a dict like {"questions":[...]} (your renderer already supports it).
     """
-    # small heuristic “retrieval”: take lines containing the subtopic text
+    # small heuristic "retrieval": take lines containing the subtopic text
     lines = [ln for ln in full_text.splitlines() if ln.strip()]
     import re
     selected = []
@@ -327,10 +324,9 @@ Vary question types naturally and avoid repeating the subtopic wording verbatim.
     )
 
     try:
-        out = call_groq_json(system_prompt, user_prompt, api_key=api_key, model=model, max_tokens=3500)
+        out = call_groq_json(system_prompt, user_prompt, api_key=api_key, model=model, max_tokens=4000)
         if isinstance(out, dict) and "questions" in out:
             return out
         return {"questions": []}
     except Exception:
         return {"questions": []}
-
