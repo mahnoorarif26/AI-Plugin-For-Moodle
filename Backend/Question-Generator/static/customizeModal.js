@@ -214,52 +214,72 @@ class CustomizeModal {
   }
 
   async generateFromSubtopics() {
-    if (!this._uploadId) {
-      return showToast('Please detect subtopics first.');
-    }
-
-    const countPer = +this.countPer?.value || 2;
-    if (countPer <= 0) return showToast('Set questions per subtopic to at least 1.');
-
-    const payload = {
-      upload_id: this._uploadId,
-      subtopics: this._selectedSubtopics,
-      count_per_subtopic: countPer
-    };
-
-    try {
-      this.setProgress(10);
-      const resp = await fetch(`${API_BASE}/api/custom/quiz-from-subtopics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      this.setProgress(65);
-
-      if (!resp.ok) {
-        const t = await resp.text().catch(() => '');
-        throw new Error(t || `HTTP ${resp.status}`);
-      }
-      const data = await resp.json();
-      this.setProgress(100);
-
-      if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
-        showToast('Generated, but no questions returned.');
-        console.warn('Empty questions payload:', data);
-        return;
-      }
-
-      __lastQuizData = data;
-      renderQuiz(data.questions, data.metadata);
-      this.close();
-      showToast(`Customized quiz generated ✅ (${data.questions.length} questions from ${this._selectedSubtopics.length} subtopics)`);
-    } catch (err) {
-      console.error('Subtopics generation error:', err);
-      showToast('Failed: ' + (err.message || 'Server error'));
-    } finally {
-      setTimeout(() => this.resetProgress(), 600);
-    }
+  if (!this._uploadId) {
+    return showToast('Please detect subtopics first.');
   }
+
+  // take counts from existing inputs (same ones you use for regular custom)
+  const mcq    = +this.mcq?.value || 0;
+  const tf     = +this.tf?.value || 0;
+  const shortQ = +this.shortQ?.value || 0;
+  const longQ  = +this.longQ?.value || 0;
+  const total  = mcq + tf + shortQ + longQ;
+
+  if (total <= 0) return showToast('Set at least one question count (MCQ/TF/Short/Long).');
+
+  // difficulty
+  let difficulty = { mode: 'auto' };
+  if (this.diffMode?.value === 'custom') {
+    const easy = +this.easy?.value || 0;
+    const med  = +this.med?.value  || 0;
+    const hard = +this.hard?.value || 0;
+    const sum = easy + med + hard;
+    if (sum !== 100) return showToast('Difficulty mix must sum to 100%.');
+    difficulty = { mode: 'custom', easy, medium: med, hard };
+  }
+
+  const payload = {
+    upload_id: this._uploadId,
+    subtopics: this._selectedSubtopics,
+    totals: { mcq, true_false: tf, short: shortQ, long: longQ },
+    difficulty,
+    scenario_based: (+this.scenarioCount?.value || 0) > 0,
+    code_snippet:   (+this.codeCount?.value     || 0) > 0
+  };
+
+  try {
+    this.setProgress(10);
+    const resp = await fetch(`${API_BASE}/api/custom/quiz-from-subtopics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    this.setProgress(65);
+
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => '');
+      throw new Error(t || `HTTP ${resp.status}`);
+    }
+    const data = await resp.json();
+    this.setProgress(100);
+
+    if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
+      showToast('Generated, but no questions returned.');
+      console.warn('Empty questions payload:', data);
+      return;
+    }
+
+    __lastQuizData = data;
+    renderQuiz(data.questions, data.metadata);
+    this.close();
+    showToast(`Customized quiz generated ✅ (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
+  } catch (err) {
+    console.error('Subtopics generation error:', err);
+    showToast('Failed: ' + (err.message || 'Server error'));
+  } finally {
+    setTimeout(() => this.resetProgress(), 600);
+  }
+}
 
   async generateRegularCustom() {
     // read counts
