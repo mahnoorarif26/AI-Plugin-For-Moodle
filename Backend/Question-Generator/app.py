@@ -227,21 +227,36 @@ def quiz_from_subtopics():
     payload = request.get_json(silent=True) or {}
     upload_id = payload.get("upload_id")
     chosen = payload.get("subtopics") or []
-    count_per = int(payload.get("count_per_subtopic") or 2)
+
+    totals = payload.get("totals") or {}  # {"mcq":2,"true_false":1,"short":3,"long":0}
+    difficulty = payload.get("difficulty") or {"mode": "auto"}
+    scenario_based = bool(payload.get("scenario_based") or False)
+    code_snippet   = bool(payload.get("code_snippet") or False)
 
     if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
         return jsonify({"error": "Invalid or expired upload_id; run subtopic detection again."}), 400
     if not chosen:
         return jsonify({"error": "No subtopics provided"}), 400
-    if count_per <= 0:
-        return jsonify({"error": "count_per_subtopic must be >= 1"}), 400
+
+    total_requested = int(totals.get("mcq", 0)) + int(totals.get("true_false", 0)) \
+                      + int(totals.get("short", 0)) + int(totals.get("long", 0))
+    if total_requested <= 0:
+        return jsonify({"error": "Totals must request at least 1 question across types."}), 400
 
     full_text = _SUBTOPIC_UPLOADS[upload_id]
 
     out = generate_quiz_from_subtopics_llm(
         full_text=full_text,
         chosen_subtopics=chosen,
-        count_per=count_per,
+        totals={
+            "mcq": int(totals.get("mcq", 0)),
+            "true_false": int(totals.get("true_false", 0)),
+            "short": int(totals.get("short", 0)),
+            "long": int(totals.get("long", 0)),
+        },
+        difficulty=difficulty,
+        scenario_based=scenario_based,
+        code_snippet=code_snippet,
         api_key=GROQ_API_KEY
     )
 
@@ -250,11 +265,17 @@ def quiz_from_subtopics():
         "metadata": {
             "source": "subtopics",
             "upload_id": upload_id,
-            "count_per_subtopic": count_per,
-            "selected_subtopics": chosen
+            "selected_subtopics": chosen,
+            "totals_requested": totals,
+            "difficulty": difficulty,
+            "flags": {
+                "scenario_based": scenario_based,
+                "code_snippet": code_snippet
+            }
         }
     }
     return jsonify(result), 200
+
 
 if __name__ == "__main__":
     # Use 0.0.0.0 if you want to reach it from your phone/laptop on LAN
