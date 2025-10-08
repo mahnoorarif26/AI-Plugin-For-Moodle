@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import re
 from groq import Groq
 
 # Choose a sensible default model here so .env only needs the API key
@@ -268,44 +269,88 @@ def extract_subtopics_llm(doc_text: str, api_key: str | None = None, model: str 
         return []
 
 
-def generate_quiz_from_subtopics_llm(full_text: str, chosen_subtopics: list[str], count_per: int = 2,
-                                     api_key: str | None = None, model: str | None = None) -> dict:
+def generate_quiz_from_subtopics_llm(
+    full_text: str,
+    chosen_subtopics: list[str],
+    totals: dict | None = None,
+    difficulty: dict | None = None,
+    scenario_based: bool = False,
+    code_snippet: bool = False,
+    api_key: str | None = None,
+    model: str | None = None
+) -> dict:
     """
-    Build a targeted prompt constrained to the selected subtopics, mixing types naturally.
-    Returns a dict like {"questions":[...]} (your renderer already supports it).
+    Create a targeted quiz constrained to the selected subtopics.
+
+    totals: {"mcq": int, "true_false": int, "short": int, "long": int}
+    difficulty: {"mode":"auto"} or {"mode":"custom","easy":..,"medium":..,"hard":..}
+
+    Returns {"questions":[...]}.
     """
-    # small heuristic "retrieval": take lines containing the subtopic text
+    totals = totals or {}
+    want_mcq = int(totals.get("mcq") or 0)
+    want_tf  = int(totals.get("true_false") or 0)
+    want_sh  = int(totals.get("short") or 0)
+    want_lg  = int(totals.get("long") or 0)
+    total_wanted = max(0, want_mcq + want_tf + want_sh + want_lg)
+
+    # tiny retrieval heuristic
     lines = [ln for ln in full_text.splitlines() if ln.strip()]
     import re
     selected = []
     for st in chosen_subtopics:
         pat = re.compile(re.escape(st), re.IGNORECASE)
         hits = [ln for ln in lines if pat.search(ln)]
-        selected.extend(hits[:60])  # budget per subtopic
+        selected.extend(hits[:80])  # a bit more generous per subtopic
 
     if not selected:
-        selected = lines[:400]
+        selected = lines[:600]
 
-    total = max(1, count_per * max(1, len(chosen_subtopics)))
+    diff_line = "Difficulty: auto (balanced across easy/medium/hard)."
+    if isinstance(difficulty, dict) and (difficulty.get("mode") == "custom"):
+        e = int(difficulty.get("easy", 0))
+        m = int(difficulty.get("medium", 0))
+        h = int(difficulty.get("hard", 0))
+        diff_line = f"Difficulty mix by percent (approx): easy={e}%, medium={m}%, hard={h}%."
+
+    flags_line = []
+    if scenario_based:
+        flags_line.append("Include some scenario-based items where appropriate.")
+    if code_snippet:
+        flags_line.append("Include code-snippet style items if the excerpts support it.")
+    flags_line = " ".join(flags_line)
+
+    joined_selected = "\n".join(selected)[:18000]
+
+    # Build a very explicit count contract.
+    counts_contract = (
+        f"Generate EXACTLY these totals across ALL selected subtopics: "
+        f"{want_mcq} mcq, {want_tf} true_false, {want_sh} short, {want_lg} long. "
+        "Distribute them sensibly across the listed subtopics so each subtopic is represented. "
+        "If a type's count is 0, do not create that type."
+    )
 
     system_prompt = """You are an expert exam-setter. Output STRICT JSON ONLY.
 
-Only use the provided excerpts. Make questions self-contained (no 'as above' or 'as mentioned').
-Allowed types:
-- mcq (4 options A/B/C/D, exactly one correct; include explanation)
-- true_false (with explanation)
-- short (1–3 sentences)
-
-Vary question types naturally and avoid repeating the subtopic wording verbatim.
+Rules:
+- Use ONLY the provided excerpts.
+- Make every question self-contained (no 'as above').
+- Allowed types:
+  - mcq (4 options A/B/C/D, one correct; include explanation)
+  - true_false (with explanation)
+  - short (1–3 sentences)
+  - long (4–8 sentences or key points)
+- Every question must include a 'difficulty' of easy|medium|hard.
+- For mcq, ensure exactly 4 options and a single correct answer.
+- Avoid repeating the subtopic wording verbatim; test understanding.
 """
 
-    # ⬇️ Precompute the joined excerpts to avoid backslashes inside f-string expressions
-    joined_selected = "\n".join(selected)[:14000]
-
-    # ⬇️ Build the prompt WITHOUT putting literal braces inside an f-string
     user_prompt = (
-        "Create " + str(total) + " questions focusing ONLY on these subtopics:\n"
-        + str(chosen_subtopics) + "\n\n"
+        "Focus ONLY on these subtopics:\n"
+        + ", ".join(chosen_subtopics) + "\n\n"
+        + counts_contract + "\n"
+        + diff_line + "\n"
+        + flags_line + "\n\n"
         "Relevant EXCERPTS:\n"
         + joined_selected + "\n\n"
         "Return JSON:\n"
@@ -313,20 +358,31 @@ Vary question types naturally and avoid repeating the subtopic wording verbatim.
         '  "questions": [\n'
         "    {\n"
         '      "id": "q1",\n'
-        '      "type": "mcq|true_false|short",\n'
+        '      "type": "mcq|true_false|short|long",\n'
         '      "prompt": "string",\n'
         '      "options": ["A","B","C","D"],\n'
         '      "answer": "A|B|C|D|True|False|string",\n'
-        '      "explanation": "why it is correct"\n'
+        '      "explanation": "why it is correct",\n'
+        '      "difficulty": "easy|medium|hard",\n'
+        '      "tags": ["subtopic label(s)"]\n'
         "    }\n"
         "  ]\n"
         "}\n"
     )
 
     try:
-        out = call_groq_json(system_prompt, user_prompt, api_key=api_key, model=model, max_tokens=4000)
+        out = call_groq_json(system_prompt, user_prompt, api_key=api_key, model=model, max_tokens=5000)
         if isinstance(out, dict) and "questions" in out:
-            return out
+            # Optional: light trimming to exact totals if the model overshoots.
+            qs = out["questions"]
+            def take(k):
+                return [q for q in qs if q.get("type")==k]
+            picked = []
+            picked += take("mcq")[:want_mcq]
+            picked += take("true_false")[:want_tf]
+            picked += take("short")[:want_sh]
+            picked += take("long")[:want_lg]
+            return {"questions": picked}
         return {"questions": []}
     except Exception:
         return {"questions": []}
