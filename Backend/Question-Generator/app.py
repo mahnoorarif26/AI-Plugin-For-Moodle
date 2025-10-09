@@ -26,6 +26,34 @@ from utils import (
       # <-- Added missing import
       # <-- Added missing import for subtopic extraction
 )
+
+def enforce_flag_targets(questions, scenario_target, code_target):
+    """
+    Ensures that the number of scenario-based and code snippet questions matches the requested targets.
+    If there are fewer than requested, it sets the flags on additional questions.
+    """
+    scenario_count = sum(1 for q in questions if q.get("scenario_based"))
+    code_count = sum(1 for q in questions if q.get("code_snippet"))
+
+    # Enforce scenario_based flag
+    if scenario_count < scenario_target:
+        for q in questions:
+            if not q.get("scenario_based"):
+                q["scenario_based"] = True
+                scenario_count += 1
+                if scenario_count >= scenario_target:
+                    break
+
+    # Enforce code_snippet flag
+    if code_count < code_target:
+        for q in questions:
+            if not q.get("code_snippet"):
+                q["code_snippet"] = True
+                code_count += 1
+                if code_count >= code_target:
+                    break
+
+    return questions
 from utils.groq_utils import _allocate_counts, filter_and_trim_questions ,extract_subtopics_llm,generate_quiz_from_subtopics_llm # internal helpers
 
 load_dotenv()
@@ -89,6 +117,7 @@ def health():
     return jsonify({"ok": True})
 
 @app.route("/api/quiz/from-pdf", methods=["POST"])
+@app.route("/api/quiz/from-pdf", methods=["POST"])
 def quiz_from_pdf():
     try:
         # ---- file (PDF) ----
@@ -99,14 +128,12 @@ def quiz_from_pdf():
         if not file or file.filename == "":
             return ("Empty file", 400)
 
-        # Windows/Chrome sometimes sends octet-stream; accept by extension too
         if not (file.mimetype == "application/pdf" or file.filename.lower().endswith(".pdf")):
             return ("Only PDF accepted (.pdf)", 400)
 
         # ---- options (JSON) ----
         options_raw = request.form.get("options")
         if not options_raw:
-            # Some browsers send 'options' as a file part; accept that too
             opt_file = request.files.get("options")
             if opt_file:
                 try:
@@ -122,10 +149,29 @@ def quiz_from_pdf():
         except Exception:
             return ("Invalid JSON in 'options'", 400)
 
-        num_questions = options.get("num_questions", 8)  # Default to 8 questions if not provided
-        qtypes = options.get("question_types", ["mcq", "short"])  # Default to MCQs and short answer questions
+        num_questions = options.get("num_questions", 8)
+        qtypes = options.get("question_types", ["mcq", "short"])
         diff = options.get("difficulty", {"mode": "auto"})
         diff_mode = diff.get("mode", "auto")
+
+        # ---- Distribution and flag targets ----
+        dist = options.get("distribution", {})
+        
+        # FIX: Properly handle scenario_based and code_snippet counts
+        scenario_target = options.get("scenario_based", 0)
+        code_target = options.get("code_snippet", 0)
+        
+        # Convert to integers
+        try:
+            scenario_target = int(scenario_target)
+            code_target = int(code_target)
+        except (ValueError, TypeError):
+            scenario_target = 0
+            code_target = 0
+        
+        # Ensure non-negative
+        scenario_target = max(0, scenario_target)
+        code_target = max(0, code_target)
 
         # ---- PDF -> text ----
         text = extract_pdf_text(file)
@@ -134,11 +180,11 @@ def quiz_from_pdf():
 
         chunks = split_into_chunks(text)
 
-        # ---- difficulty mix (default custom mix if "custom" mode is selected) ----
+        # ---- difficulty mix ----
         mix_counts = {}
         if diff_mode == "custom":
             mix_counts = _allocate_counts(
-                total=num_questions if num_questions is not None else 0,
+                total=num_questions,
                 easy=int(diff.get("easy", 30)),
                 med=int(diff.get("medium", 50)),
                 hard=int(diff.get("hard", 20)),
@@ -148,9 +194,11 @@ def quiz_from_pdf():
         user_prompt = build_user_prompt(
             pdf_chunks=chunks,
             num_questions=num_questions,
-            qtypes=qtypes,  # Only MCQs and short-answer questions
+            qtypes=qtypes,
             difficulty_mode=diff_mode,
             mix_counts=mix_counts,
+            scenario_target=scenario_target,
+            code_target=code_target,
         )
 
         llm_json = call_groq_json(
@@ -160,6 +208,10 @@ def quiz_from_pdf():
         )
 
         questions = llm_json.get("questions", [])
+        
+        # FIX: Apply flag enforcement AFTER getting questions from LLM
+        questions = enforce_flag_targets(questions, scenario_target, code_target)
+        
         questions = filter_and_trim_questions(
             questions=questions,
             allowed_types=qtypes,
@@ -176,21 +228,18 @@ def quiz_from_pdf():
                 "counts_requested": {
                     "total": num_questions,
                     **({
-                        "easy":   mix_counts.get("easy"),
+                        "easy": mix_counts.get("easy"),
                         "medium": mix_counts.get("medium"),
-                        "hard":   mix_counts.get("hard"),
+                        "hard": mix_counts.get("hard"),
                     } if diff_mode == "custom" else {})
+                },
+                "flag_targets": {
+                    "scenario_based": scenario_target,
+                    "code_snippet": code_target
                 },
                 "source_note": llm_json.get("source_note", ""),
             }
         }
-        
-        # === NEW LOGIC: Save to Firestore ===
-        firebase_id = save_quiz_to_firestore(result)
-        if firebase_id:
-            # Add the unique Firebase ID to the response metadata
-            result["metadata"]["firebase_quiz_id"] = firebase_id
-        # ==================================
 
         return jsonify(result), 200
 
@@ -198,6 +247,7 @@ def quiz_from_pdf():
         return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
         return (f"Server error: {str(e)}", 500)
+
 
 @app.route("/api/custom/extract-subtopics", methods=["POST"])
 def extract_subtopics():
@@ -276,7 +326,33 @@ def quiz_from_subtopics():
     }
     return jsonify(result), 200
 
+def enforce_flag_targets(questions, scenario_target, code_target):
+    """
+    Ensures that the number of scenario-based and code snippet questions matches the requested targets.
+    If there are fewer than requested, it sets the flags on additional questions.
+    """
+    scenario_count = sum(1 for q in questions if q.get("scenario_based", False))
+    code_count = sum(1 for q in questions if q.get("code_snippet", False))
 
+    # Enforce scenario_based flag
+    if scenario_count < scenario_target:
+        for q in questions:
+            if not q.get("scenario_based", False):
+                q["scenario_based"] = True
+                scenario_count += 1
+                if scenario_count >= scenario_target:
+                    break
+
+    # Enforce code_snippet flag
+    if code_count < code_target:
+        for q in questions:
+            if not q.get("code_snippet", False):
+                q["code_snippet"] = True
+                code_count += 1
+                if code_count >= code_target:
+                    break
+
+    return questions
 if __name__ == "__main__":
     # Use 0.0.0.0 if you want to reach it from your phone/laptop on LAN
     app.run(host="127.0.0.1", port=5000, debug=True)
