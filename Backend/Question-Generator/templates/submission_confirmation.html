@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Submission Confirmed</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+        /* Orange Color Definitions */
+        :root {
+            --primary-orange: #ff9f1c; /* Main Orange color */
+            --dark-orange: #cc7a00;    /* Darker Orange for hover */
+            --soft-orange-bg: #fff3e0; /* Very light orange for score background */
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f7f9fc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .confirmation-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+            max-width: 500px;
+            text-align: center;
+            /* Changed from green to Primary Orange */
+            border-top: 5px solid var(--primary-orange);
+        }
+        .icon-success {
+            font-size: 72px;
+            /* Changed from green to Primary Orange */
+            color: var(--primary-orange);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #555;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .score-info {
+            /* Changed from light green to Soft Orange BG */
+            background-color: var(--soft-orange-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .score-info strong {
+            display: block;
+            font-size: 1.2em;
+            /* Changed from green to Primary Orange */
+            color: var(--primary-orange);
+        }
+        .btn-home {
+            /* Changed from blue to Primary Orange */
+            background-color: var(--primary-orange);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        .btn-home:hover {
+            /* Changed from dark blue to Darker Orange */
+            background-color: var(--dark-orange);
+        }
+    </style>
+</head>
+<body>
+    <div class="confirmation-box">
+        <i class='bx bx-check-circle icon-success'></i>
+        <h1>Submission Successful!</h1>
+        <p>Thank you, **{{ student_name or 'Student' }}**, your quiz **{{ quiz_title }}** has been submitted.</p>
+        
+        <div class="score-info">
+            <p>Your instant score (Auto-graded questions only): 
+                <strong>{{ score }} out of {{ total }}</strong>
+            </p>
+            <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
+                *Short/Long answers require manual review by the instructor to finalize your grade.*
+            </p>
+        </div>
+        
+        <a href="{{ url_for('student_index') }}" class="btn-home">
+            <i class='bx bx-list-ul'></i> Go to Available Quizzes
+        </a>
+    </div>
+</body>
+</html>
