@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary-orange: #ff9f1c;
+      --dark-orange: #cc7a00;
+      --red-for-alert: #f44336;
+    }
+
+    body {
+      font-family: "Inter", sans-serif;
+      background-color: #f7f9fb;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* 🔸 Banner Styles */
+    .banner {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      height: 50px;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      box-shadow: 0 12px 28px rgba(16, 24, 40, 0.18);
+      transition: background 0.6s ease, box-shadow 0.3s ease, transform 0.3s ease;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .banner:hover {
+      background: linear-gradient(to right, #fd9f41, #ffb366);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(255, 122, 26, 0.35);
+    }
+
+    .marquee {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      mask-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        black 10%,
+        black 90%,
+        transparent 100%
+      );
+      -webkit-mask-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        black 10%,
+        black 90%,
+        transparent 100%
+      );
+      padding: 0 22px;
+    }
+
+    .marquee__track {
+      display: flex;
+      align-items: center;
+      gap: 3rem;
+      white-space: nowrap;
+      will-change: transform;
+      animation: scroll-x 14s linear infinite;
+    }
+
+    .marquee__text {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-size: 1.1rem;
+      background: linear-gradient(90deg, #ff6b35, #ff9f1c, #ff7a1a, #ff6b35);
+      background-size: 300% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient-shift 4s linear infinite;
+    }
+
+    .banner:hover .marquee__text {
+      background: none;
+      -webkit-text-fill-color: #fff;
+      color: #fff;
+      animation: none;
+    }
+
+    @keyframes scroll-x {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    @keyframes gradient-shift {
+      0% {
+        background-position: 0% 50%;
+      }
+      100% {
+        background-position: 300% 50%;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .marquee__track {
+        animation: none;
+      }
+    }
+
+    /* 🔸 Logout Button */
+    .logout-btn {
+      background-color: transparent;
+      color: var(--red-for-alert);
+      padding: 8px 15px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid var(--red-for-alert);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background-color: var(--red-for-alert);
+      color: white;
+      transform: scale(1.05);
+    }
+
+    .logout-btn i {
+      font-size: 18px;
+      transition: color 0.3s ease;
+    }
+
+    .logout-btn:hover i {
+      color: white;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen pt-24 px-4 sm:px-8">
+  <!-- Banner -->
+  <header class="banner" role="banner">
+    <div class="marquee">
+      <div class="marquee__track">
+        <span class="marquee__text">Welcome to AI Plugin For Moodle</span>
+        <span class="marquee__text">Where you can generate Quizzes And Assignments as well</span>
+        <span class="marquee__text">Our Plugin also Autograde Quizzes and Assignment for Real Time Student Analysis</span>
+        <span class="marquee__text">Welcome • Welcome • Welcome •</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="max-w-5xl mx-auto">
+    <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">Teacher Dashboard</h1>
+      <nav class="mt-4 sm:mt-0 flex items-center flex-wrap gap-5">
+        <span class="text-lg font-medium text-gray-600">Welcome, {{ teacher_name or 'Teacher' }}!</span>
+
+        <a href="{{ url_for('teacher_generate') }}"
+          class="text-lg font-medium text-orange-600 hover:text-orange-800 border-b-2 border-transparent hover:border-orange-600 pb-1 transition">
+          <i class="bx bx-brain"></i> Quiz Generation
+        </a>
+
+        <a href="{{ url_for('teacher_index') }}"
+          class="text-lg font-medium text-orange-600 border-b-2 border-orange-600 pb-1 transition">
+          <i class="bx bx-list-ul"></i> View Quizzes
+        </a>
+
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+          <i class="bx bx-log-out"></i> Logout
+        </a>
+      </nav>
+    </header>
+
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Your Created Quizzes (Click to view submissions)</h2>
+
+    {% if error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+      <strong class="font-bold">Error:</strong>
+      <span class="block sm:inline">{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <main>
+      {% if quizzes %}
+      <div class="space-y-4">
+        {% for quiz in quizzes %}
+        <div
+          class="bg-white p-5 rounded-xl shadow-md flex justify-between items-center hover:shadow-lg transition duration-150 ease-in-out">
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900">{{ quiz.title }}</h3>
+            <p class="text-sm text-gray-500 mt-1">
+              {{ quiz.questions_count }} Questions | Created:
+              {{ quiz.created_at.strftime('%Y-%m-%d %H:%M') if quiz.created_at else 'Unknown Date' }}
+            </p>
+          </div>
+          <a href="{{ url_for('teacher_submissions', quiz_id=quiz.id) }}"
+            class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 ease-in-out text-sm">
+            <i class="bx bx-group"></i> View Submitted Quizzes
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-12 bg-white rounded-xl shadow-md">
+        <p class="text-gray-500 text-lg">No quizzes have been generated yet.</p>
+        <p class="text-gray-500 mt-2">Click <strong>Quiz Generation</strong> above to get started!</p>
+      </div>
+      {% endif %}
+    </main>
+  </div>
+</body>
+</html>
