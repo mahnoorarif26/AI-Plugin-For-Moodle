@@ -515,6 +515,7 @@ def health():
 
 # ---- Re-introduced: /api/quiz/from-pdf route (was missing and caused 404)
 @app.route("/api/quiz/from-pdf", methods=["POST"])
+@app.route("/api/quiz/from-pdf", methods=["POST"])
 def quiz_from_pdf():
     """
     Generate quiz from uploaded PDF. Returns the quiz JSON and also saves to Firestore.
@@ -559,6 +560,25 @@ def quiz_from_pdf():
         diff = options.get("difficulty", {"mode": "auto"})
         diff_mode = diff.get("mode", "auto")
 
+        # ---- Distribution and flag targets ----
+        dist = options.get("distribution", {})
+        
+        # FIX: Properly handle scenario_based and code_snippet counts
+        scenario_target = options.get("scenario_based", 0)
+        code_target = options.get("code_snippet", 0)
+        
+        # Convert to integers
+        try:
+            scenario_target = int(scenario_target)
+            code_target = int(code_target)
+        except (ValueError, TypeError):
+            scenario_target = 0
+            code_target = 0
+        
+        # Ensure non-negative
+        scenario_target = max(0, scenario_target)
+        code_target = max(0, code_target)
+
         # ---- PDF -> text ----
         text = extract_pdf_text(file)
         if not text or not text.strip():
@@ -566,11 +586,11 @@ def quiz_from_pdf():
 
         chunks = split_into_chunks(text)
 
-        # ---- difficulty mix (default custom mix if "custom" mode is selected) ----
+        # ---- difficulty mix ----
         mix_counts = {}
         if diff_mode == "custom":
             mix_counts = _allocate_counts(
-                total=num_questions if num_questions is not None else 0,
+                total=num_questions,
                 easy=int(diff.get("easy", 30)),
                 med=int(diff.get("medium", 50)),
                 hard=int(diff.get("hard", 20)),
@@ -583,6 +603,8 @@ def quiz_from_pdf():
             qtypes=qtypes,
             difficulty_mode=diff_mode,
             mix_counts=mix_counts,
+            scenario_target=scenario_target,
+            code_target=code_target,
         )
 
         llm_json = call_groq_json(
@@ -592,6 +614,10 @@ def quiz_from_pdf():
         )
 
         questions = llm_json.get("questions", [])
+        
+        # FIX: Apply flag enforcement AFTER getting questions from LLM
+        questions = enforce_flag_targets(questions, scenario_target, code_target)
+        
         questions = filter_and_trim_questions(
             questions=questions,
             allowed_types=qtypes,
@@ -611,10 +637,14 @@ def quiz_from_pdf():
                 "counts_requested": {
                     "total": num_questions,
                     **({
-                        "easy":   mix_counts.get("easy"),
+                        "easy": mix_counts.get("easy"),
                         "medium": mix_counts.get("medium"),
-                        "hard":   mix_counts.get("hard"),
+                        "hard": mix_counts.get("hard"),
                     } if diff_mode == "custom" else {})
+                },
+                "flag_targets": {
+                    "scenario_based": scenario_target,
+                    "code_snippet": code_target
                 },
                 "source_note": llm_json.get("source_note", ""),
                 "source_file": source_file, # Add source file to metadata for listing
@@ -842,6 +872,32 @@ def auto_generate_quiz():
         print(f"❌ Error in auto_generate_quiz: {e}")
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
 
+def enforce_flag_targets(questions, scenario_target, code_target):
+    """
+    Ensures that the number of scenario-based and code snippet questions matches the requested targets.
+    If there are fewer than requested, it sets the flags on additional questions.
+    """
+    scenario_count = sum(1 for q in questions if q.get("scenario_based", False))
+    code_count = sum(1 for q in questions if q.get("code_snippet", False))
 
+    # Enforce scenario_based flag
+    if scenario_count < scenario_target:
+        for q in questions:
+            if not q.get("scenario_based", False):
+                q["scenario_based"] = True
+                scenario_count += 1
+                if scenario_count >= scenario_target:
+                    break
+
+    # Enforce code_snippet flag
+    if code_count < code_target:
+        for q in questions:
+            if not q.get("code_snippet", False):
+                q["code_snippet"] = True
+                code_count += 1
+                if code_count >= code_target:
+                    break
+
+    return questions
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)
