@@ -31,26 +31,28 @@
         <div class="home-left">
           <h1 class="headline">Welcome to <span>AI Plugin</span></h1>
           <p class="subhead">
-            Experience the future of learning with our AI-powered </br >Moodle plugin. 
-            Transform any study material into interactive </br>quizzes and assignments 
-            — automatically, intelligently.
+            Experience the future of learning with our AI-powered<br/>
+            Moodle plugin. Transform any study material into interactive<br/>
+            quizzes and assignments — automatically, intelligently.
           </p>
         </div>
 
         <div class="home-right">
-        <div class="rotate-card has-bg" 
-            style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
-            aria-live="polite">
-          <div id="rotate-text" class="rotate-text">
-            <span>AI-Powered Quiz — upload a PDF and let the AI do the rest.</span>
-            <span>Generate Quiz — quick start to create a new quiz from your material.</span>
-            <span>AI-Customized Quiz — fine-tune question counts, difficulty, and flags.</span>
-            <span>Manual Creation — craft questions from scratch with full control.</span>
+          <div class="rotate-card has-bg" 
+               style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
+               aria-live="polite">
+            <div id="rotate-text" class="rotate-text">
+              <span>Smart PDF Conversion — Automatically generate quizzes from textbooks and materials</span>
+              <span>Instant Quiz Creation — Quickly transform study content into assessment tools</span>
+              <span>Personalized Assessment — Customize question distribution and complexity levels</span>
+              <span>Manual Authoring — Craft bespoke questions with comprehensive creation tools</span>
+            </div>
           </div>
         </div>
       </div>
-      </div>
     </section>
+
+    <!-- GENERATE -->
     <section id="section-generate" style="display:none;">
       <div class="cards-container">
         <div class="quiz-card" id="card-auto">
@@ -60,7 +62,7 @@
           <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
         </div>
 
-        <!-- Customize Quiz Card (with customization options) -->
+        <!-- Customize Quiz Card -->
         <div class="quiz-card">
           <i class='bx bx-slider-alt card-icon'></i>
           <h2>Customize Quiz</h2>
@@ -80,38 +82,45 @@
       <!-- Generated Quiz Output Section -->
       <section id="quiz-section" aria-live="polite" style="display:none">
         <div class="quiz-out-head">
-        <h2>Generated Quiz</h2>
-        <div class="quiz-actions">
-          <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
-          <button class="btn" id="btn-save-json" type="button">Save JSON</button>
-          <button class="btn" id="btn-publish" type="button" >Publish</button>
-          <span id="publish-note" class="muted" style="margin-left:8px;"></span>
+          <h2>Generated Quiz</h2>
+          <div class="quiz-actions">
+            <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
+            <button class="btn" id="btn-save-json" type="button">Save JSON</button>
+            <button class="btn" id="btn-publish" type="button">Publish</button>
+            <span id="publish-note" class="muted" style="margin-left:8px;"></span>
+          </div>
         </div>
-      </div>
         <div id="quiz-container" class="quiz-out"></div>
       </section>
     </section>
 
+    <!-- VIEW QUIZZES -->
     <section id="section-view" style="display:none;">
-      <div class="published-quiz">
-        <h2>Published Quizzes</h2>
-        <div id="quiz-list" class="quiz-list">
-          <!-- Quizzes will be dynamically added here -->
-        </div>
-        <div id="no-quizzes-message" class="placeholder" style="margin-top: 2rem; display: none;">
-          <i class='bx bx-show-alt'></i>
-          <h3>No Published Quizzes Yet</h3>
-          <p>Generate and publish your first quiz to see it here!</p>
-        </div>
+      <div class="view-header">
+        <h2>Available Quizzes</h2>
+        <p class="muted">Open any quiz to preview or share with students.</p>
       </div>
+
+      <!-- Empty state -->
+      <div id="quiz-empty" class="empty-state" style="display:none;">
+        <div class="empty-icon">📄</div>
+        <h3>No quizzes yet</h3>
+        <p>Generate a quiz first, then come back to view it here.</p>
+      </div>
+
+      <!-- List container -->
+      <div id="quiz-list" class="quiz-list"></div>
     </section>
 
-    <!-- STUDENT GRADES (placeholder) -->
+    <!-- STUDENT GRADES (placeholder page) -->
     <section id="section-grades" style="display:none;">
-      <div class="placeholder">
-        <i class='bx bx-chart'></i>
+      <div class="grades-header">
         <h2>Student Grades</h2>
-        <p>Coming soon — real-time analytics and grading insights will appear here.</p>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>Grades page</h3>
+        <p>Grades logic is not implemented yet. This is placeholder text as requested.</p>
       </div>
     </section>
 
@@ -119,7 +128,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- Auto Modal -->
+  <!-- Modals -->
   <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
     <div class="modal-card">
       <div class="modal-head">
@@ -139,12 +148,11 @@
     </div>
   </div>
 
-  <!-- Custom Modal -->
   <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
     <div class="modal-card">
       <div class="modal-head">
         <h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
-        <div class="modal-actions">
+      <div class="modal-actions">
           <button class="btn ghost" id="btn-cancel-custom">Close</button>
           <button class="btn primary" id="btn-generate-custom">Generate</button>
         </div>
@@ -222,92 +230,118 @@
     </div>
   </div>
 
-  <!-- Your existing JS files -->
+  <!-- Scripts (deferred) -->
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
   <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
 
+  <!-- Router + Home Rotator -->
+  <script defer>
+  (function () {
+    const $ = (sel) => document.querySelector(sel);
+    const id = (s) => document.getElementById(s);
 
-  <!-- New: simple router + home rotator -->
-  <script>
-  // SPA-style section router
-  const sections = {
-    home: document.getElementById('section-home'),
-    generate: document.getElementById('section-generate'),
-    view: document.getElementById('section-view'),
-    grades: document.getElementById('section-grades'),
-  };
+    function showEl(el){ if(!el) return; el.hidden = false; el.style.removeProperty('display'); }
+    function hideEl(el){ if(!el) return; el.hidden = true; el.style.display = 'none'; }
 
-  async function loadQuizzes() {
-    const box = document.getElementById('quiz-list');
-    if (!box) return;
-    box.innerHTML = '<div class="muted">Loading…</div>';
-    try {
-      const res = await fetch('/api/quizzes');
-      if (!res.ok) throw new Error(await res.text());
-      const items = await res.json(); // [{id,title,questions_count,created_at}, ...]
-      if (!Array.isArray(items) || items.length === 0) {
-        box.innerHTML = '<div class="muted">No quizzes yet.</div>';
-        return;
+    // sections map
+    const sections = {
+      home:     id('section-home'),
+      generate: id('section-generate'),
+      view:     id('section-view'),
+      grades:   id('section-grades'),
+    };
+
+    // -------- View Quizzes loader --------
+    async function loadQuizzes() {
+      window.loadQuizzes = loadQuizzes; // allow publish.js to call it after publishing
+
+      const listBox = id('quiz-list');
+      const emptyBox = id('quiz-empty');
+      if (!listBox) return;
+
+      listBox.innerHTML = '<div class="muted">Loading…</div>';
+      if (emptyBox) emptyBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/quizzes');
+        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+        const items = await res.json();
+
+        if (!Array.isArray(items) || items.length === 0) {
+          listBox.innerHTML = '';
+          if (emptyBox) emptyBox.style.display = '';
+          return;
+        }
+
+        listBox.innerHTML = items.map(qz => {
+          const total =
+            (typeof qz.questions_count === 'number' ? qz.questions_count : null) ??
+            (qz.counts ? Object.values(qz.counts).reduce((a, b) => a + (b || 0), 0) : 0);
+
+          const created = qz.created_at ? new Date(qz.created_at).toLocaleString() : '';
+          return `
+            <div class="quiz-item">
+              <div class="quiz-title">${qz.title || 'AI Generated Quiz'}</div>
+              <div class="quiz-meta">
+                ${total} questions${created ? ` • ${created}` : ''}
+              </div>
+              <div class="quiz-actions">
+                <a class="btn" href="/student/quiz/${qz.id}">Open</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        listBox.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
       }
-      box.innerHTML = items.map(q => `
-        <div class="quiz-item">
-          <div class="quiz-title">${q.title || 'AI Generated Quiz'}</div>
-          <div class="quiz-meta">
-            ${(q.questions_count || 0)} questions
-            ${q.created_at ? ' • ' + new Date(q.created_at).toLocaleString() : ''}
-          </div>
-          <a class="btn" href="/student/quiz/${q.id}">Open</a>
-        </div>
-      `).join('');
-    } catch (e) {
-      console.error(e);
-      box.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
     }
-  }
 
-  function show(route) {
-    Object.values(sections).forEach(s => s.style.display = 'none');
-    (sections[route] || sections.home).style.display = '';
-    if (route === 'view') loadQuizzes();
-  }
+    // -------- Router --------
+    function showSection(route) {
+      Object.values(sections).forEach(hideEl);
+      showEl(sections[route] || sections.home);
+      if (route === 'view') loadQuizzes();
+    }
+    window.showSection = showSection;
 
-  // Expose for other scripts (modal.js/publish.js can call it)
-  window.showSection = show;
+    // Topnav
+    document.querySelectorAll('.topnav .link').forEach(btn => {
+      btn.addEventListener('click', () => showSection(btn.dataset.route));
+    });
 
-  // Topnav buttons
-  document.querySelectorAll('.topnav .link').forEach(btn => {
-    btn.addEventListener('click', () => show(btn.dataset.route));
-  });
+    // Initial route (?route=...)
+    const params  = new URLSearchParams(location.search);
+    showSection(params.get('route') || 'home');
 
-  // Initial route from URL (?route=view / generate / grades)
-  const params = new URLSearchParams(location.search);
-  const initial = params.get('route') || 'home';
-  show(initial);
+    // -------- Rotating text on Home --------
+    (function initRotator() {
+      const container = id('rotate-text');
+      if (!container) return;
+      const items = Array.from(container.querySelectorAll('span'));
+      if (items.length <= 1) return;
 
-  // Rotating text on Home (right card)
-  (function initRotator() {
-    const container = document.getElementById('rotate-text');
-    if (!container) return;
-    const items = Array.from(container.querySelectorAll('span'));
-    if (items.length <= 1) return;
+      let idx = 0;
+      items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
 
-    let idx = 0;
-    items.forEach((el, i) => { if (i !== 0) el.style.display = 'none'; });
-
-    setInterval(() => {
-      items[idx].style.opacity = 0;
-      setTimeout(() => {
-        items[idx].style.display = 'none';
-        idx = (idx + 1) % items.length;
-        items[idx].style.display = '';
-        requestAnimationFrame(() => { items[idx].style.opacity = 1; });
-      }, 200);
-    }, 2800);
+      setInterval(() => {
+        const cur = items[idx];
+        if (!cur) return;
+        cur.style.opacity = 0;
+        setTimeout(() => {
+          cur.style.display = 'none';
+          idx = (idx + 1) % items.length;
+          const nxt = items[idx];
+          nxt.style.display = '';
+          requestAnimationFrame(() => { nxt.style.opacity = 1; });
+        }, 200);
+      }, 2800);
+    })();
   })();
-</script>
+  </script>
 
 </body>
 </html>

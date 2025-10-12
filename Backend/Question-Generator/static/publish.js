@@ -2,7 +2,12 @@
 // Renders generated quiz data into #quiz-container and wires header buttons.
 // Requires these elements in HTML:
 // <section id="quiz-section" style="display:none">
-//   <div class="quiz-out-head"> ... buttons with ids: btn-copy-quiz, btn-save-json, btn-publish ... </div>
+//   <div class="quiz-out-head">
+//     <button id="btn-copy-quiz"></button>
+//     <button id="btn-save-json"></button>
+//     <button id="btn-publish"></button>
+//     <span id="publish-note"></span>
+//   </div>
 //   <div id="quiz-container" class="quiz-out"></div>
 // </section>
 
@@ -13,6 +18,7 @@
   // -------- Utilities --------
   function $(id) { return document.getElementById(id); }
   function letterFrom(i) { return String.fromCharCode(65 + i); } // 0->A
+  const noop = () => {};
 
   function safeArray(x) { return Array.isArray(x) ? x : []; }
   function unhideSection(el) {
@@ -66,7 +72,6 @@
   }
 
   function renderTrueFalse(q) {
-    // Mark "True" or "False" as correct if answer provided
     const ans = (q.answer || '').toString().trim().toLowerCase();
     const isTrue  = ans === 'true';
     const isFalse = ans === 'false';
@@ -134,7 +139,6 @@
         ${pill(type)}
       </div>`;
 
-    // 🔧 FIX: Use 'prompt' if 'question' is not available
     const questionText = `
       <div class="question-text">
         ${q.question || q.prompt || ''}
@@ -162,39 +166,86 @@
       </article>`;
   }
 
+  // -------- Backend helpers --------
+  async function saveQuizToServer({ title, metadata, questions }) {
+    const res = await fetch('/api/quizzes', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        title: title || 'Untitled Quiz',
+        items: questions || [],
+        metadata: metadata || {},
+      })
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Save failed (${res.status}) ${txt}`);
+    }
+    return res.json();
+  }
+
+  async function publishQuizById(quizId) {
+    const res = await fetch(`/api/quizzes/${encodeURIComponent(quizId)}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`Publish failed (${res.status}) ${txt}`);
+    }
+    return res.json();
+  }
+
+  async function generatePDF(filenameHint) {
+    const quizContent = $(CONT_ID);
+    if (!quizContent) throw new Error('Quiz content not found');
+    if (typeof html2pdf === 'undefined' || typeof html2pdf !== 'function') {
+      console.warn('html2pdf not available, skipping PDF generation');
+      return;
+    }
+    const opt = {
+      margin: 10,
+      filename: `${(filenameHint || 'quiz').replace(/\s+/g, '_')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    await html2pdf().set(opt).from(quizContent).save();
+  }
+
   // -------- Public API --------
   window.LAST_GENERATED_QUIZ = window.LAST_GENERATED_QUIZ || null;
 
-  // Payload shape accepted:
+  // Accepts:
   //   { questions: [...], metadata?: {...}, title?: "..." }
   // or { data: { questions: [...], metadata?: {...}, title?: "..." } }
   window.renderGeneratedQuiz = function (payload) {
     try {
       console.log('📦 renderGeneratedQuiz called with:', payload);
-      
-      // 🔧 ADD: Transform Firestore data to match renderer expectations
-      function transformFirestoreQuestions(quizData) {
-        const data = quizData && quizData.data ? quizData.data : quizData;
-        const questions = safeArray(data?.questions);
-        
+
+      // Normalize incoming payload (Firestore or plain)
+      function normalizePayload(src) {
+        const root = src && src.data ? src.data : src;
+        const questions = safeArray(root?.questions).map(q => ({
+          ...q,
+          question: q.question || q.prompt || '',
+          meta: q.meta || `Difficulty: ${q.difficulty || 'unknown'}${q.tags ? ` | Tags: ${q.tags.join(', ')}` : ''}${q.id ? ` | ID: ${q.id}` : ''}`
+        }));
+
         return {
-          ...data,
-          questions: questions.map(q => ({
-            ...q,
-            question: q.question || q.prompt || '', // Map prompt to question
-            meta: q.meta || `Difficulty: ${q.difficulty || 'unknown'}${q.tags ? ` | Tags: ${q.tags.join(', ')}` : ''}${q.id ? ` | ID: ${q.id}` : ''}`
-          }))
+          title: root?.title || root?.metadata?.title || 'Generated Quiz',
+          metadata: root?.metadata || {},
+          questions,
+          quiz_id: src.quiz_id || root?.quiz_id || root?.metadata?.quiz_id
         };
       }
 
-      const transformedData = transformFirestoreQuestions(payload);
-      const data = transformedData && transformedData.data ? transformedData.data : transformedData;
-      const questions = safeArray(data?.questions);
-      const meta = data?.metadata || {};
-      const title = data?.title || meta.title || 'Generated Quiz';
-
-      console.log('🔄 Transformed data:', transformedData);
-      console.log('❓ Questions to render:', questions);
+      const normalized = normalizePayload(payload);
+      const title = normalized.title;
+      const meta = normalized.metadata;
+      const questions = normalized.questions;
+      const existingId = normalized.quiz_id;
 
       const sec  = $(SEC_ID);
       const cont = $(CONT_ID);
@@ -205,6 +256,14 @@
 
       // Unhide section
       unhideSection(sec);
+
+      // Persist id (if available)
+      if (existingId) {
+        window.CURRENT_QUIZ_ID = existingId;
+        cont.dataset.quizId = existingId;
+        localStorage.setItem('last_quiz_id', existingId);
+        console.log('📝 Stored quiz ID for publishing:', existingId);
+      }
 
       // Render body inside #quiz-container (header is already in HTML)
       cont.innerHTML = questions.length
@@ -253,56 +312,65 @@
         };
       }
 
-     // You can replace this with your own publish handler.
-      // In the renderGeneratedQuiz function, replace the btnPub section:
-
       if (btnPub && !btnPub._wired) {
         btnPub.onclick = async () => {
           try {
-            // Show loading state
+            // Pull id from multiple places
+            let quizId = window.CURRENT_QUIZ_ID
+              || $(CONT_ID)?.dataset.quizId
+              || localStorage.getItem('last_quiz_id');
+
+            // Also get the in-memory quiz we rendered
+            const last = window.LAST_GENERATED_QUIZ || {};
+            const _title = last.title || (last.metadata?.title) || title || 'Generated Quiz';
+            const _meta = last.metadata || meta || {};
+            const _questions = Array.isArray(last.questions) ? last.questions : questions;
+
             btnPub.disabled = true;
-            btnPub.textContent = 'Generating PDF...';
-            
-            // Get the quiz container content
-            const quizContent = document.getElementById('quiz-container');
-            
-            if (!quizContent) {
-              throw new Error('Quiz content not found');
+            const originalText = btnPub.textContent;
+            btnPub.textContent = 'Saving...';
+
+            // ✅ If no ID yet → SAVE first (so View has something to list)
+            if (!quizId) {
+              const saved = await saveQuizToServer({ title: _title, metadata: _meta, questions: _questions });
+              quizId = saved.id || saved.quiz_id || saved._id || saved.key;
+              if (!quizId) throw new Error('Save returned no id');
+              window.CURRENT_QUIZ_ID = quizId;
+              $(CONT_ID).dataset.quizId = quizId;
+              localStorage.setItem('last_quiz_id', quizId);
             }
 
-            // PDF options
-            const opt = {
-              margin: 10,
-              filename: `${title.replace(/\s+/g, '_')}_quiz.pdf`,
-              image: { type: 'jpeg', quality: 0.98 },
-              html2canvas: { scale: 2 },
-              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
+            // Optional PDF
+            btnPub.textContent = 'Generating PDF...';
+            await generatePDF(_title);
 
-            // Generate PDF
-            await html2pdf().set(opt).from(quizContent).save();
-            
-            // Show success message
-            showToast('PDF generated and saved!');
-            
-            // Navigate to View Quizzes section
-            showSection('view');
-            
-            // Add the quiz to the View Quizzes list
-            addQuizToViewList({
-              id: window.LAST_GENERATED_QUIZ?.id || Date.now().toString(),
-              title: title,
-              filename: opt.filename,
-              createdAt: new Date().toISOString(),
-              questionCount: questions.length,
-              sourceFile: window.LAST_GENERATED_QUIZ?.metadata?.source_file || 'Unknown'
-            });
-            
-          } catch (error) {
-            console.error('PDF generation failed:', error);
-            showToast('Failed to generate PDF: ' + error.message);
+            // Optional publish step (skip if your backend doesn’t require it)
+            btnPub.textContent = 'Publishing...';
+            try {
+              await publishQuizById(quizId);
+            } catch (e) {
+              console.warn('Publish endpoint failed or not needed, continuing:', e);
+            }
+
+            // Navigate to View + refresh
+            btnPub.textContent = originalText;
+            btnPub.disabled = false;
+
+            if (typeof window.showSection === 'function') window.showSection('view');
+            if (typeof window.loadQuizzes === 'function') {
+              await window.loadQuizzes();
+            } else {
+              window.dispatchEvent(new CustomEvent('refresh-quizzes'));
+              window.dispatchEvent(new CustomEvent('show-section:view'));
+            }
+
+            if (typeof showToast === 'function') showToast('Quiz saved!');
+            else alert('Quiz saved!');
+          } catch (err) {
+            console.error('❌ Publish error:', err);
+            if (typeof showToast === 'function') showToast('Failed to publish: ' + err.message, 'error');
+            else alert('Failed to publish: ' + err.message);
           } finally {
-            // Reset button state
             btnPub.disabled = false;
             btnPub.textContent = 'Publish';
           }
@@ -310,70 +378,6 @@
         btnPub._wired = true;
       }
 
-       // Function to show specific section
-        function showSection(sectionName) {
-          const sections = {
-            home: document.getElementById('section-home'),
-            generate: document.getElementById('section-generate'),
-            view: document.getElementById('section-view'),
-            grades: document.getElementById('section-grades'),
-          };
-
-          Object.values(sections).forEach(s => s.style.display = 'none');
-          if (sections[sectionName]) {
-            sections[sectionName].style.display = '';
-          }
-        }
-
-        // Function to add quiz to View Quizzes list
-          function addQuizToViewList(quizData) {
-            const quizList = document.getElementById('quiz-list');
-            if (!quizList) return;
-
-            const quizItem = document.createElement('div');
-            quizItem.className = 'quiz-item';
-            quizItem.innerHTML = `
-              <div class="quiz-header">
-                <h3>${quizData.title}</h3>
-                <span class="quiz-status published">Published</span>
-              </div>
-              <div class="quiz-details">
-                <p><strong>Source:</strong> ${quizData.sourceFile}</p>
-                <p><strong>Questions:</strong> ${quizData.questionCount}</p>
-                <p><strong>Created:</strong> ${new Date(quizData.createdAt).toLocaleDateString()}</p>
-                <p><strong>PDF:</strong> ${quizData.filename}</p>
-              </div>
-              <div class="quiz-actions">
-                <button class="btn" onclick="downloadQuiz('${quizData.id}')">Download PDF</button>
-                <button class="btn" onclick="viewQuiz('${quizData.id}')">View Details</button>
-                <button class="btn danger" onclick="deleteQuiz('${quizData.id}')">Delete</button>
-              </div>
-            `;
-
-            // Add to the beginning of the list
-            quizList.insertBefore(quizItem, quizList.firstChild);
-          }
-
-          // Mock functions for quiz management (replace with your actual implementation)
-          function downloadQuiz(quizId) {
-            showToast('Downloading quiz PDF...');
-            // Implement actual download logic here
-          }
-
-          function viewQuiz(quizId) {
-            showToast('Viewing quiz details...');
-            // Implement actual view logic here
-          }
-
-          function deleteQuiz(quizId) {
-            if (confirm('Are you sure you want to delete this quiz?')) {
-              const quizItem = document.querySelector(`[onclick*="${quizId}"]`)?.closest('.quiz-item');
-              if (quizItem) {
-                quizItem.remove();
-                showToast('Quiz deleted successfully');
-              }
-            }
-          }
       // Save globally and scroll into view
       window.LAST_GENERATED_QUIZ = { title, metadata: meta, questions };
       sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -389,4 +393,20 @@
   window.getLastGeneratedQuiz = function () {
     return window.LAST_GENERATED_QUIZ;
   };
+
+  // Helper to manually set quiz ID (for external use)
+  window.setCurrentQuizId = function(quizId) {
+    window.CURRENT_QUIZ_ID = quizId;
+    const cont = $(CONT_ID);
+    if (cont) {
+      cont.dataset.quizId = quizId;
+    }
+    localStorage.setItem('last_quiz_id', quizId);
+    console.log('📝 Manually set quiz ID:', quizId);
+  };
+
+  // Expose no-op globals if not present to avoid crashes
+  window.showSection   = window.showSection   || noop;
+  window.loadQuizzes   = window.loadQuizzes   || null; // if your view script sets it later, we call it
+  window.showToast     = window.showToast     || null;
 })();
