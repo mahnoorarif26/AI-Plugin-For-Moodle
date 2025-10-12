@@ -3,65 +3,123 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Glassy Scrolling Top Banner</title>
-  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <title>AI Plugin for Moodle</title>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <header class="banner" role="banner" aria-label="Scrolling welcome banner">
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee__track">
-        <span class="marquee__text">Welcome • Welcome • Welcome • Welcome • Welcome •</span>
-        <span class="marquee__text">Welcome to AI Plugin For Moodle</span>
-        <span class="marquee__text">Where you can generate Quizzes And Assignments as well</span>
-        <span class="marquee__text">Our Plugin also Autograde Quizzes and Assignment for Real Time Student Analysis •</span>
-      </div>
+
+  <!-- Top Bar -->
+  <nav class="topbar" role="navigation" aria-label="Primary">
+    <div class="brand">
+      <i class='bx bx-bulb card-icon'></i>
+      <span>AI Plugin</span>
     </div>
-  </header>
+    <ul class="topnav">
+      <li><button class="link" data-route="home">Home</button></li>
+      <li><button class="link" data-route="generate">Generate Quiz</button></li>
+      <li><button class="link" data-route="view">View Quizzes</button></li>
+      <li><button class="link" data-route="grades">Student Grades</button></li>
+    </ul>
+  </nav>
 
   <main>
-    <div class="cards-container">
-      <!-- AI-Powered Quiz Card (without customization options) -->
-      <div class="quiz-card" id="card-auto">
-        <i class='bx bx-brain card-icon'></i>
-        <h2>AI-Powered Quiz</h2>
-        <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
-        <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
+
+    <!-- HOME -->
+    <section id="section-home">
+      <div class="home-grid">
+        <div class="home-left">
+          <h1 class="headline">Welcome to <span>AI Plugin</span></h1>
+          <p class="subhead">
+            Experience the future of learning with our AI-powered </br >Moodle plugin. 
+            Transform any study material into interactive </br>quizzes and assignments 
+            — automatically, intelligently.
+          </p>
+        </div>
+
+        <div class="home-right">
+        <div class="rotate-card has-bg" 
+            style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
+            aria-live="polite">
+          <div id="rotate-text" class="rotate-text">
+            <span>AI-Powered Quiz — upload a PDF and let the AI do the rest.</span>
+            <span>Generate Quiz — quick start to create a new quiz from your material.</span>
+            <span>AI-Customized Quiz — fine-tune question counts, difficulty, and flags.</span>
+            <span>Manual Creation — craft questions from scratch with full control.</span>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+    <section id="section-generate" style="display:none;">
+      <div class="cards-container">
+        <div class="quiz-card" id="card-auto">
+          <i class='bx bx-brain card-icon'></i>
+          <h2>AI-Powered Quiz</h2>
+          <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
+          <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
+        </div>
+
+        <!-- Customize Quiz Card (with customization options) -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>Customize Quiz</h2>
+          <p>Pick exact counts per type, plus scenario/code flags.</p>
+          <button class="generate-btn" id="btn-open-custom">Customize Now</button>
+        </div>
+
+        <!-- Manual Creation Card -->
+        <div class="quiz-card">
+          <i class='bx bx-edit card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Create questions from scratch with full control.</p>
+          <button class="generate-btn" disabled title="Coming soon">Start Creating</button>
+        </div>
       </div>
 
-      <!-- Customize Quiz Card (with customization options) -->
-      <div class="quiz-card">
-        <i class='bx bx-slider-alt card-icon'></i>
-        <h2>Customize Quiz</h2>
-        <p>Pick exact counts per type, plus scenario/code flags.</p>
-        <button class="generate-btn" id="btn-open-custom">Customize Now</button>
-      </div>
-
-      <!-- Manual Creation Card -->
-      <div class="quiz-card">
-        <i class='bx bx-edit card-icon'></i>
-        <h2>Manual Creation</h2>
-        <p>Create questions from scratch with full control.</p>
-        <button class="generate-btn" disabled title="Coming soon">Start Creating</button>
-      </div>
-    </div>
-
-    <!-- Generated Quiz Output Section -->
-    <section id="quiz-section" aria-live="polite" style="display:none">
-      <div class="quiz-out-head">
+      <!-- Generated Quiz Output Section -->
+      <section id="quiz-section" aria-live="polite" style="display:none">
+        <div class="quiz-out-head">
         <h2>Generated Quiz</h2>
         <div class="quiz-actions">
           <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
           <button class="btn" id="btn-save-json" type="button">Save JSON</button>
+          <button class="btn" id="btn-publish" type="button" >Publish</button>
+          <span id="publish-note" class="muted" style="margin-left:8px;"></span>
         </div>
       </div>
-      <div id="quiz-container" class="quiz-out"></div>
+        <div id="quiz-container" class="quiz-out"></div>
+      </section>
     </section>
+
+    <section id="section-view" style="display:none;">
+      <div class="published-quiz">
+        <h2>Published Quizzes</h2>
+        <div id="quiz-list" class="quiz-list">
+          <!-- Quizzes will be dynamically added here -->
+        </div>
+        <div id="no-quizzes-message" class="placeholder" style="margin-top: 2rem; display: none;">
+          <i class='bx bx-show-alt'></i>
+          <h3>No Published Quizzes Yet</h3>
+          <p>Generate and publish your first quiz to see it here!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENT GRADES (placeholder) -->
+    <section id="section-grades" style="display:none;">
+      <div class="placeholder">
+        <i class='bx bx-chart'></i>
+        <h2>Student Grades</h2>
+        <p>Coming soon — real-time analytics and grading insights will appear here.</p>
+      </div>
+    </section>
+
   </main>
 
   <div id="toast" class="toast"></div>
 
-  <!-- Modal for Auto Quiz Generation -->
+  <!-- Auto Modal -->
   <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
     <div class="modal-card">
       <div class="modal-head">
@@ -71,19 +129,17 @@
           <button class="btn primary" id="btn-generate">Generate</button>
         </div>
       </div>
-
       <div class="section-title">1) Upload PDF</div>
       <div id="uploader" class="uploader">
         <b>Drop PDF here</b> or click to select
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInput" type="file" accept="application/pdf" hidden />
       </div>
-
       <div class="progress" id="progress"><div></div></div>
     </div>
   </div>
 
-  <!-- Modal for Customized Quiz Generation -->
+  <!-- Custom Modal -->
   <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
     <div class="modal-card">
       <div class="modal-head">
@@ -100,7 +156,7 @@
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
       </div>
-       <!-- Subtopics detection UI (hidden until detected) -->
+
       <div style="margin-top:12px;">
         <button id="btn-detect-subtopics" type="button" class="btn">Detect Subtopics</button>
       </div>
@@ -127,14 +183,6 @@
         <div class="field">
           <label class="label" for="longCount">Long</label>
           <input id="longCount" type="number" min="0" max="20" value="0" />
-        </div>
-        <div class="field">
-          <label class="label" for="scenarioCount">Scenario-based questions</label>
-          <input id="scenarioCount" type="number" min="0" max="20" value="0" />
-        </div>
-        <div class="field">
-          <label class="label" for="codeCount">Code-snippet questions</label>
-          <input id="codeCount" type="number" min="0" max="20" value="0" />
         </div>
       </div>
 
@@ -174,9 +222,92 @@
     </div>
   </div>
 
+  <!-- Your existing JS files -->
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
   <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+
+  <!-- New: simple router + home rotator -->
+  <script>
+  // SPA-style section router
+  const sections = {
+    home: document.getElementById('section-home'),
+    generate: document.getElementById('section-generate'),
+    view: document.getElementById('section-view'),
+    grades: document.getElementById('section-grades'),
+  };
+
+  async function loadQuizzes() {
+    const box = document.getElementById('quiz-list');
+    if (!box) return;
+    box.innerHTML = '<div class="muted">Loading…</div>';
+    try {
+      const res = await fetch('/api/quizzes');
+      if (!res.ok) throw new Error(await res.text());
+      const items = await res.json(); // [{id,title,questions_count,created_at}, ...]
+      if (!Array.isArray(items) || items.length === 0) {
+        box.innerHTML = '<div class="muted">No quizzes yet.</div>';
+        return;
+      }
+      box.innerHTML = items.map(q => `
+        <div class="quiz-item">
+          <div class="quiz-title">${q.title || 'AI Generated Quiz'}</div>
+          <div class="quiz-meta">
+            ${(q.questions_count || 0)} questions
+            ${q.created_at ? ' • ' + new Date(q.created_at).toLocaleString() : ''}
+          </div>
+          <a class="btn" href="/student/quiz/${q.id}">Open</a>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+      box.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
+    }
+  }
+
+  function show(route) {
+    Object.values(sections).forEach(s => s.style.display = 'none');
+    (sections[route] || sections.home).style.display = '';
+    if (route === 'view') loadQuizzes();
+  }
+
+  // Expose for other scripts (modal.js/publish.js can call it)
+  window.showSection = show;
+
+  // Topnav buttons
+  document.querySelectorAll('.topnav .link').forEach(btn => {
+    btn.addEventListener('click', () => show(btn.dataset.route));
+  });
+
+  // Initial route from URL (?route=view / generate / grades)
+  const params = new URLSearchParams(location.search);
+  const initial = params.get('route') || 'home';
+  show(initial);
+
+  // Rotating text on Home (right card)
+  (function initRotator() {
+    const container = document.getElementById('rotate-text');
+    if (!container) return;
+    const items = Array.from(container.querySelectorAll('span'));
+    if (items.length <= 1) return;
+
+    let idx = 0;
+    items.forEach((el, i) => { if (i !== 0) el.style.display = 'none'; });
+
+    setInterval(() => {
+      items[idx].style.opacity = 0;
+      setTimeout(() => {
+        items[idx].style.display = 'none';
+        idx = (idx + 1) % items.length;
+        items[idx].style.display = '';
+        requestAnimationFrame(() => { items[idx].style.opacity = 1; });
+      }, 200);
+    }, 2800);
+  })();
+</script>
 
 </body>
 </html>
