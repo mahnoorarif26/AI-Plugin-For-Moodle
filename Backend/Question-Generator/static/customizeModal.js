@@ -1,3 +1,5 @@
+// static/customizeModal.js
+
 class CustomizeModal {
   constructor() {
     this.modal = document.getElementById('modal-custom');
@@ -6,8 +8,6 @@ class CustomizeModal {
     this.btnGen = document.getElementById('btn-generate-custom');
     this.progress = document.getElementById('progress-custom');
     
-
-    // inputs
     this.fileInput = document.getElementById('fileInputCustom');
     this.uploader = document.getElementById('uploader-custom');
 
@@ -26,13 +26,11 @@ class CustomizeModal {
     this.diffRow2 = document.getElementById('diffRowC2');
     this.btnValidateMix = document.getElementById('btn-validate-mix');
     
-    // subtopics elements
     this.btnDetect = document.getElementById('btn-detect-subtopics');
     this.subtopicsSection = document.getElementById('subtopics-section');
     this.subtopicsList = document.getElementById('subtopics-list');
     this.countPer = document.getElementById('count-per-subtopic');
 
-    // internal state
     this._uploadId = null;
     this._detectedSubtopics = [];
     this._selectedSubtopics = [];
@@ -40,14 +38,11 @@ class CustomizeModal {
     this.init();
   }
 
-  // Initialize event listeners after the class is fully constructed
   init() {
-    // open/close modal
     this.openBtn?.addEventListener('click', () => this.open());
     this.btnCancel?.addEventListener('click', () => this.close());
     this.modal?.addEventListener('click', e => { if (e.target === this.modal) this.close(); });
 
-    // uploader actions
     if (this.uploader && this.fileInput) {
       this.uploader.addEventListener('click', () => this.fileInput.click());
       this.uploader.addEventListener('dragover', e => { e.preventDefault(); this.uploader.classList.add('dragover'); });
@@ -214,125 +209,45 @@ class CustomizeModal {
   }
 
   async generateFromSubtopics() {
-  if (!this._uploadId) {
-    return showToast('Please detect subtopics first.');
-  }
-
-  // take counts from existing inputs (same ones you use for regular custom)
-  const mcq    = +this.mcq?.value || 0;
-  const tf     = +this.tf?.value || 0;
-  const shortQ = +this.shortQ?.value || 0;
-  const longQ  = +this.longQ?.value || 0;
-  const total  = mcq + tf + shortQ + longQ;
-
-  if (total <= 0) return showToast('Set at least one question count (MCQ/TF/Short/Long).');
-
-  // difficulty
-  let difficulty = { mode: 'auto' };
-  if (this.diffMode?.value === 'custom') {
-    const easy = +this.easy?.value || 0;
-    const med  = +this.med?.value  || 0;
-    const hard = +this.hard?.value || 0;
-    const sum = easy + med + hard;
-    if (sum !== 100) return showToast('Difficulty mix must sum to 100%.');
-    difficulty = { mode: 'custom', easy, medium: med, hard };
-  }
-
-  const payload = {
-    upload_id: this._uploadId,
-    subtopics: this._selectedSubtopics,
-    totals: { mcq, true_false: tf, short: shortQ, long: longQ },
-    difficulty,
-    scenario_based: (+this.scenarioCount?.value || 0) > 0,
-    code_snippet:   (+this.codeCount?.value     || 0) > 0
-  };
-
-  try {
-    this.setProgress(10);
-    const resp = await fetch(`${API_BASE}/api/custom/quiz-from-subtopics`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    this.setProgress(65);
-
-    if (!resp.ok) {
-      const t = await resp.text().catch(() => '');
-      throw new Error(t || `HTTP ${resp.status}`);
-    }
-    const data = await resp.json();
-    this.setProgress(100);
-
-    if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
-      showToast('Generated, but no questions returned.');
-      console.warn('Empty questions payload:', data);
-      return;
+    if (!this._uploadId) {
+      return showToast('Please detect subtopics first.');
     }
 
-    __lastQuizData = data;
-    renderQuiz(data.questions, data.metadata);
-    this.close();
-    showToast(`Customized quiz generated ✅ (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
-  } catch (err) {
-    console.error('Subtopics generation error:', err);
-    showToast('Failed: ' + (err.message || 'Server error'));
-  } finally {
-    setTimeout(() => this.resetProgress(), 600);
-  }
-}
-
-  async generateRegularCustom() {
-    // read counts
-    const mcq = +this.mcq?.value || 0;
-    const tf = +this.tf?.value || 0;
+    // take counts from existing inputs (same ones you use for regular custom)
+    const mcq    = +this.mcq?.value || 0;
+    const tf     = +this.tf?.value || 0;
     const shortQ = +this.shortQ?.value || 0;
-    const longQ = +this.longQ?.value || 0;
-    const scenarioCount = +this.scenarioCount?.value || 0;
-    const codeCount = +this.codeCount?.value || 0;
+    const longQ  = +this.longQ?.value || 0;
+    const total  = mcq + tf + shortQ + longQ;
 
-    const total = mcq + tf + shortQ + longQ + scenarioCount + codeCount;
-    if (total <= 0) return showToast('Set at least one question count.');
-
-    // build types (only ones with count > 0)
-    const question_types = [];
-    if (mcq > 0) question_types.push('mcq');
-    if (tf > 0) question_types.push('true_false');
-    if (shortQ > 0) question_types.push('short');
-    if (longQ > 0) question_types.push('long');
-
-    // Add scenario and code flags
-    const scenario_based = scenarioCount > 0;
-    const code_snippet = codeCount > 0;
+    if (total <= 0) return showToast('Set at least one question count (MCQ/TF/Short/Long).');
 
     // difficulty
     let difficulty = { mode: 'auto' };
     if (this.diffMode?.value === 'custom') {
       const easy = +this.easy?.value || 0;
-      const med = +this.med?.value || 0;
+      const med  = +this.med?.value  || 0;
       const hard = +this.hard?.value || 0;
       const sum = easy + med + hard;
       if (sum !== 100) return showToast('Difficulty mix must sum to 100%.');
       difficulty = { mode: 'custom', easy, medium: med, hard };
     }
 
-    const options = {
-      num_questions: total,
-      question_types,
-      distribution: {
-        mcq, true_false: tf, short: shortQ, long: longQ
-      },
-      scenario_based,
-      code_snippet,
-      difficulty 
+    const payload = {
+      upload_id: this._uploadId,
+      subtopics: this._selectedSubtopics,
+      totals: { mcq, true_false: tf, short: shortQ, long: longQ },
+      difficulty,
+      // REMOVED: scenario_based and code_snippet parameters
     };
-
-    const fd = new FormData();
-    fd.append('file', file); 
-    fd.append('options', JSON.stringify(options)); 
 
     try {
       this.setProgress(10);
-      const resp = await fetch(API_BASE + '/api/quiz/from-pdf', { method: 'POST', body: fd });
+      const resp = await fetch(`${API_BASE}/api/custom/quiz-from-subtopics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       this.setProgress(65);
 
       if (!resp.ok) {
@@ -348,17 +263,118 @@ class CustomizeModal {
         return;
       }
 
-      __lastQuizData = data;
-      renderQuiz(data.questions, data.metadata);
+      // Use the global render function from publish.js
+      if (window.renderGeneratedQuiz) {
+        window.renderGeneratedQuiz(data);
+      } else {
+        console.error('renderGeneratedQuiz function not found!');
+        // Fallback to existing render function if available
+        if (typeof renderQuiz === 'function') {
+          renderQuiz(data.questions, data.metadata);
+        }
+      }
+      
       this.close();
-      showToast(`Customized quiz generated ✅ (${data.questions.length} questions)`);
+      showToast(`Customized quiz generated ✅ (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
     } catch (err) {
-      console.error('Customize generation error:', err);
+      console.error('Subtopics generation error:', err);
       showToast('Failed: ' + (err.message || 'Server error'));
     } finally {
       setTimeout(() => this.resetProgress(), 600);
     }
   }
+
+  // ---- REPLACE the entire generateRegularCustom() with this ----
+async generateRegularCustom() {
+  // Validate file
+  const file = this.fileInput?.files?.[0];
+  if (!file) return showToast('Please select a PDF.');
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+  if (!isPdf) return showToast('Only PDF (.pdf) is accepted.');
+
+  // Collect counts
+  const mcq    = +this.mcq?.value || 0;
+  const tf     = +this.tf?.value || 0;
+  const shortQ = +this.shortQ?.value || 0;
+  const longQ  = +this.longQ?.value || 0;
+
+  const totals = { mcq, true_false: tf, short: shortQ, long: longQ };
+  const totalRequested = mcq + tf + shortQ + longQ;
+  if (totalRequested <= 0) return showToast('Set at least one question count (MCQ/TF/Short/Long).');
+
+  // Difficulty block
+  let difficulty = { mode: 'auto' };
+  if (this.diffMode?.value === 'custom') {
+    const easy = +this.easy?.value || 0;
+    const med  = +this.med?.value  || 0;
+    const hard = +this.hard?.value || 0;
+    const sum = easy + med + hard;
+    if (sum !== 100) return showToast('Difficulty mix must sum to 100%.');
+    difficulty = { mode: 'custom', easy, medium: med, hard };
+  }
+
+  // Build question_types array from chosen counts
+  const qtypes = [];
+  if (mcq > 0)    qtypes.push('mcq');
+  if (tf > 0)     qtypes.push('true_false');
+  if (shortQ > 0) qtypes.push('short');
+  if (longQ > 0)  qtypes.push('long');
+
+  // Prepare payload for /api/quiz/from-pdf
+  const options = {
+    num_questions: totalRequested,
+    question_types: qtypes,
+    difficulty,                 // {mode:'auto'} OR {mode:'custom', easy, medium, hard}
+    // optional: distribution per-type, if you want to weight:
+    distribution: totals        // maps to type_targets on the backend
+  };
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('options', JSON.stringify(options));
+
+  try {
+    this.setProgress(10);
+    const res = await fetch(`${API_BASE}/api/quiz/from-pdf`, { method: 'POST', body: fd });
+    this.setProgress(65);
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(t || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    this.setProgress(100);
+
+    if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
+      showToast('Generated, but no questions returned.');
+      console.warn('[customize] Empty questions payload:', data);
+      return;
+    }
+
+    // Prefer the global renderer from publish.js (this also enables Publish button)
+    if (window.renderGeneratedQuiz) {
+      window.renderGeneratedQuiz({
+        success: true,
+        title: data.title || (data.metadata?.title) || 'Generated Quiz',
+        metadata: data.metadata || {},
+        questions: data.questions
+      });
+    } else if (typeof renderQuiz === 'function') {
+      // fallback to legacy renderer in static/script.js
+      renderQuiz(data.questions, data.metadata);
+    }
+
+    this.close();
+    showToast(`Customized quiz generated ✅ (${data.questions.length} questions)`);
+  } catch (err) {
+    console.error('[customize] Generation error:', err);
+    showToast('Failed: ' + (err.message || 'Server error'));
+  } finally {
+    setTimeout(() => this.resetProgress(), 600);
+  }
+}
+
 }
 
 document.addEventListener('DOMContentLoaded', function () {
