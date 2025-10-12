@@ -3,3 +3,4 @@ flask-cors
 groq
 pypdf
 python-dotenv
+firebase-admin
