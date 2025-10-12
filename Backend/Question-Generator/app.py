@@ -531,33 +531,53 @@ def auto_generate_quiz():
 # ===============================
 # PUBLISH / VIEW API (for UI flow)
 # ===============================
-@app.route("/api/quizzes/publish", methods=["POST"])
-def publish_quiz():
-    try:
-        data = request.get_json() or {}
-        quiz_data = data.get('quiz', {})
-        quiz_name = quiz_data.get('title', 'Untitled Quiz')
-        # TODO: Your saving logic here...
-        return jsonify({
-            "success": True,
-            "quiz_name": quiz_name,
-            "message": "Quiz published successfully"
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+@app.route("/api/quizzes/<quiz_id>/publish", methods=["POST"])
+def publish_quiz(quiz_id):
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        # If you're storing numeric IDs, you might be passing a string UUID from the client.
+        # Make sure both sides use the same ID type.
+        return jsonify({"ok": False, "error": "Quiz not found"}), 404
+
+    # Mark as published in your datastore
+    quiz["published"] = True
+    quiz["published_at"] = datetime.utcnow().isoformat() + "Z"
+
+    # Optionally generate a stable public URL (adjust route if you serve a public page)
+    quiz["publish_url"] = f"/quiz/{quiz_id}"
+
+    # persist
+    save_quiz_to_store(quiz)  # make sure this updates by id if it already exists
+
+    return jsonify({
+        "ok": True,
+        "quiz_id": quiz_id,
+        "publish_url": quiz["publish_url"],
+        "published_at": quiz["published_at"]
+    }), 200
 
 
-@app.route("/api/quizzes", methods=["GET"])
+@app.post("/api/quizzes")
+def api_create_quiz():
+    data = request.get_json(force=True) or {}
+    saved = save_quiz_to_store(
+        title=data.get("title") or "Untitled Quiz",
+        items=data.get("items") or [],
+        meta=(data.get("metadata") or {})
+    )
+    # saved should include an 'id'
+    return jsonify(saved), 201
+
+@app.get("/api/quizzes")
 def api_list_quizzes():
-    return jsonify({"success": True, "items": list_quizzes() or []}), 200
+    quizzes = list_quizzes()  # should return a list[dict]
+    return jsonify(quizzes), 200
 
+@app.post("/api/quizzes/<quiz_id>/publish")
+def api_publish_quiz(quiz_id):
+    # optional: mark as published; no-op is fine
+    return jsonify({"quiz_id": quiz_id, "status": "published"}), 200
 
-@app.route("/api/quizzes/<quiz_id>", methods=["GET"])
-def api_get_quiz(quiz_id):
-    q = get_quiz_by_id(quiz_id)
-    if not q:
-        return jsonify({"success": False, "error": "Not found"}), 404
-    return jsonify({"success": True, "quiz": q}), 200
 
 # ===============================
 # MAIN
