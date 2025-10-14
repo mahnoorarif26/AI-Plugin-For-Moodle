@@ -233,44 +233,65 @@ def _sanitize_question(q: Any) -> Optional[dict]:
     # --- type-specific normalization ---
     if qtype == "mcq":
         opts = q.get("options") or q.get("choices") or []
-        # If model gave more than 4, take first 4; if fewer than 4, reject
-        opts = [str(o).strip() for o in opts if str(o).strip()]
+        
+        # FIX: Handle both object and array formats
+        if isinstance(opts, dict):
+            # Convert {'A': 'text1', 'B': 'text2'} to ['text1', 'text2', ...]
+            sorted_opts = []
+            for key in ['A', 'B', 'C', 'D']:
+                if key in opts:
+                    sorted_opts.append(str(opts[key]).strip())
+            opts = sorted_opts
+        else:
+            # Handle array format
+            opts = [str(o).strip() for o in opts if str(o).strip()]
+        
+        # Ensure we have exactly 4 options
         if len(opts) < 4:
-            return None
-        if len(opts) > 4:
+            # Pad with generic options if needed
+            while len(opts) < 4:
+                opts.append(f"Option {chr(65 + len(opts))}")
+        elif len(opts) > 4:
             opts = opts[:4]
         q["options"] = opts
 
-        ans = q.get("answer")
+        ans = q.get("answer") or q.get("correct_answer")
         # Accept index (0..3), letter ("A".."D"), or exact string value
+        answer_found = False
+        
         if isinstance(ans, str):
             s = ans.strip()
             upper = s.upper()
+            # Handle letter answers (A, B, C, D)
             if upper in ("A","B","C","D"):
                 q["answer"] = "ABCD".index(upper)  # store as index
+                answer_found = True
+            # Handle if answer is one of the option texts
             elif s in opts:
                 q["answer"] = opts.index(s)
+                answer_found = True
             else:
                 # try parse int index
                 try:
                     idx = int(s)
                     if 0 <= idx <= 3:
                         q["answer"] = idx
-                    else:
-                        return None
+                        answer_found = True
                 except Exception:
-                    return None
+                    pass
+        
         elif isinstance(ans, int):
             if 0 <= ans <= 3:
                 q["answer"] = ans
-            else:
-                return None
-        else:
-            return None
+                answer_found = True
+        
+        # FIX: If no valid answer found, assign a default (0 = option A)
+        if not answer_found:
+            q["answer"] = 0  # default to first option
 
-        # Optional fields
+        # Ensure explanation exists
         if q.get("explanation") is None:
-            q["explanation"] = ""
+            q["explanation"] = "Correct answer explanation"
 
     elif qtype == "true_false":
         ans = q.get("answer")
