@@ -166,6 +166,10 @@ main {
   color:#fff; 
   border:none; 
 }
+.btn.primary:hover{ 
+  background: linear-gradient(90deg,#fd9f41,#ffb366); 
+  box-shadow:0 4px 12px rgba(253,159,65,.3); 
+}
 
 .btn.ghost{ 
   background:#fff; 
@@ -864,7 +868,7 @@ select{
 
 .quiz-item {
   padding: 1.5rem;
-  border-left: 4px solid #4CAF50;
+  border-left: 4px solid #fa8c26;
 }
 
 .quiz-header {
@@ -888,7 +892,7 @@ select{
 
 .quiz-status.published {
   background-color: #E8F5E8;
-  color: #2E7D32;
+  color:v#fa8c26;
 }
 
 .quiz-details {
@@ -968,7 +972,7 @@ select{
   border-radius: 12px;
   padding: 1.5rem;
   border-left: 4px solid #4CAF50;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(224, 141, 8, 0.1);
   transition: transform 0.2s ease;
 }
 
@@ -1031,3 +1035,46 @@ select{
 .btn.danger:hover {
   background-color: #d32f2f;
 }
+/* --- VIEW QUIZZES: wider cards + centered heading --- */
+#section-view .view-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+#section-view .view-header h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+/* --- VIEW QUIZZES: wider layout --- */
+#section-view .quiz-list {
+  max-width: 800px;   /* increased width from 900px → 1100px */
+  margin: 0 auto;      /* keep centered */
+  gap: 1.25rem;
+  justify-items: center;
+}
+
+/* --- VIEW QUIZZES: refined card --- */
+#section-view .quiz-item {
+  padding: 24px 28px;      /* more comfortable spacing */
+  border-radius: 12px;
+  height: 150px; /* fixed height for uniform grid look */
+  overflow: hidden; 
+  border-left: 5px solid #fa8c26; /* bold orange accent */
+  box-shadow: 0 4px 10px rgba(224, 141, 8, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+#section-view .quiz-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 18px rgba(224, 141, 8, 0.18);
+}
+
+/* enforce orange edge in case old rules persist */
+.quiz-item { border-left-color: #fa8c26 !important; }
+
+/* responsive layout */
+@media (max-width: 900px){
+  #section-view .quiz-list { max-width: 95%; }
+  #section-view .quiz-item { padding: 18px 20px; }
+}
+
