@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Preview Quiz - {{ quiz.title }}</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="topbar">
+        <div class="brand">
+            <i class='bx bx-bulb card-icon'></i>
+            <span>Quiz Preview - {{ quiz.title }}</span>
+        </div>
+        <button class="btn" onclick="window.close()">Close Preview</button>
+    </nav>
+
+    <main style="padding: 2rem;">
+        <div class="quiz-out">
+            {% for question in quiz.questions %}
+            <div class="question-item">
+                <div class="question-header">
+                    <span class="question-type">{{ question.type }}</span>
+                    <span class="question-difficulty">{{ question.difficulty }}</span>
+                </div>
+                <div class="question-text">{{ question.prompt or question.question_text }}</div>
+                
+                {% if question.options %}
+                <div class="question-options">
+                    {% for option in question.options %}
+                    <div class="option">
+                        <input type="radio" disabled>
+                        <label>{{ option }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+</html>
