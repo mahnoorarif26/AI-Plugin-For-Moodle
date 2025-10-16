@@ -128,6 +128,58 @@
 
   <div id="toast" class="toast"></div>
 
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="settings-modal-title">Quiz Settings</h3>
+        <button class="btn-close" id="btn-close-settings" aria-label="Close settings">
+          <i class='bx bx-x'></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="time-limit" class="label">Time Limit (minutes)</label>
+          <input type="number" id="time-limit" min="0" max="480" placeholder="0 for no limit">
+          <div class="hint">Set to 0 for unlimited time</div>
+        </div>
+
+        <div class="form-group">
+          <label for="due-date" class="label">Due Date</label>
+          <input type="datetime-local" id="due-date">
+          <div class="hint">Leave empty for no due date</div>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="allow-retakes">
+            <span class="checkmark"></span>
+            Allow multiple attempts
+          </label>
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="shuffle-questions">
+            <span class="checkmark"></span>
+            Shuffle questions
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label for="notification-message" class="label">Notification Message</label>
+          <textarea id="notification-message" placeholder="Optional message to send with quiz..." rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn ghost" id="btn-cancel-settings">Cancel</button>
+        <button class="btn primary" id="btn-save-settings">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modals -->
   <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
     <div class="modal-card">
@@ -236,112 +288,7 @@
   <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
-
-  <!-- Router + Home Rotator -->
-  <script defer>
-  (function () {
-    const $ = (sel) => document.querySelector(sel);
-    const id = (s) => document.getElementById(s);
-
-    function showEl(el){ if(!el) return; el.hidden = false; el.style.removeProperty('display'); }
-    function hideEl(el){ if(!el) return; el.hidden = true; el.style.display = 'none'; }
-
-    // sections map
-    const sections = {
-      home:     id('section-home'),
-      generate: id('section-generate'),
-      view:     id('section-view'),
-      grades:   id('section-grades'),
-    };
-
-    // -------- View Quizzes loader --------
-    async function loadQuizzes() {
-      window.loadQuizzes = loadQuizzes; // allow publish.js to call it after publishing
-
-      const listBox = id('quiz-list');
-      const emptyBox = id('quiz-empty');
-      if (!listBox) return;
-
-      listBox.innerHTML = '<div class="muted">Loading…</div>';
-      if (emptyBox) emptyBox.style.display = 'none';
-
-      try {
-        const res = await fetch('/api/quizzes');
-        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-        const items = await res.json();
-
-        if (!Array.isArray(items) || items.length === 0) {
-          listBox.innerHTML = '';
-          if (emptyBox) emptyBox.style.display = '';
-          return;
-        }
-
-        listBox.innerHTML = items.map(qz => {
-          const total =
-            (typeof qz.questions_count === 'number' ? qz.questions_count : null) ??
-            (qz.counts ? Object.values(qz.counts).reduce((a, b) => a + (b || 0), 0) : 0);
-
-          const created = qz.created_at ? new Date(qz.created_at).toLocaleString() : '';
-          return `
-            <div class="quiz-item">
-              <div class="quiz-title">${qz.title || 'AI Generated Quiz'}</div>
-              <div class="quiz-meta">
-                ${total} questions${created ? ` • ${created}` : ''}
-              </div>
-              <div class="quiz-actions">
-                <a class="btn" href="/student/quiz/${qz.id}">Open</a>
-              </div>
-            </div>
-          `;
-        }).join('');
-      } catch (e) {
-        console.error(e);
-        listBox.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
-      }
-    }
-
-    // -------- Router --------
-    function showSection(route) {
-      Object.values(sections).forEach(hideEl);
-      showEl(sections[route] || sections.home);
-      if (route === 'view') loadQuizzes();
-    }
-    window.showSection = showSection;
-
-    // Topnav
-    document.querySelectorAll('.topnav .link').forEach(btn => {
-      btn.addEventListener('click', () => showSection(btn.dataset.route));
-    });
-
-    // Initial route (?route=...)
-    const params  = new URLSearchParams(location.search);
-    showSection(params.get('route') || 'home');
-
-    // -------- Rotating text on Home --------
-    (function initRotator() {
-      const container = id('rotate-text');
-      if (!container) return;
-      const items = Array.from(container.querySelectorAll('span'));
-      if (items.length <= 1) return;
-
-      let idx = 0;
-      items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
-
-      setInterval(() => {
-        const cur = items[idx];
-        if (!cur) return;
-        cur.style.opacity = 0;
-        setTimeout(() => {
-          cur.style.display = 'none';
-          idx = (idx + 1) % items.length;
-          const nxt = items[idx];
-          nxt.style.display = '';
-          requestAnimationFrame(() => { nxt.style.opacity = 1; });
-        }, 200);
-      }, 2800);
-    })();
-  })();
-  </script>
+  <script src="{{ url_for('static', filename='setting.js') }}" defer></script>
 
 </body>
 </html>
