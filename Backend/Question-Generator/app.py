@@ -728,6 +728,108 @@ def api_publish_quiz(quiz_id):
     # optional: mark as published; no-op is fine
     return jsonify({"quiz_id": quiz_id, "status": "published"}), 200
 
+@app.route('/teacher/preview/<quiz_id>')
+def teacher_preview(quiz_id):
+    """Preview quiz as teacher"""
+    quiz_data = get_quiz_by_id(quiz_id)
+    if not quiz_data:
+        return "Quiz not found", 404
+    
+    return render_template(
+        'teacher_preview.html',
+        quiz=quiz_data,
+        quiz_id=quiz_id
+    )
+
+@app.route('/api/quizzes/<quiz_id>/send', methods=['POST'])
+def send_quiz_to_students(quiz_id):
+    """Send quiz to students with notification"""
+    try:
+        data = request.get_json()
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Mark quiz as published/active
+        quiz_data["published"] = True
+        quiz_data["published_at"] = datetime.utcnow().isoformat()
+        quiz_data["notification_message"] = data.get('message', '')
+        
+        # Save updated quiz
+        save_quiz_to_store(quiz_data)
+        
+        # Here you would integrate with your notification system
+        # For now, we'll just return success
+        return jsonify({
+            "success": True,
+            "message": "Quiz sent to students successfully",
+            "quiz_id": quiz_id
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
+def get_quiz_settings(quiz_id):
+    """Get current settings of a quiz"""
+    try:
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Fetch the current settings, if available
+        settings = quiz_data.get('settings', {})
+        
+        return jsonify(settings)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['POST'])
+def update_quiz_settings(quiz_id):
+    """Update quiz settings"""
+    try:
+        data = request.get_json()
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Validate time_limit (ensure it's a valid integer within range)
+        time_limit = data.get('time_limit', 30)
+        if not isinstance(time_limit, int) or not (5 <= time_limit <= 180):
+            return jsonify({"error": "Invalid time limit. Must be between 5 and 180 minutes."}), 400
+        
+        # Validate due_date (ensure it's a valid datetime string)
+        due_date = data.get('due_date', None)
+        if due_date and not isinstance(due_date, str):
+            return jsonify({"error": "Invalid due date format."}), 400
+        
+        # Ensure settings field exists
+        if 'settings' not in quiz_data:
+            quiz_data['settings'] = {}
+
+        # Update the settings
+        quiz_data['settings'].update({
+            'time_limit': time_limit,
+            'due_date': due_date,
+            'allow_retakes': data.get('allow_retakes', False),
+            'shuffle_questions': data.get('shuffle_questions', True),
+            'notification_message': data.get('notification_message', '')
+        })
+        
+        save_quiz_to_store(quiz_data)
+        
+        return jsonify({
+            "success": True,
+            "message": "Settings updated successfully"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ===============================
 # MAIN
