@@ -71,14 +71,18 @@ function openSettingsModal(quizId, preset = {}) {
     if (chkShuffle) chkShuffle.checked = preset.shuffle_questions !== false;
     if (taMessage) taMessage.value = preset.notification_message || '';
 
-    showEl(settingsModal);
-    console.log('Settings modal should be visible now');
+     settingsModal.classList.add('open');  
+     settingsModal.hidden = false;         
+     console.log('Settings modal should be visible now');
 }
 
 function closeSettingsModal() {
-    const settingsModal = id('settings-modal');
-    if (settingsModal) hideEl(settingsModal);
-    CURRENT_QUIZ_ID = null;
+  const settingsModal = id('settings-modal');
+  if (settingsModal) {
+    settingsModal.classList.remove('open');
+    settingsModal.hidden = true;             
+}
+  CURRENT_QUIZ_ID = null;
 }
 
 async function saveSettings() {
