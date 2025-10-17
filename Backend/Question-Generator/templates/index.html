@@ -128,8 +128,7 @@
 
   <div id="toast" class="toast"></div>
 
-  <!-- Settings Modal -->
-  <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" style="display:none;">
+  <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" >
     <div class="modal-card">
       <div class="modal-head">
         <h3 id="settings-modal-title">Quiz Settings</h3>
@@ -137,48 +136,40 @@
           <i class='bx bx-x'></i>
         </button>
       </div>
-      
+
       <div class="modal-body">
-        <div class="form-group">
-          <label for="time-limit" class="label">Time Limit (minutes)</label>
-          <input type="number" id="time-limit" min="0" max="480" placeholder="0 for no limit">
-          <div class="hint">Set to 0 for unlimited time</div>
-        </div>
-
-        <div class="form-group">
-          <label for="due-date" class="label">Due Date</label>
-          <input type="datetime-local" id="due-date">
-          <div class="hint">Leave empty for no due date</div>
-        </div>
-
-        <div class="form-group checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="allow-retakes">
-            <span class="checkmark"></span>
-            Allow multiple attempts
-          </label>
-        </div>
-
-        <div class="form-group checkbox-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="shuffle-questions">
-            <span class="checkmark"></span>
-            Shuffle questions
-          </label>
-        </div>
-
-        <div class="form-group">
-          <label for="notification-message" class="label">Notification Message</label>
-          <textarea id="notification-message" placeholder="Optional message to send with quiz..." rows="3"></textarea>
-        </div>
+      <div class="form-group">
+        <label for="time-limit" class="label">Time Limit (minutes)</label>
+        <input type="number" id="time-limit" min="0" max="480" placeholder="0 for no limit">
+        <div class="hint">Set to 0 for unlimited time</div>
       </div>
 
-      <div class="modal-actions">
-        <button class="btn ghost" id="btn-cancel-settings">Cancel</button>
-        <button class="btn primary" id="btn-save-settings">Save Settings</button>
+      <div class="form-group">
+        <label for="due-date" class="label">Due date</label>
+        <input type="datetime-local" id="due-date">
+      </div>
+
+      <div class="form-row">
+        <label class="checkbox">
+          <input type="checkbox" id="allow-retakes"> Allow retakes
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" id="shuffle-questions" checked> Shuffle questions
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="notification-message" class="label">Notification message (optional)</label>
+        <textarea id="notification-message" rows="3" placeholder="Message students will receive with the quiz"></textarea>
       </div>
     </div>
-  </div>
+
+    <div class="modal-foot">
+      <button class="btn ghost" id="btn-cancel-settings">Cancel</button>
+      <button class="btn primary" id="btn-save-settings">Save</button>
+    </div>
+
+
 
   <!-- Modals -->
   <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
