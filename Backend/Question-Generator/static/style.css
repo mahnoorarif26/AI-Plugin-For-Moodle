@@ -72,6 +72,12 @@ main {
   flex-grow:1; 
 }
 
+.quiz-card a {
+  text-decoration:none; 
+  text-align:center; 
+
+}
+
 .card-icon{ 
   font-size:40px; 
   color:#fa8c26; 
@@ -93,12 +99,6 @@ main {
 .generate-btn:hover{ 
   background: linear-gradient(to right, #fd9f41, #ffb366);
   box-shadow:0 4px 12px rgba(253,159,65,0.3);
-}
-
-.generate-btn:disabled{
-  background: #cbd5e1; 
-  cursor:not-allowed; 
-  box-shadow:none;
 }
 
 @media (max-width: 820px){ 
