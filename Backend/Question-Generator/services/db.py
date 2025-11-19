@@ -108,16 +108,32 @@ def get_quiz_by_id(quiz_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def list_quizzes() -> List[Dict[str, Any]]:
+def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    List quizzes, optionally filtered by metadata.kind.
+    kind: "quiz", "assignment", or None (for all).
+    """
     items: List[Dict[str, Any]] = []
+
+    # ---------- Firestore branch ----------
     if _db:
         try:
-            docs = _db.collection("AIquizzes").order_by("created_at", direction=firestore.Query.DESCENDING).stream()
+            docs = _db.collection("AIquizzes") \
+                      .order_by("created_at", direction=firestore.Query.DESCENDING) \
+                      .stream()
             for d in docs:
                 q = d.to_dict() or {}
                 qid = q.get("id") or d.id
                 title = q.get("title") or q.get("metadata", {}).get("source_file") or "AI Generated Quiz"
                 created_at = q.get("created_at")
+
+                meta = q.get("metadata") or {}
+                meta_kind = meta.get("kind", "quiz")  # default old data as quiz
+
+                # 🔍 filter by kind if requested
+                if kind and meta_kind != kind:
+                    continue
+
                 counts = {
                     "mcq": sum(1 for x in q.get("questions", []) if x.get("type") == "mcq"),
                     "true_false": sum(1 for x in q.get("questions", []) if x.get("type") == "true_false"),
@@ -128,13 +144,14 @@ def list_quizzes() -> List[Dict[str, Any]]:
                     "id": qid,
                     "title": title,
                     "created_at": created_at,
-                    "counts": counts
+                    "counts": counts,
+                    "kind": meta_kind,   # 🔹 expose kind for frontend
                 })
             return items
         except Exception as e:
             print(f"⚠️ Firestore list failed; falling back to local. Error: {e}")
 
-    # local
+    # ---------- Local JSON branch ----------
     for name in os.listdir(DATA_DIR):
         if not name.endswith(".json"):
             continue
@@ -143,6 +160,14 @@ def list_quizzes() -> List[Dict[str, Any]]:
                 q = json.load(f)
             qid = q.get("id") or name.replace(".json", "")
             title = q.get("title") or q.get("metadata", {}).get("source_file") or "AI Generated Quiz"
+
+            meta = q.get("metadata") or {}
+            meta_kind = meta.get("kind", "quiz")  # default old data as quiz
+
+            # 🔍 filter by kind if requested
+            if kind and meta_kind != kind:
+                continue
+
             counts = {
                 "mcq": sum(1 for x in q.get("questions", []) if x.get("type") == "mcq"),
                 "true_false": sum(1 for x in q.get("questions", []) if x.get("type") == "true_false"),
@@ -153,7 +178,8 @@ def list_quizzes() -> List[Dict[str, Any]]:
                 "id": qid,
                 "title": title,
                 "created_at": q.get("created_at"),
-                "counts": counts
+                "counts": counts,
+                "kind": meta_kind,   # 🔹 expose kind for frontend
             })
         except Exception:
             continue
@@ -164,6 +190,7 @@ def list_quizzes() -> List[Dict[str, Any]]:
         return ts if isinstance(ts, str) else str(ts or "")
     items.sort(key=_key, reverse=True)
     return items
+
 
 
 def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]:
