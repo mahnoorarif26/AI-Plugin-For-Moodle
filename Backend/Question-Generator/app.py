@@ -189,6 +189,11 @@ def teacher_generate():
     """Quiz generation page (no auth) — this is the landing page from '/'."""
     return render_template('index.html', teacher_name="Teacher")
 
+@app.route('/teacher/manual', methods=['GET'])
+def teacher_manual():
+    return render_template('manual_create.html')
+
+
 
 @app.route('/teacher/submissions/<quiz_id>', methods=['GET'])
 def teacher_submissions(quiz_id):
@@ -410,6 +415,7 @@ def quiz_from_subtopics():
         upload_id = payload.get("upload_id")
         chosen = payload.get("subtopics", [])
         totals = payload.get("totals", {})
+        is_assignment = bool(payload.get("is_assignment"))
 
         # Difficulty settings
         difficulty = payload.get("difficulty", {})
@@ -443,7 +449,7 @@ def quiz_from_subtopics():
             return jsonify({"error": f"Quiz generation failed: {error_message}"}), 500
 
         quiz_data = {
-            "title": source_file,  # << name quiz as the original uploaded PDF
+            "title": source_file,
             "questions": questions,
             "metadata": {
                 "source": "subtopics",
@@ -452,18 +458,20 @@ def quiz_from_subtopics():
                 "selected_subtopics": chosen,
                 "totals_requested": totals,
                 "difficulty": difficulty,
+                "kind": "assignment" if is_assignment else "quiz",
                 "total_questions": len(questions)
             }
         }
 
         quiz_id = save_quiz_to_store(quiz_data)
 
+        # FIX: Return the proper structure that frontend expects
         resp = {
             "success": True,
             "quiz_id": quiz_id,
-            "questions_count": len(questions),
+            "title": source_file,
             "questions": questions,
-            "saved": True,
+            "metadata": quiz_data["metadata"],
             "message": "Quiz generated successfully."
         }
 
@@ -477,7 +485,6 @@ def quiz_from_subtopics():
         print(f"❌ Error in quiz_from_subtopics: {e}")
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
 
-
 @app.route("/generate-question", methods=["POST"])
 def auto_generate_quiz():
     """
@@ -488,6 +495,7 @@ def auto_generate_quiz():
         payload = request.get_json() or {}
         topic_text = (payload.get("topic_text") or "").strip()
         totals = payload.get("totals", {})
+        is_assignment = bool((payload or {}).get("is_assignment"))
 
         if not topic_text:
             return jsonify({"error": "Please enter a topic or text to generate a quiz."}), 400
@@ -517,6 +525,7 @@ def auto_generate_quiz():
                 "source_file": topic_text,
                 "totals_requested": totals,
                 "difficulty": "auto",
+                "kind": "assignment" if is_assignment else "quiz",
                 "total_questions": len(questions)
             }
         }
@@ -560,18 +569,59 @@ def publish_quiz(quiz_id):
 @app.post("/api/quizzes")
 def api_create_quiz():
     data = request.get_json(force=True) or {}
-    saved = save_quiz_to_store(
-        title=data.get("title") or "Untitled Quiz",
-        items=data.get("items") or [],
-        meta=(data.get("metadata") or {})
-    )
-    # saved should include an 'id'
-    return jsonify(saved), 201
+    items = data.get("items") or []
 
-@app.get("/api/quizzes")
+    # Normalize to the same schema used by student views
+    questions = []
+    for i, it in enumerate(items):
+        qtype = (it.get("type") or "").strip().lower()
+        if qtype in ("tf", "truefalse", "true_false"):
+            qtype = "true_false"
+        elif qtype in ("mcq", "multiple_choice"):
+            qtype = "mcq"
+        elif qtype in ("short", "short_answer", "saq"):
+            qtype = "short"
+        else:
+            # default to mcq if unknown
+            qtype = "mcq"
+
+        q = {
+            "type": qtype,
+            "prompt": it.get("prompt") or it.get("question_text") or "",
+            "difficulty": it.get("difficulty"),
+            "order": i
+        }
+        if qtype in ("mcq", "true_false"):
+            q["options"] = it.get("options") or []
+            q["answer"]  = it.get("answer")  # publish.js can infer correct index from "A"/"True"/text
+        else:
+            # short answer
+            q["answer"] = it.get("answer")
+
+        questions.append(q)
+
+    quiz_dict = {
+        "title": data.get("title") or "Untitled Quiz",
+        "questions": questions,
+        "metadata": data.get("metadata") or {},
+        "created_at": datetime.utcnow()
+    }
+
+    quiz_id = save_quiz_to_store(quiz_dict)  # returns id (string)
+    return jsonify({"id": quiz_id, "title": quiz_dict["title"]}), 201
+
+@app.route("/api/quizzes", methods=["GET"])
 def api_list_quizzes():
-    quizzes = list_quizzes()  # should return a list[dict]
-    return jsonify(quizzes), 200
+    # ?kind=quiz or ?kind=assignment or no param
+    kind = request.args.get("kind")  # may be None
+
+    quizzes = list_quizzes(kind=kind)
+
+    return jsonify({
+        "success": True,
+        "items": quizzes,
+        "kind": kind or "all",
+    })
 
 @app.post("/api/quizzes/<quiz_id>/publish")
 def api_publish_quiz(quiz_id):
