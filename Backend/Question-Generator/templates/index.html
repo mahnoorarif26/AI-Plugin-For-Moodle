@@ -6,6 +6,8 @@
   <title>AI Plugin for Moodle</title>
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='assignments.css') }}">
+
 </head>
 <body>
 
@@ -17,7 +19,8 @@
     </div>
     <ul class="topnav">
       <li><button class="link" data-route="home">Home</button></li>
-      <li><button class="link" data-route="generate">Generate Quiz</button></li>
+      <li><button class="link" data-route="generate">Quiz</button></li>
+      <li><button class="link" data-route="assignments">Assignments</button></li>
       <li><button class="link" data-route="view">View Quizzes</button></li>
       <li><button class="link" data-route="grades">Student Grades</button></li>
     </ul>
@@ -75,7 +78,7 @@
           <i class='bx bx-edit card-icon'></i>
           <h2>Manual Creation</h2>
           <p>Create questions from scratch with full control.</p>
-          <button class="generate-btn" disabled title="Coming soon">Start Creating</button>
+          <a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a>
         </div>
       </div>
 
@@ -96,21 +99,30 @@
 
     <!-- VIEW QUIZZES -->
     <section id="section-view" style="display:none;">
-      <div class="view-header">
-        <h2>Available Quizzes</h2>
-        <p class="muted">Open any quiz to preview or share with students.</p>
-      </div>
+  <div class="cards-container">
+    <!-- View Quizzes -->
+    <div class="quiz-card">
+      <i class='bx bx-show card-icon'></i>
+      <h2>View Quizzes</h2>
+      <p>See all quizzes you have generated or created manually.</p>
+      <button class="generate-btn" id="btn-view-quizzes">View Quizzes</button>
+    </div>
 
-      <!-- Empty state -->
-      <div id="quiz-empty" class="empty-state" style="display:none;">
-        <div class="empty-icon">📄</div>
-        <h3>No quizzes yet</h3>
-        <p>Generate a quiz first, then come back to view it here.</p>
-      </div>
+    <!-- View Assignments -->
+    <div class="quiz-card">
+      <i class='bx bx-task card-icon'></i>
+      <h2>View Assignments</h2>
+      <p>See all assignments generated from PDFs or topics.</p>
+      <button class="generate-btn" id="btn-view-assignments">View Assignments</button>
+    </div>
+  </div>
 
-      <!-- List container -->
-      <div id="quiz-list" class="quiz-list"></div>
-    </section>
+  <!-- Shared list area -->
+  <div id="view-list-container">
+    <h3 id="view-list-title">Quizzes</h3>
+    <div id="quiz-list"></div>
+  </div>
+</section>
 
     <!-- STUDENT GRADES (placeholder page) -->
     <section id="section-grades" style="display:none;">
@@ -124,7 +136,33 @@
       </div>
     </section>
 
-  </main>
+    <section id="section-assignments" style="display:none;">
+      <div class="cards-container">
+        <!-- Card 1 -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>From PDF (Detect Subtopics)</h2>
+          <p>Upload a PDF. We'll detect subtopics and generate assignment questions per subtopic.</p>
+          <button id="btn-open-assign-pdf" class="generate-btn">Generate</button>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="quiz-card">
+          <i class='bx bx-list-ul card-icon'></i>
+          <h2>By Topics</h2>
+          <p>Type topics (one per line) and generate assignment questions from them.</p>
+          <button id="btn-open-assign-topics" class="generate-btn">Generate</button>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="quiz-card">
+          <i class='bx bx-edit-alt card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Compose your own questions, add marks, and organize into sections.</p>
+          <button id="btn-open-assign-manual" class="generate-btn">Start Creating</button>
+        </div>
+        <div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
+</section>
 
   <div id="toast" class="toast"></div>
 
@@ -272,14 +310,171 @@
       <div class="progress" id="progress-custom"><div></div></div>
     </div>
   </div>
+  <!-- Assignment From PDF Modal -->
+<div id="modal-assign-pdf" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Generate Assignment from PDF</h3>
+      <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
+    </div>
+    <div class="modal-body">
+      <label class="field">
+        <span>Upload PDF</span>
+        <input type="file" id="assign-pdf-file" accept="application/pdf" />
+      </label>
+
+      <label class="field">
+        <span>Number of long tasks</span>
+        <input type="number" id="assign-pdf-count" min="1" value="5" />
+      </label>
+
+      <button class="btn primary" type="button" id="btn-assign-pdf-detect">
+        Detect Subtopics &amp; Generate
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Assignment By Topics Modal -->
+<div id="modal-assign-topics" class="modal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Generate Assignment by Topics</h3>
+      <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
+    </div>
+    <div class="modal-body">
+      <label class="field">
+        <span>Topics (one per line)</span>
+        <textarea id="assign-topics-text" rows="5"
+          placeholder="e.g.&#10;Binary Search Trees&#10;Hashing&#10;Graph Traversal"></textarea>
+      </label>
+
+      <label class="field">
+        <span>Number of long tasks</span>
+        <input type="number" id="assign-topics-count" min="1" value="4" />
+      </label>
+
+      <button class="btn primary" type="button" id="btn-assign-topics-generate">
+        Generate Assignment
+      </button>
+    </div>
+  </div>
+</div>
+
 
   <!-- Scripts (deferred) -->
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
   <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='assignments.js') }}"></script>
+  <script src="{{ url_for('static', filename='view_items.js') }}"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
-  <script src="{{ url_for('static', filename='setting.js') }}" defer></script>
+<script defer>
+  (function () {
+    const $ = (sel) => document.querySelector(sel);
+    const id = (s) => document.getElementById(s);
+
+    function showEl(el){ if(!el) return; el.hidden = false; el.style.removeProperty('display'); }
+    function hideEl(el){ if(!el) return; el.hidden = true; el.style.display = 'none'; }
+
+    // sections map - ADDED ASSIGNMENTS SECTION
+    const sections = {
+      home:       id('section-home'),
+      generate:   id('section-generate'),
+      assignments: id('section-assignments'), // ADDED THIS LINE
+      view:       id('section-view'),
+      grades:     id('section-grades'),
+    };
+
+    // -------- View Quizzes loader --------
+    async function loadQuizzes() {
+      window.loadQuizzes = loadQuizzes; // allow publish.js to call it after publishing
+
+      const listBox = id('quiz-list');
+      const emptyBox = id('quiz-empty');
+      if (!listBox) return;
+
+      listBox.innerHTML = '<div class="muted">Loading…</div>';
+      if (emptyBox) emptyBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/quizzes');
+        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+        const items = await res.json();
+
+        if (!Array.isArray(items) || items.length === 0) {
+          listBox.innerHTML = '';
+          if (emptyBox) emptyBox.style.display = '';
+          return;
+        }
+
+        listBox.innerHTML = items.map(qz => {
+          const total =
+            (typeof qz.questions_count === 'number' ? qz.questions_count : null) ??
+            (qz.counts ? Object.values(qz.counts).reduce((a, b) => a + (b || 0), 0) : 0);
+
+          const created = qz.created_at ? new Date(qz.created_at).toLocaleString() : '';
+          return `
+            <div class="quiz-item">
+              <div class="quiz-title">${qz.title || 'AI Generated Quiz'}</div>
+              <div class="quiz-meta">
+                ${total} questions${created ? ` • ${created}` : ''}
+              </div>
+              <div class="quiz-actions">
+                <a class="btn" href="/student/quiz/${qz.id}">Open</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        listBox.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
+      }
+    }
+
+    // -------- Router --------
+    function showSection(route) {
+      Object.values(sections).forEach(hideEl);
+      showEl(sections[route] || sections.home);
+      if (route === 'view') loadQuizzes();
+    }
+    window.showSection = showSection;
+
+    // Topnav
+    document.querySelectorAll('.topnav .link').forEach(btn => {
+      btn.addEventListener('click', () => showSection(btn.dataset.route));
+    });
+
+    // Initial route (?route=...)
+    const params  = new URLSearchParams(location.search);
+    showSection(params.get('route') || 'home');
+
+    // -------- Rotating text on Home --------
+    (function initRotator() {
+      const container = id('rotate-text');
+      if (!container) return;
+      const items = Array.from(container.querySelectorAll('span'));
+      if (items.length <= 1) return;
+
+      let idx = 0;
+      items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
+
+      setInterval(() => {
+        const cur = items[idx];
+        if (!cur) return;
+        cur.style.opacity = 0;
+        setTimeout(() => {
+          cur.style.display = 'none';
+          idx = (idx + 1) % items.length;
+          const nxt = items[idx];
+          nxt.style.display = '';
+          requestAnimationFrame(() => { nxt.style.opacity = 1; });
+        }, 200);
+      }, 2800);
+    })();
+  })();
+  </script>
 
 </body>
 </html>
