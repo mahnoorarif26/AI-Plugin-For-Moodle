@@ -166,6 +166,10 @@ main {
   color:#fff; 
   border:none; 
 }
+.btn.primary:hover{ 
+  background: linear-gradient(90deg,#fd9f41,#ffb366); 
+  box-shadow:0 4px 12px rgba(253,159,65,.3); 
+}
 
 .btn.ghost{ 
   background:#fff; 
@@ -685,9 +689,26 @@ select{
 .home-grid{
   grid-template-columns: 1.1fr 1.2fr;   /* give right side more space */
   gap: 36px;                             /* was 24 */
-  padding: 32px 24px;                    /* was 24/16 */
+  padding: 32px 24px;  ;                   /* was 24/16 */
 }
-
+#section-home {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    
+    /* Multiple background approach */
+    background: 
+        linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)),
+        url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2072&q=80')
+        center/cover no-repeat fixed;
+    
+    /* Ensure full coverage */
+    margin: 0;
+    width: 100%;
+    position: relative;
+}
 @media (max-width: 900px) {
   .home-grid { grid-template-columns: 1fr; }
 }
@@ -864,7 +885,7 @@ select{
 
 .quiz-item {
   padding: 1.5rem;
-  border-left: 4px solid #4CAF50;
+  border-left: 4px solid #fa8c26;
 }
 
 .quiz-header {
@@ -888,7 +909,7 @@ select{
 
 .quiz-status.published {
   background-color: #E8F5E8;
-  color: #2E7D32;
+  color:v#fa8c26;
 }
 
 .quiz-details {
@@ -968,7 +989,7 @@ select{
   border-radius: 12px;
   padding: 1.5rem;
   border-left: 4px solid #4CAF50;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(224, 141, 8, 0.1);
   transition: transform 0.2s ease;
 }
 
@@ -1030,4 +1051,146 @@ select{
 
 .btn.danger:hover {
   background-color: #d32f2f;
+}
+/* --- VIEW QUIZZES: wider cards + centered heading --- */
+#section-view .view-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+#section-view .view-header h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+}
+
+/* --- VIEW QUIZZES: wider layout --- */
+#section-view .quiz-list {
+  max-width: 800px;   /* increased width from 900px → 1100px */
+  margin: 0 auto;      /* keep centered */
+  gap: 1.25rem;
+  justify-items: center;
+}
+
+/* --- VIEW QUIZZES: refined card --- */
+#section-view .quiz-item {
+  padding: 24px 28px;      /* more comfortable spacing */
+  border-radius: 12px;
+  height: 150px; /* fixed height for uniform grid look */
+  overflow: hidden; 
+  border-left: 5px solid #fa8c26; /* bold orange accent */
+  box-shadow: 0 4px 10px rgba(224, 141, 8, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+#section-view .quiz-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 18px rgba(224, 141, 8, 0.18);
+}
+
+/* enforce orange edge in case old rules persist */
+.quiz-item { border-left-color: #fa8c26 !important; }
+
+/* responsive layout */
+@media (max-width: 900px){
+  #section-view .quiz-list { max-width: 95%; }
+  #section-view .quiz-item { padding: 18px 20px; }
+}
+.quiz-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  background: white;
+}
+
+.quiz-info {
+  flex: 1;
+}
+
+.quiz-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-view {
+  background: #4f46e5;
+  color: white;
+}
+
+.btn-settings {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-send {
+  background: #059669;
+  color: white;
+}
+
+.btn-view:hover {
+  background: #4338ca;
+}
+
+.btn-settings:hover {
+  background: #4b5563;
+}
+
+.btn-send:hover {
+  background: #047857;
+}
+
+/* Settings Modal */
+/* Settings Modal Styles */
+.checkbox-group {
+  margin: 1rem 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin: 0;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group .label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
 }
