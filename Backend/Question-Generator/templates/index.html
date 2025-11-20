@@ -87,9 +87,11 @@
         <div class="quiz-out-head">
           <h2>Generated Quiz</h2>
           <div class="quiz-actions">
-            <button class="btn" id="btn-copy-quiz" type="button">Copy as Text</button>
-            <button class="btn" id="btn-save-json" type="button">Save JSON</button>
-            <button class="btn" id="btn-publish" type="button">Download</button>
+
+
+            <button class="btn" id="btn-send" type="button">Send</button>
+            <button class="btn" id="btn-publish" type="button">Publish</button>
+
             <span id="publish-note" class="muted" style="margin-left:8px;"></span>
           </div>
         </div>
@@ -119,7 +121,7 @@
 
   <!-- Shared list area -->
   <div id="view-list-container">
-    <h3 id="view-list-title">Quizzes</h3>
+    <h2 id="view-list-title">Quizzes</h2>
     <div id="quiz-list"></div>
   </div>
 </section>
@@ -131,7 +133,7 @@
       </div>
       <div class="empty-state">
         <div class="empty-icon">📝</div>
-        <h3>Grades page</h3>
+        <h2>Grades page</h2>
         <p>Grades logic is not implemented yet. This is placeholder text as requested.</p>
       </div>
     </section>
@@ -314,7 +316,7 @@
 <div id="modal-assign-pdf" class="modal" aria-hidden="true">
   <div class="modal-card">
     <div class="modal-head">
-      <h3>Generate Assignment from PDF</h3>
+      <h2>Generate Assignment from PDF</h2>
       <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
     </div>
     <div class="modal-body">
@@ -328,9 +330,7 @@
         <input type="number" id="assign-pdf-count" min="1" value="5" />
       </label>
 
-      <button class="btn primary" type="button" id="btn-assign-pdf-detect">
-        Detect Subtopics &amp; Generate
-      </button>
+      <button class="btn primary" type="button" id="btn-assign-pdf-detect"> Generate</button>
     </div>
   </div>
 </div>
@@ -339,14 +339,14 @@
 <div id="modal-assign-topics" class="modal" aria-hidden="true">
   <div class="modal-card">
     <div class="modal-head">
-      <h3>Generate Assignment by Topics</h3>
+      <h2>Generate Assignment by Topics</h2>
       <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
     </div>
     <div class="modal-body">
       <label class="field">
         <span>Topics (one per line)</span>
         <textarea id="assign-topics-text" rows="5"
-          placeholder="e.g.&#10;Binary Search Trees&#10;Hashing&#10;Graph Traversal"></textarea>
+          placeholder="e.g Binary Search Trees"></textarea>
       </label>
 
       <label class="field">
