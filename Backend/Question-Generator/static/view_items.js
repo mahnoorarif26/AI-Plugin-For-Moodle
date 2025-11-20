@@ -120,17 +120,30 @@
     window.viewSubmissions = viewSubmissions;
 
     document.addEventListener("DOMContentLoaded", () => {
-        const btnQuizzes = id("btn-view-quizzes");
-        const btnAssignments = id("btn-view-assignments");
+    const btnQuizzes     = document.getElementById("btn-view-quizzes");
+    const btnAssignments = document.getElementById("btn-view-assignments");
+    const viewContainer  = document.getElementById("view-list-container");
+    const heading        = document.getElementById("view-list-title");
 
-        if (btnQuizzes) {
-            btnQuizzes.addEventListener("click", () => loadItems("quiz"));
-        }
-        if (btnAssignments) {
-            btnAssignments.addEventListener("click", () => loadItems("assignment"));
-        }
+    function showContainer() {
+        viewContainer.style.display = "block";
+    }
 
-        // Load quizzes by default when page loads
-        loadItems("quiz");
-    });
+    if (btnQuizzes) {
+        btnQuizzes.addEventListener("click", () => {
+            heading.textContent = "Quizzes";   // change heading
+            showContainer();
+            loadItems("quiz");
+        });
+    }
+
+    if (btnAssignments) {
+        btnAssignments.addEventListener("click", () => {
+            heading.textContent = "Assignments";  // change heading
+            showContainer();
+            loadItems("assignment");
+        });
+    }
+});
+
 })();
