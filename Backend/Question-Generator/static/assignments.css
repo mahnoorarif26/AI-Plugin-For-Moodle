@@ -64,6 +64,25 @@ body{
   max-width: 100%;
   margin: 0 0 24px 0;
 }
+/* Make the assignment output span the full row under the 3 cards */
+#section-assignments .assignment-output-card {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin-top: 32px;
+}
+
+/* Make each assignment task use full width inside that area */
+#assignment-output .question-card.assignment-task {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 24px 0;
+}
+
+/* Center full-width content for a cleaner look */
+#assignment-output {
+  max-width: 900px;
+  margin: 0 auto 32px;
+}
 
 
 /* Headings – use <h2> in HTML for perfect match */
