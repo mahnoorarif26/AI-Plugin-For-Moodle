@@ -1,5 +1,3 @@
-// static/customizeModal.js
-
 class CustomizeModal {
   constructor() {
     this.modal = document.getElementById('modal-custom');
@@ -10,6 +8,7 @@ class CustomizeModal {
     
     this.fileInput = document.getElementById('fileInputCustom');
     this.uploader = document.getElementById('uploader-custom');
+    this.fileNameDisplay = document.getElementById('fileNameDisplayCustom');
 
     this.mcq = document.getElementById('mcqCount');
     this.tf = document.getElementById('tfCount');
@@ -44,25 +43,41 @@ class CustomizeModal {
     this.modal?.addEventListener('click', e => { if (e.target === this.modal) this.close(); });
 
     if (this.uploader && this.fileInput) {
-      this.uploader.addEventListener('click', () => this.fileInput.click());
-      this.uploader.addEventListener('dragover', e => { e.preventDefault(); this.uploader.classList.add('dragover'); });
-      this.uploader.addEventListener('dragleave', () => this.uploader.classList.remove('dragover'));
-      this.uploader.addEventListener('drop', e => {
-        e.preventDefault();
-        this.uploader.classList.remove('dragover');
-        if (e.dataTransfer.files?.length) {
-          this.fileInput.files = e.dataTransfer.files;
-          this.resetSubtopics(); // Reset subtopics when new file is selected
-          showToast('PDF selected ✔');
-        }
-      });
-      this.fileInput.addEventListener('change', () => {
-        if (this.fileInput.files?.[0]) {
-          this.resetSubtopics(); // Reset subtopics when new file is selected
-          showToast('PDF selected ✔');
-        }
-      });
-    }
+    const updateName = () => {
+      if (!this.fileNameDisplay) return;
+      if (this.fileInput.files?.[0]) {
+        this.fileNameDisplay.textContent = this.fileInput.files[0].name;
+      } else {
+        this.fileNameDisplay.textContent = '';
+      }
+    };
+
+    this.uploader.addEventListener('click', () => this.fileInput.click());
+
+    this.uploader.addEventListener('dragover', e => {
+      e.preventDefault();
+      this.uploader.classList.add('dragover');
+    });
+
+    this.uploader.addEventListener('dragleave', () => {
+      this.uploader.classList.remove('dragover');
+    });
+
+    this.uploader.addEventListener('drop', e => {
+      e.preventDefault();
+      this.uploader.classList.remove('dragover');
+      if (e.dataTransfer.files?.[0]) {
+        this.fileInput.files = e.dataTransfer.files;
+        updateName();
+        notify('PDF selected ✔');
+      }
+    });
+
+    this.fileInput.addEventListener('change', () => {
+      updateName();
+      if (this.fileInput.files?.[0]) notify('PDF selected ✔');
+    });
+  }
 
     // toggle difficulty rows based on selection
     const toggleRows = () => {
@@ -102,10 +117,10 @@ class CustomizeModal {
         this._detectedSubtopics = data.subtopics || [];
         this._selectedSubtopics = []; // Reset selections
         this.renderSubtopics();
-        showToast(`Found ${this._detectedSubtopics.length} subtopics`);
+        notify(`Found ${this._detectedSubtopics.length} subtopics`);
       } catch (e) {
         console.error(e);
-        showToast(e.message || 'Subtopic detection failed');
+        notify(e.message || 'Subtopic detection failed');
       } finally {
         this.btnDetect.disabled = false;
         this.btnDetect.textContent = 'Detect Subtopics';
@@ -192,9 +207,9 @@ class CustomizeModal {
   async handleGenerate() {
     // validate file
     const file = this.fileInput?.files?.[0];
-    if (!file) return showToast('Please select a PDF.');
+    if (!file) return notify('Please select a PDF.');
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isPdf) return showToast('Only PDF (.pdf) is accepted.');
+    if (!isPdf) return notify('Only PDF (.pdf) is accepted.');
 
     // Check if subtopics are selected and use appropriate API
     const hasSelectedSubtopics = this._selectedSubtopics.length > 0;
@@ -210,7 +225,7 @@ class CustomizeModal {
 
   async generateFromSubtopics() {
     if (!this._uploadId) {
-      return showToast('Please detect subtopics first.');
+      return notify('Please detect subtopics first.');
     }
 
     // take counts from existing inputs (same ones you use for regular custom)
@@ -238,7 +253,6 @@ class CustomizeModal {
       subtopics: this._selectedSubtopics,
       totals: { mcq, true_false: tf, short: shortQ, long: longQ },
       difficulty,
-      // REMOVED: scenario_based and code_snippet parameters
     };
 
     try {
@@ -275,7 +289,7 @@ class CustomizeModal {
       }
       
       this.close();
-      showToast(`Customized quiz generated ✅ (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
+      notify(`Customized quiz generated (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
     } catch (err) {
       console.error('Subtopics generation error:', err);
       showToast('Failed: ' + (err.message || 'Server error'));
@@ -288,9 +302,9 @@ class CustomizeModal {
 async generateRegularCustom() {
   // Validate file
   const file = this.fileInput?.files?.[0];
-  if (!file) return showToast('Please select a PDF.');
+  if (!file) return notify('Please select a PDF.');
   const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  if (!isPdf) return showToast('Only PDF (.pdf) is accepted.');
+  if (!isPdf) return notify('Only PDF (.pdf) is accepted.');
 
   // Collect counts
   const mcq    = +this.mcq?.value || 0;
@@ -300,7 +314,7 @@ async generateRegularCustom() {
 
   const totals = { mcq, true_false: tf, short: shortQ, long: longQ };
   const totalRequested = mcq + tf + shortQ + longQ;
-  if (totalRequested <= 0) return showToast('Set at least one question count (MCQ/TF/Short/Long).');
+  if (totalRequested <= 0) return notify('Set at least one question count (MCQ/TF/Short/Long).');
 
   // Difficulty block
   let difficulty = { mode: 'auto' };
@@ -309,7 +323,7 @@ async generateRegularCustom() {
     const med  = +this.med?.value  || 0;
     const hard = +this.hard?.value || 0;
     const sum = easy + med + hard;
-    if (sum !== 100) return showToast('Difficulty mix must sum to 100%.');
+    if (sum !== 100) return notify('Difficulty mix must sum to 100%.');
     difficulty = { mode: 'custom', easy, medium: med, hard };
   }
 
@@ -347,7 +361,7 @@ async generateRegularCustom() {
     this.setProgress(100);
 
     if (!data || !Array.isArray(data.questions) || data.questions.length === 0) {
-      showToast('Generated, but no questions returned.');
+      notify('Generated, but no questions returned.');
       console.warn('[customize] Empty questions payload:', data);
       return;
     }
@@ -366,10 +380,10 @@ async generateRegularCustom() {
     }
 
     this.close();
-    showToast(`Customized quiz generated ✅ (${data.questions.length} questions)`);
+    notify(`Customized quiz generated  (${data.questions.length} questions)`);
   } catch (err) {
     console.error('[customize] Generation error:', err);
-    showToast('Failed: ' + (err.message || 'Server error'));
+    notify('Failed: ' + (err.message || 'Server error'));
   } finally {
     setTimeout(() => this.resetProgress(), 600);
   }

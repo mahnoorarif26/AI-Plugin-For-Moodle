@@ -18,11 +18,6 @@
   function closeModal(modal) {
     if (modal) modal.style.display = "none";
   }
-
-  /**
-   * Render generated assignment tasks into the #assignment-output div.
-   * Expects an array of question objects with at least a `prompt` or `question_text` field.
-   */
   function renderAssignment(questions) {
     const container = id("assignment-output");
     if (!container) return;
@@ -239,17 +234,53 @@
       });
     }
   }
+  function initAssignPdfUploader() {
+  const box = id("assign-uploader");
+  const input = id("assign-pdf-file");
+  const nameBox = id("assignFileNameDisplay");
+
+  if (!box || !input) return;
+
+  const updateName = () => {
+    if (!nameBox) return;
+    if (input.files && input.files[0]) {
+      nameBox.textContent = input.files[0].name;
+    } else {
+      nameBox.textContent = "";
+    }
+  };
+
+  box.addEventListener("click", () => input.click());
+
+  box.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    box.classList.add("dragover");
+  });
+
+  box.addEventListener("dragleave", () => {
+    box.classList.remove("dragover");
+  });
+
+  box.addEventListener("drop", (e) => {
+    e.preventDefault();
+    box.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      input.files = e.dataTransfer.files;
+      updateName();
+      notify("PDF selected ✔");
+    }
+  });
+
+  input.addEventListener("change", () => {
+    updateName();
+    if (input.files && input.files[0]) notify("PDF selected ✔");
+  });
+}
 
   document.addEventListener("DOMContentLoaded", () => {
     setupPdfCard();
     setupTopicsCard();
     setupManualCard();
-
-    // If no content yet, initialise preview with a hint
-    const container = id("assignment-output");
-    if (container && !container.innerHTML.trim()) {
-      container.innerHTML =
-        '<div class="muted">Generate an assignment from PDF or topics to see tasks here.</div>';
-    }
+    initAssignPdfUploader();
   });
 })();
