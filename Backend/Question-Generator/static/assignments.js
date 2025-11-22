@@ -281,6 +281,6 @@
     setupPdfCard();
     setupTopicsCard();
     setupManualCard();
-    initAssignPdfUploader();  
+    initAssignPdfUploader();
   });
 })();

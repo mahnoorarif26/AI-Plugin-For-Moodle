@@ -250,6 +250,15 @@ select{
   word-break: break-all;
 }
 
+.file-name {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  word-break: break-all;
+}
+
+
 .uploader.dragover{ 
   background:#ffedd5; 
   border-color:#fb923c; 
@@ -275,6 +284,27 @@ select{
   width:0%; 
   background: linear-gradient(90deg, #ff9f1c, #ff6b35); 
   transition: width .2s ease; 
+}
+.center-btn-wrapper {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.detect-btn {
+  border: 1px solid #e5e7eb;    /* light gray normal border */
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: white;            /* always white */
+  cursor: pointer;
+  transition: border-color 0.25s ease;
+  font-weight: 600;
+}
+
+/* Thin orange border on hover — no background change */
+.detect-btn:hover {
+  border-color: #fb923c;         /* soft orange */
+  background: white !important;  /* stay white */
 }
 
 .section-title{ 

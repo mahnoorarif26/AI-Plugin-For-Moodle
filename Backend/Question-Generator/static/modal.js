@@ -45,14 +45,14 @@ class ModalManager {
   initializeUploader() {
   const uploader = document.getElementById('uploader');
   const fileInput = document.getElementById('fileInput');
-  const fileNameDisplay = document.getElementById('fileNameDisplay');
+  const fileNameDisplay = document.getElementById('fileNameDisplay'); // <-- NEW
 
   if (!uploader || !fileInput) return;
 
-  const updateName = (file) => {
+  const updateName = () => {
     if (!fileNameDisplay) return;
-    if (file) {
-      fileNameDisplay.textContent = file.name;
+    if (fileInput.files?.[0]) {
+      fileNameDisplay.textContent = fileInput.files[0].name; // e.g. Data Storage.pdf
     } else {
       fileNameDisplay.textContent = '';
     }
@@ -73,17 +73,15 @@ class ModalManager {
     e.preventDefault();
     uploader.classList.remove('dragover');
     if (e.dataTransfer.files?.length) {
-      const file = e.dataTransfer.files[0];
       fileInput.files = e.dataTransfer.files;
-      updateName(file);
+      updateName();            // <-- show name
       notify('PDF selected ✔');
     }
   });
 
   fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0] || null;
-    updateName(file);
-    if (file) notify('PDF selected ✔');
+    updateName();              // <-- show name
+    if (fileInput.files?.[0]) notify('PDF selected');
   });
 }
 
