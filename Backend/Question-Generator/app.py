@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 
+from utils.pdf_utils import SmartPDFProcessor
+
 from services.db import (
     save_quiz as save_quiz_to_store,
     get_quiz_by_id,
@@ -19,7 +21,7 @@ from services.db import (
 
 # ====== LLM / UTILS ======
 from utils import (
-    extract_pdf_text,
+    extract_pdf_text, 
     split_into_chunks,
     build_user_prompt,
     SYSTEM_PROMPT,
@@ -53,6 +55,82 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # Stores the raw text and metadata of uploaded files, keyed by a unique upload_id
 # Format: {upload_id: {'text': raw_text, 'file_name': file_name}}
 _SUBTOPIC_UPLOADS: Dict[str, Dict[str, str]] = {}
+
+# ===============================
+# HELPER FUNCTIONS
+# ===============================
+def _get_chunk_types_distribution(chunks_with_metadata: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Helper method to analyze chunk type distribution for FYP analysis."""
+    distribution = {}
+    for chunk in chunks_with_metadata:
+        chunk_type = chunk.get('chunk_type', 'unknown')
+        distribution[chunk_type] = distribution.get(chunk_type, 0) + 1
+    return distribution
+
+def _get_enhanced_fallback_subtopics(raw_text: str, document_analysis: Dict[str, Any]) -> List[str]:
+    """
+    Enhanced fallback subtopic extraction using document structure analysis.
+    """
+    subtopics = []
+    
+    # Method 1: Extract from page analysis
+    for page in document_analysis.get('pages', []):
+        if page.get('has_headings') and page.get('text'):
+            lines = [line.strip() for line in page['text'].split('\n') if line.strip()]
+            for line in lines:
+                if _is_likely_heading(line) and line not in subtopics:
+                    subtopics.append(line)
+    
+    # Method 2: Extract numbered sections
+    numbered_sections = re.findall(r'\n\s*(\d+[\.\)]\s+[^\n]{5,50})', raw_text)
+    subtopics.extend(numbered_sections[:5])
+    
+    # Method 3: Extract ALL CAPS headings
+    all_caps_headings = re.findall(r'\n\s*([A-Z][A-Z\s]{5,30}[A-Z])\s*\n', raw_text)
+    subtopics.extend(all_caps_headings[:3])
+    
+    # Method 4: Extract title case lines (potential section headers)
+    lines = [line.strip() for line in raw_text.split('\n') if line.strip()]
+    for line in lines[:50]:  # Check first 50 lines
+        words = line.split()
+        if 2 <= len(words) <= 8 and len(line) < 80:
+            # Check if it's title case or has other heading characteristics
+            if (any(word.istitle() for word in words if len(word) > 3) or 
+                re.match(r'^\d+[\.\)]', line)):
+                if line not in subtopics:
+                    subtopics.append(line)
+    
+    # Remove duplicates and clean up
+    unique_subtopics = list(dict.fromkeys([s.strip() for s in subtopics if s.strip()]))
+    
+    # Ensure we have some subtopics
+    if not unique_subtopics:
+        # Final fallback: use first sentences from important paragraphs
+        paragraphs = [p.strip() for p in raw_text.split('\n\n') if len(p.strip()) > 50]
+        for para in paragraphs[:5]:
+            first_sentence = para.split('.')[0] + '.'
+            if len(first_sentence) > 20 and len(first_sentence) < 100:
+                unique_subtopics.append(first_sentence)
+    
+    return unique_subtopics[:10]
+
+def _is_likely_heading(line: str) -> bool:
+    """Helper function to detect likely headings."""
+    line = line.strip()
+    if len(line) < 80:
+        patterns = [
+            r'^\d+[\.\)]\s+\w+',
+            r'^\b(?:CHAPTER|SECTION|ABSTRACT|INTRODUCTION|METHODOLOGY|RESULTS|CONCLUSION|REFERENCES)\b',
+            r'^[A-Z][A-Z\s]{2,}[A-Z]$',
+            r'^\s*\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s*$',
+        ]
+        for pattern in patterns:
+            if re.match(pattern, line, re.IGNORECASE):
+                return True
+        words = line.split()
+        if 2 <= len(words) <= 8 and len(line) < 60:
+            return True
+    return False
 
 # ===============================
 # LANDING (always open teacher/generate)
@@ -223,7 +301,7 @@ def health():
 def quiz_from_pdf():
     """
     Generate quiz from uploaded PDF. Returns quiz JSON and saves via services/db.py.
-    (No auth)
+    Enhanced with smart adaptive chunking.
     """
     try:
         # ---- file (PDF) ----
@@ -262,13 +340,33 @@ def quiz_from_pdf():
         # Distribution (use as type_targets)
         dist = options.get("distribution", {})
 
-        # ---- PDF -> text ----
-        text = extract_pdf_text(file)
+        # ---- ENHANCED PDF PROCESSING ----
+        processor = SmartPDFProcessor(
+            max_chars=70000,
+            target_chunk_size=3500,
+            chunk_overlap=200
+        )
+        
+        # Extract text with structure analysis
+        text, document_analysis = processor.extract_pdf_text(file)
         if not text or not text.strip():
             return ("Could not extract text from PDF", 400)
 
-        chunks = split_into_chunks(text)
-
+        # Use adaptive chunking based on document structure
+        chunks_with_metadata = processor.adaptive_chunking(text, document_analysis)
+        chunks = [chunk['text'] for chunk in chunks_with_metadata]
+        
+        # Log chunking strategy for debugging and FYP analysis
+        structure_score = document_analysis.get('structure_score', 0)
+        chunking_strategy = chunks_with_metadata[0]['chunk_type'] if chunks_with_metadata else 'none'
+        
+        print(f"📊 PDF Analysis Results:")
+        print(f"   - Structure Score: {structure_score:.2f}")
+        print(f"   - Chunking Strategy: {chunking_strategy}")
+        print(f"   - Total Pages: {document_analysis.get('total_pages', 0)}")
+        print(f"   - Total Chunks: {len(chunks)}")
+        print(f"   - Estimated Tokens: {document_analysis.get('estimated_tokens', 0)}")
+        
         # ---- difficulty mix ----
         mix_counts = {}
         if diff_mode == "custom":
@@ -306,8 +404,9 @@ def quiz_from_pdf():
 
         source_file = file.filename if file and file.filename else "PDF Upload"
 
+        # Enhanced metadata with chunking information
         result = {
-            "title": source_file,  # << name quiz as the PDF filename
+            "title": source_file,
             "questions": questions,
             "metadata": {
                 "model": "llama-3.3-70b-versatile",
@@ -322,26 +421,41 @@ def quiz_from_pdf():
                 },
                 "source_note": llm_json.get("source_note", ""),
                 "source_file": source_file,
+                # Enhanced chunking metadata for FYP analysis
+                "chunking_analysis": {
+                    "structure_score": round(structure_score, 2),
+                    "strategy_used": chunking_strategy,
+                    "total_chunks": len(chunks),
+                    "total_pages": document_analysis.get('total_pages', 0),
+                    "estimated_tokens": document_analysis.get('estimated_tokens', 0),
+                    "chunk_types_distribution": _get_chunk_types_distribution(chunks_with_metadata)
+                }
             }
         }
 
         quiz_id = save_quiz_to_store(result)
         result["metadata"]["quiz_id"] = quiz_id
 
+        # FYP Performance logging
+        print(f"✅ Quiz Generation Complete:")
+        print(f"   - Quiz ID: {quiz_id}")
+        print(f"   - Questions Generated: {len(questions)}")
+        print(f"   - Chunking Strategy: {chunking_strategy}")
+        print(f"   - Structure Score: {structure_score:.2f}")
+
         return jsonify(result), 200
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON Decode Error: {e}")
         return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
+        print(f"❌ Server Error in quiz_from_pdf: {e}")
         return (f"Server error: {str(e)}", 500)
 
-# ===============================
-# SUBTOPICS API (no auth)
-# ===============================
 @app.route("/api/custom/extract-subtopics", methods=["POST"])
 def extract_subtopics():
     """
-    Extract subtopics from uploaded PDF/text file. (No auth)
+    Extract subtopics from uploaded PDF/text file with enhanced processing.
     """
     if "file" not in request.files:
         return jsonify({"error": "Missing file (multipart field 'file')"}), 400
@@ -350,18 +464,46 @@ def extract_subtopics():
     file_name = uploaded_file.filename or "uploaded_content.txt"
 
     try:
-        # 1. Extract Text
-        raw_text = extract_pdf_text(uploaded_file)
+        # 1. ENHANCED TEXT EXTRACTION WITH STRUCTURE ANALYSIS
+        processor = SmartPDFProcessor(
+            max_chars=70000,
+            target_chunk_size=3500,
+            chunk_overlap=200
+        )
+        
+        raw_text, document_analysis = processor.extract_pdf_text(uploaded_file)
         if not raw_text or len(raw_text.strip()) < 50:
             return jsonify({"error": "Could not extract sufficient text from file. Please ensure it's a valid PDF/Text document."}), 400
 
-        # 2. Store full text and file name for later quiz generation
+        # 2. Store enhanced data for later quiz generation
         upload_id = str(uuid.uuid4())
-        _SUBTOPIC_UPLOADS[upload_id] = {'text': raw_text, 'file_name': file_name}
+        _SUBTOPIC_UPLOADS[upload_id] = {
+            'text': raw_text, 
+            'file_name': file_name,
+            'analysis': document_analysis  # Store analysis for later use
+        }
 
-        # 3. Get Subtopics using LLM (use first chunks to save tokens)
-        text_chunks = split_into_chunks(raw_text)
-        sample_text = "\n\n".join(text_chunks[:2]) if len(text_chunks) > 0 else raw_text[:4000]
+        # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
+        # Use adaptive chunking to get the most relevant content for subtopic detection
+        chunks_with_metadata = processor.adaptive_chunking(raw_text, document_analysis)
+        
+        # Use first 2-3 chunks for subtopic extraction (saves tokens while maintaining quality)
+        sample_chunks = chunks_with_metadata[:3]
+        sample_text = "\n\n".join(chunk['text'] for chunk in sample_chunks)
+        
+        # If we have section-based chunks, prioritize those for subtopic extraction
+        section_chunks = [chunk for chunk in chunks_with_metadata if chunk.get('chunk_type') == 'section']
+        if section_chunks:
+            # Use section headings as potential subtopics
+            section_based_subtopics = [chunk.get('section', '') for chunk in section_chunks if chunk.get('section')]
+            if section_based_subtopics:
+                sample_text += "\n\nDocument Sections: " + ", ".join(section_based_subtopics)
+
+        print(f"📊 Subtopic Extraction Analysis:")
+        print(f"   - Structure Score: {document_analysis.get('structure_score', 0):.2f}")
+        print(f"   - Total Pages: {document_analysis.get('total_pages', 0)}")
+        print(f"   - Chunks Used: {len(sample_chunks)}")
+        print(f"   - Sample Text Length: {len(sample_text)}")
 
         try:
             subtopics_llm_output = extract_subtopics_llm(
@@ -371,10 +513,9 @@ def extract_subtopics():
             )
         except Exception as e:
             print(f"❌ Error in extract_subtopics_llm: {e}")
-            # Fallback: naive headings/short lines extraction
-            lines = [ln.strip() for ln in sample_text.splitlines() if ln.strip()]
-            heads = [ln for ln in lines if re.match(r"^\s*\d+[\.\)]\s+\w+", ln) or len(ln.split()) <= 6]
-            subtopics_llm_output = list(dict.fromkeys(heads))[:10]
+            # ENHANCED FALLBACK: Use structure analysis for better fallback subtopics
+            fallback_subtopics = _get_enhanced_fallback_subtopics(raw_text, document_analysis)
+            subtopics_llm_output = fallback_subtopics
 
         # normalize LLM output
         if isinstance(subtopics_llm_output, dict) and subtopics_llm_output.get("subtopics"):
@@ -388,22 +529,31 @@ def extract_subtopics():
                     if key in subtopics_llm_output and isinstance(subtopics_llm_output[key], list):
                         subs = [str(x).strip() for x in subtopics_llm_output[key] if str(x).strip()]
                         break
-            if not subs:
-                lines = [ln.strip() for ln in sample_text.splitlines() if ln.strip()]
-                heads = [ln for ln in lines if re.match(r"^\s*\d+[\.\)]\s+\w+", ln) or len(ln.split()) <= 6]
-                subs = list(dict.fromkeys(heads))[:10]
+        
+        # If LLM returned empty or insufficient subtopics, use enhanced fallback
+        if not subs or len(subs) < 3:
+            enhanced_subs = _get_enhanced_fallback_subtopics(raw_text, document_analysis)
+            # Combine with any LLM results
+            subs = list(dict.fromkeys(subs + enhanced_subs))[:10]
+
+        # Remove duplicates and ensure reasonable length
+        subs = list(dict.fromkeys([str(s).strip() for s in subs if str(s).strip()]))[:10]
 
         return jsonify({
             "success": True,
             "upload_id": upload_id,
             "subtopics": subs,
             "source_file": file_name,
+            "analysis_metadata": {
+                "structure_score": round(document_analysis.get('structure_score', 0), 2),
+                "total_pages": document_analysis.get('total_pages', 0),
+                "chunking_strategy": sample_chunks[0]['chunk_type'] if sample_chunks else 'none'
+            }
         }), 200
 
     except Exception as e:
         print(f"❌ Error in extract_subtopics: {e}")
         return jsonify({"error": f"Server error during subtopic extraction: {str(e)}"}), 500
-
 
 @app.route("/api/custom/quiz-from-subtopics", methods=["POST"])
 def quiz_from_subtopics():
@@ -628,6 +778,108 @@ def api_publish_quiz(quiz_id):
     # optional: mark as published; no-op is fine
     return jsonify({"quiz_id": quiz_id, "status": "published"}), 200
 
+@app.route('/teacher/preview/<quiz_id>')
+def teacher_preview(quiz_id):
+    """Preview quiz as teacher"""
+    quiz_data = get_quiz_by_id(quiz_id)
+    if not quiz_data:
+        return "Quiz not found", 404
+    
+    return render_template(
+        'teacher_preview.html',
+        quiz=quiz_data,
+        quiz_id=quiz_id
+    )
+
+@app.route('/api/quizzes/<quiz_id>/send', methods=['POST'])
+def send_quiz_to_students(quiz_id):
+    """Send quiz to students with notification"""
+    try:
+        data = request.get_json()
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Mark quiz as published/active
+        quiz_data["published"] = True
+        quiz_data["published_at"] = datetime.utcnow().isoformat()
+        quiz_data["notification_message"] = data.get('message', '')
+        
+        # Save updated quiz
+        save_quiz_to_store(quiz_data)
+        
+        # Here you would integrate with your notification system
+        # For now, we'll just return success
+        return jsonify({
+            "success": True,
+            "message": "Quiz sent to students successfully",
+            "quiz_id": quiz_id
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
+def get_quiz_settings(quiz_id):
+    """Get current settings of a quiz"""
+    try:
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Fetch the current settings, if available
+        settings = quiz_data.get('settings', {})
+        
+        return jsonify(settings)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['POST'])
+def update_quiz_settings(quiz_id):
+    """Update quiz settings"""
+    try:
+        data = request.get_json()
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Validate time_limit (ensure it's a valid integer within range)
+        time_limit = data.get('time_limit', 30)
+        if not isinstance(time_limit, int) or not (5 <= time_limit <= 180):
+            return jsonify({"error": "Invalid time limit. Must be between 5 and 180 minutes."}), 400
+        
+        # Validate due_date (ensure it's a valid datetime string)
+        due_date = data.get('due_date', None)
+        if due_date and not isinstance(due_date, str):
+            return jsonify({"error": "Invalid due date format."}), 400
+        
+        # Ensure settings field exists
+        if 'settings' not in quiz_data:
+            quiz_data['settings'] = {}
+
+        # Update the settings
+        quiz_data['settings'].update({
+            'time_limit': time_limit,
+            'due_date': due_date,
+            'allow_retakes': data.get('allow_retakes', False),
+            'shuffle_questions': data.get('shuffle_questions', True),
+            'notification_message': data.get('notification_message', '')
+        })
+        
+        save_quiz_to_store(quiz_data)
+        
+        return jsonify({
+            "success": True,
+            "message": "Settings updated successfully"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ===============================
 # MAIN
