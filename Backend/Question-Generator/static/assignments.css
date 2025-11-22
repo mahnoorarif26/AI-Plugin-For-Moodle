@@ -131,6 +131,55 @@ body{
   transform: translateY(0) scale(0.98);
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
 }
+.file-name-display {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  word-break: break-all;
+}
+.section-title {
+  font-weight: 700;
+  margin: 18px 0 8px;
+  color: #333;
+}
+
+.field span {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.field textarea,
+.field input[type="number"] {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 15px;
+  resize: vertical;
+  transition: border-color .25s ease;
+}
+
+.field textarea:focus,
+.field input[type="number"]:focus {
+  border-color: #fa8c26;
+  outline: none;
+}
+/* Make the assignment output span the full row under the 3 cards */
+#section-assignments .assignment-output-card {
+  grid-column: 1 / -1;   /* span all grid columns */
+  width: 100%;
+  margin-top: 32px;
+}
+
+/* Make each assignment task use full width inside that area */
+#assignment-output .question-card.assignment-task {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 24px 0;
+}
+
 
 .section-title {
   font-weight: 700;

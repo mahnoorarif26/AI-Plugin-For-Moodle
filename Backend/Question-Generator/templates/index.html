@@ -88,10 +88,8 @@
           <h2>Generated Quiz</h2>
           <div class="quiz-actions">
 
-
             <button class="btn" id="btn-send" type="button">Send</button>
             <button class="btn" id="btn-publish" type="button">Publish</button>
-
             <span id="publish-note" class="muted" style="margin-left:8px;"></span>
           </div>
         </div>
@@ -168,49 +166,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <div id="settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" >
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3 id="settings-modal-title">Quiz Settings</h3>
-        <button class="btn-close" id="btn-close-settings" aria-label="Close settings">
-          <i class='bx bx-x'></i>
-        </button>
-      </div>
-
-      <div class="modal-body">
-      <div class="form-group">
-        <label for="time-limit" class="label">Time Limit (minutes)</label>
-        <input type="number" id="time-limit" min="0" max="480" placeholder="0 for no limit">
-        <div class="hint">Set to 0 for unlimited time</div>
-      </div>
-
-      <div class="form-group">
-        <label for="due-date" class="label">Due date</label>
-        <input type="datetime-local" id="due-date">
-      </div>
-
-      <div class="form-row">
-        <label class="checkbox">
-          <input type="checkbox" id="allow-retakes"> Allow retakes
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" id="shuffle-questions" checked> Shuffle questions
-        </label>
-      </div>
-
-      <div class="form-group">
-        <label for="notification-message" class="label">Notification message (optional)</label>
-        <textarea id="notification-message" rows="3" placeholder="Message students will receive with the quiz"></textarea>
-      </div>
-    </div>
-
-    <div class="modal-foot">
-      <button class="btn ghost" id="btn-cancel-settings">Cancel</button>
-      <button class="btn primary" id="btn-save-settings">Save</button>
-    </div>
-
-
-
   <!-- Modals -->
   <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
     <div class="modal-card">
@@ -227,8 +182,9 @@
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInput" type="file" accept="application/pdf" hidden />
       </div>
-      <div id="fileNameDisplay" class="file-name-display"></div>
+      <div id="fileNameDisplay" class="file-name"></div>
       <div class="progress" id="progress"><div></div></div>
+
     </div>
   </div>
 
@@ -248,8 +204,7 @@
         <small>Accepted: .pdf (max ~25MB)</small>
         <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
       </div>
-     <div id="fileNameDisplayCustom" class="file-name-display"></div>
-
+      <div id="fileNameDisplayCustom" class="file-name"></div>
       <div class="center-btn-wrapper">
         <button id="btn-detect-subtopics" type="button" class="btn detect-btn">Detect Subtopics</button>
       </div>
@@ -331,6 +286,8 @@
         <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
       </div>
       <div id="assignFileNameDisplay" class="file-name-display"></div>
+
+      <!-- 2) Total tasks -->
       <div class="section-title" style="margin-top:18px;">2) Total Tasks</div>
       <div class="field">
         <label class="label" for="assign-pdf-count">Total Tasks</label>
@@ -341,7 +298,6 @@
       <div style="margin-top:20px; display:flex; justify-content:flex-end;">
         <button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
       </div>
-      <div class="progress" id="assign-progress"><div></div></div>
     </div>
   </div>
 
@@ -396,7 +352,9 @@
   <script src="{{ url_for('static', filename='assignments.js') }}"></script>
   <script src="{{ url_for('static', filename='view_items.js') }}"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
-<script defer>
+
+  <!-- Router + Home Rotator -->
+  <script defer>
   (function () {
     const $ = (sel) => document.querySelector(sel);
     const id = (s) => document.getElementById(s);

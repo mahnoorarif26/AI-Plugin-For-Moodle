@@ -43,41 +43,41 @@ class CustomizeModal {
     this.modal?.addEventListener('click', e => { if (e.target === this.modal) this.close(); });
 
     if (this.uploader && this.fileInput) {
-  const updateName = () => {
-    if (!this.fileNameDisplay) return;
-    if (this.fileInput.files?.[0]) {
-      this.fileNameDisplay.textContent = this.fileInput.files[0].name;
-    } else {
-      this.fileNameDisplay.textContent = '';
-    }
-  };
+    const updateName = () => {
+      if (!this.fileNameDisplay) return;
+      if (this.fileInput.files?.[0]) {
+        this.fileNameDisplay.textContent = this.fileInput.files[0].name;
+      } else {
+        this.fileNameDisplay.textContent = '';
+      }
+    };
 
-  this.uploader.addEventListener('click', () => this.fileInput.click());
+    this.uploader.addEventListener('click', () => this.fileInput.click());
 
-  this.uploader.addEventListener('dragover', e => {
-    e.preventDefault();
-    this.uploader.classList.add('dragover');
-  });
+    this.uploader.addEventListener('dragover', e => {
+      e.preventDefault();
+      this.uploader.classList.add('dragover');
+    });
 
-  this.uploader.addEventListener('dragleave', () => {
-    this.uploader.classList.remove('dragover');
-  });
+    this.uploader.addEventListener('dragleave', () => {
+      this.uploader.classList.remove('dragover');
+    });
 
-  this.uploader.addEventListener('drop', e => {
-    e.preventDefault();
-    this.uploader.classList.remove('dragover');
-    if (e.dataTransfer.files?.[0]) {
-      this.fileInput.files = e.dataTransfer.files;
+    this.uploader.addEventListener('drop', e => {
+      e.preventDefault();
+      this.uploader.classList.remove('dragover');
+      if (e.dataTransfer.files?.[0]) {
+        this.fileInput.files = e.dataTransfer.files;
+        updateName();
+        notify('PDF selected ✔');
+      }
+    });
+
+    this.fileInput.addEventListener('change', () => {
       updateName();
-      notify('PDF selected ✔');
-    }
-  });
-
-  this.fileInput.addEventListener('change', () => {
-    updateName();
-    if (this.fileInput.files?.[0]) notify('PDF selected ✔');
-  });
-}
+      if (this.fileInput.files?.[0]) notify('PDF selected ✔');
+    });
+  }
 
     // toggle difficulty rows based on selection
     const toggleRows = () => {
