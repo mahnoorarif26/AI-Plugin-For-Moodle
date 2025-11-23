@@ -242,6 +242,13 @@ select{
   cursor:pointer; 
   transition: background .2s, border-color .2s;
 }
+.file-name-display {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+  word-break: break-all;
+}
 
 .file-name {
   margin-top: 8px;
@@ -305,6 +312,28 @@ select{
   font-weight:800; 
   color:#0f172a; 
   letter-spacing:.02em; 
+}
+
+.center-btn-wrapper {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.detect-btn {
+  border: 1px solid #e5e7eb;    /* light gray normal border */
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: white;            /* always white */
+  cursor: pointer;
+  transition: border-color 0.25s ease;
+  font-weight: 600;
+}
+
+/* Thin orange border on hover — no background change */
+.detect-btn:hover {
+  border-color: #fb923c;         /* soft orange */
+  background: white !important;  /* stay white */
 }
 
 /* ===== TOAST STYLES ===== */
