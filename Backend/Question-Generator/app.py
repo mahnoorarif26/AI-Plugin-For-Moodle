@@ -531,7 +531,13 @@ def auto_generate_quiz():
         }
 
         quiz_id = save_quiz_to_store(quiz_data)
-        return jsonify({"success": True, "quiz_id": quiz_id, "questions_count": len(questions)}), 200
+        return jsonify({
+        "success": True,
+        "quiz_id": quiz_id,
+        "questions_count": len(questions),
+        "questions": questions,      # <-- this is what assignments.js needs
+        "quiz": quiz_data,           # optional, but nice to have
+    }), 200
 
     except Exception as e:
         print(f"❌ Error in auto_generate_quiz: {e}")
