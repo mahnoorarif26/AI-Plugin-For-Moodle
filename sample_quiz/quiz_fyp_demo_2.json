@@ -1,0 +1,33 @@
+{
+  "id": "quiz_fyp_demo_2",
+  "title": "Machine Learning & Python Basics Quiz",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which algorithm is commonly used for classification tasks?",
+      "options": [
+        "K-Means Clustering",
+        "Linear Regression",
+        "Decision Trees",
+        "Apriori Algorithm"
+      ],
+      "answer": "C",
+      "max_score": 1
+    },
+    {
+      "id": "q2",
+      "type": "short",
+      "prompt": "Define machine learning in one or two sentences.",
+      "answer": "Machine learning allows systems to learn patterns from data and make decisions without being explicitly programmed.",
+      "max_score": 3
+    },
+    {
+      "id": "q3",
+      "type": "conceptual",
+      "prompt": "Explain why Python is widely used in data science.",
+      "answer": "Python is popular in data science because of its simplicity, large ecosystem of libraries, and strong community support.",
+      "max_score": 5
+    }
+  ]
+}

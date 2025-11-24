@@ -1,0 +1,33 @@
+{
+  "id": "quiz_fyp_demo_1",
+  "title": "AI & Programming Basics Quiz",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which of the following is an example of supervised learning?",
+      "options": [
+        "Clustering customers based on behavior",
+        "Training a model to classify emails as spam or not spam using labeled data",
+        "Exploring data without any labels",
+        "Randomly assigning labels to data points"
+      ],
+      "answer": "B",
+      "max_score": 1
+    },
+    {
+      "id": "q2",
+      "type": "short",
+      "prompt": "In one or two sentences, define an API.",
+      "answer": "An API (Application Programming Interface) is a defined set of rules or contracts that allow one software component to communicate with another, usually via exposed functions or HTTP endpoints.",
+      "max_score": 3
+    },
+    {
+      "id": "q3",
+      "type": "conceptual",
+      "prompt": "Explain why using version control systems like Git is important in software development projects.",
+      "answer": "Version control systems like Git allow tracking changes over time, collaborating safely across multiple developers, creating branches for features, rolling back mistakes, and maintaining a clear history of the project. They improve teamwork, reliability, and reproducibility of the codebase.",
+      "max_score": 5
+    }
+  ]
+}

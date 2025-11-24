@@ -1,0 +1,71 @@
+{
+    "items": [
+        {
+            "feedback": "Correct.",
+            "is_correct": true,
+            "max_score": 1.0,
+            "question_id": "q1",
+            "score": 1.0,
+            "type": "mcq",
+            "verdict": "correct"
+        },
+        {
+            "criteria": [
+                {
+                    "feedback": "The definition is mostly accurate but omits some key details.",
+                    "max": 0.5,
+                    "name": "accuracy",
+                    "score": 0.45
+                },
+                {
+                    "feedback": "The answer could be more comprehensive, including the full meaning of API and its purpose.",
+                    "max": 0.3,
+                    "name": "completeness",
+                    "score": 0.24
+                },
+                {
+                    "feedback": "The answer is clear and concise, effectively conveying the basic idea of an API.",
+                    "max": 0.2,
+                    "name": "clarity",
+                    "score": 0.18
+                }
+            ],
+            "feedback": "The answer is mostly correct but lacks the full context of an API, such as mentioning 'Application Programming Interface' or 'contracts'.",
+            "max_score": 3.0,
+            "question_id": "q2",
+            "score": 2.7,
+            "type": "short",
+            "verdict": "partially_correct"
+        },
+        {
+            "criteria": [
+                {
+                    "feedback": "The answer is mostly accurate but misses some key benefits like maintaining a clear project history.",
+                    "max": 0.5,
+                    "name": "accuracy",
+                    "score": 0.45
+                },
+                {
+                    "feedback": "The answer is somewhat incomplete, missing aspects like improving reliability and reproducibility of the codebase.",
+                    "max": 0.3,
+                    "name": "completeness",
+                    "score": 0.24
+                },
+                {
+                    "feedback": "The answer is clear and concise but could benefit from a bit more detail to fully explain the importance of Git in software development.",
+                    "max": 0.2,
+                    "name": "clarity",
+                    "score": 0.18
+                }
+            ],
+            "feedback": "The answer covers key points like tracking changes and collaboration but lacks detail on reliability, reproducibility, and the overall impact on teamwork.",
+            "max_score": 5.0,
+            "question_id": "q3",
+            "score": 4.2,
+            "type": "conceptual",
+            "verdict": "partially_correct"
+        }
+    ],
+    "max_total": 9.0,
+    "quiz_id": "quiz_fyp_demo_1",
+    "total_score": 7.9

@@ -1,0 +1,33 @@
+{
+  "id": "quiz_fyp_demo_3",
+  "title": "Data Science & Algorithms Quiz",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "Which data structure uses LIFO (Last In, First Out)?",
+      "options": [
+        "Queue",
+        "Stack",
+        "Linked List",
+        "Binary Tree"
+      ],
+      "answer": "B",
+      "max_score": 1
+    },
+    {
+      "id": "q2",
+      "type": "short",
+      "prompt": "What is the purpose of data normalization in machine learning?",
+      "answer": "Normalization scales numerical data to a consistent range to improve model performance.",
+      "max_score": 3
+    },
+    {
+      "id": "q3",
+      "type": "conceptual",
+      "prompt": "Explain why feature engineering is important in machine learning.",
+      "answer": "Feature engineering transforms raw data into meaningful features to help models learn patterns better.",
+      "max_score": 5
+    }
+  ]
+}
