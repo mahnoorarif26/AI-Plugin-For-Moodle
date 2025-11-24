@@ -4,57 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submissions for {{ quiz_title }}</title>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
     <style>
-        /* Define Orange Colors */
         :root {
-            --primary-orange: #ff9f1c; /* Main Orange color */
-            --dark-orange: #cc7a00;    /* Darker Orange for hover */
-            --status-correct: #28a745; /* Green - Keep for success/correct */
-            --status-incorrect: #dc3545; /* Red - Keep for failure/incorrect */
-            --status-manual: #ffc107; /* Yellow/Amber - Keep for manual review */
+            --primary-orange: #ff9f1c;
+            --dark-orange: #cc7a00;
+            --status-correct: #28a745;
+            --status-incorrect: #dc3545;
+            --status-manual: #ffc107;
             --back-link-default: #6c757d;
         }
 
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f7f9fc;
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #f7f9fc;
+            margin: 0;
         }
+
         .container {
-            max-width: 1000px; 
-            margin: 0 auto; 
-            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 25px;
         }
+
         .header {
-            padding: 20px 0;
-            border-bottom: 2px solid #ddd;
-            margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 30px;
         }
+
         .header h1 {
-            /* Changed from blue to Primary Orange */
             color: var(--primary-orange);
             margin: 0;
+            font-size: 1.8rem;
         }
+
         .back-link {
             text-decoration: none;
             color: var(--back-link-default);
             font-weight: 500;
-            transition: color 0.3s;
+            transition: 0.3s;
         }
+
         .back-link:hover {
-            /* Changed from blue to Primary Orange */
             color: var(--primary-orange);
         }
+
         .submission-card {
-            background: white;
-            padding: 25px;
+            background: #fff;
+            padding: 22px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            margin-bottom: 25px;
         }
+
         .student-info {
             display: flex;
             justify-content: space-between;
@@ -63,87 +70,139 @@
             padding-bottom: 10px;
             margin-bottom: 15px;
         }
-        .submission-details strong {
+
+        .student-info h2 {
+            margin: 0;
+            font-size: 1.3rem;
             color: #333;
+            font-weight: 600;
         }
-        .status-correct { color: var(--status-correct); font-weight: 500; }
-        .status-incorrect { color: var(--status-incorrect); font-weight: 500; }
-        .status-manual { color: var(--status-manual); font-weight: 500; }
-        
-        /* Student response color - Changed from blue to Primary Orange */
-        .question-review .student-response {
-            margin-left: 15px; 
+
+        .submission-details p {
+            margin: 0;
+            text-align: right;
+        }
+
+        .question-review {
+            margin-top: 10px;
+        }
+
+        .question-block {
+            padding: 12px 0;
+            border-top: 1px dotted #eee;
+        }
+
+        .question-block p {
+            margin: 5px 0;
+        }
+
+        .student-response {
             color: var(--primary-orange);
+            margin-left: 12px;
         }
-        
-        /* Correct answer color remains green for clarity */
-        .question-review .correct-answer {
-            margin-left: 15px; 
+
+        .correct-answer {
             color: var(--status-correct);
+            margin-left: 12px;
         }
-        
-        /* No submissions icon color - Changed to status-manual (Amber/Yellow) */
-        .no-submissions i.bx-data {
-            font-size: 48px; 
-            color: var(--status-manual); 
+
+        .status-correct {
+            color: var(--status-correct);
+            font-weight: 600;
+        }
+
+        .status-incorrect {
+            color: var(--status-incorrect);
+            font-weight: 600;
+        }
+
+        .status-manual {
+            color: var(--status-manual);
+            font-weight: 600;
+        }
+
+        .no-submissions {
+            background: white;
+            padding: 45px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .no-submissions i {
+            font-size: 48px;
+            color: var(--status-manual);
             margin-bottom: 16px;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Submissions for: **{{ quiz_title }}**</h1>
-            <a href="{{ url_for('teacher_index') }}" class="back-link">
-                <i class='bx bx-arrow-back'></i> Back to Quizzes List
-            </a>
-        </div>
 
-        {% if submissions %}
-            {% for sub in submissions %}
-                <div class="submission-card">
-                    <div class="student-info">
-                        <h2 style="font-size: 1.4em; color: #333; margin: 0;">
-                            <i class='bx bx-user-circle'></i> {{ sub.student_name }} ({{ sub.student_email }})
-                        </h2>
-                        <div class="submission-details" style="text-align: right;">
-                            <p style="margin: 0;">**Score:** <strong>{{ sub.score }} / {{ sub.total_questions }}</strong></p>
-                            <p style="margin: 0; font-size: 0.9em; color: #777;">Submitted: {{ sub.submitted_at_str }}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="question-review">
-                        {% for q_id, q_details in sub.answers.items() %}
-                            <div style="padding: 10px 0; border-top: 1px dotted #f0f0f0;">
-                                <p style="font-weight: 600; margin-bottom: 5px;">{{ loop.index }}. {{ q_details.prompt }}</p>
-                                
-                                <p class="student-response">**Student Response:** {{ q_details.response }}</p>
-                                <p class="correct-answer">**Correct Answer:** {{ q_details.correct_answer }}</p>
-                                
-                                {% if q_details.type in ['mcq', 'true_false'] %}
-                                    <p style="text-align: right; margin-top: 5px; font-size: 0.9em; color: #333;">
-                                        **Status:** {% if q_details.is_correct %}
-                                            <span class="status-correct"><i class='bx bx-check-circle'></i> Automatically Correct</span>
-                                        {% else %}
-                                            <span class="status-incorrect"><i class='bx bx-x-circle'></i> Automatically Incorrect</span>
-                                        {% endif %}
-                                    </p>
-                                {% else %}
-                                    <p style="text-align: right; margin-top: 5px; font-size: 0.9em; color: #333;">
-                                        **Status:** <span class="status-manual"><i class='bx bx-pencil'></i> Requires Manual Review</span>
-                                    </p>
-                                {% endif %}
-                            </div>
-                        {% endfor %}
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>Submissions for: <strong>{{ quiz_title }}</strong></h1>
+        <a href="{{ url_for('teacher_index') }}" class="back-link">
+            <i class='bx bx-arrow-back'></i> Back to Quizzes List
+        </a>
+    </div>
+
+    {% if submissions %}
+        {% for sub in submissions %}
+            <div class="submission-card">
+
+                <div class="student-info">
+                    <h2>
+                        <i class='bx bx-user-circle'></i>
+                        {{ sub.student_name }} ({{ sub.student_email }})
+                    </h2>
+
+                    <div class="submission-details">
+                        <p><strong>Score: {{ sub.score }} / {{ sub.total_questions }}</strong></p>
+                        <p style="font-size: 0.9rem; color: #777;">Submitted: {{ sub.submitted_at_str }}</p>
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="no-submissions" style="text-align: center; padding: 50px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                <i class='bx bx-data' style="font-size: 48px; margin-bottom: 16px;"></i>
-                <p style="color: #999; font-size: 1.1em;">No students have submitted this quiz yet.</p>
+
+                <div class="question-review">
+                    {% for q_id, q in sub.answers.items() %}
+                        <div class="question-block">
+
+                            <p><strong>{{ loop.index }}. {{ q.prompt }}</strong></p>
+
+                            <p class="student-response"><strong>Student Response:</strong> {{ q.response }}</p>
+
+                            <p class="correct-answer"><strong>Correct Answer:</strong> {{ q.correct_answer }}</p>
+
+                            {% if q.type in ['mcq', 'true_false'] %}
+                                <p style="text-align:right;">
+                                    <strong>Status:</strong>
+                                    {% if q.is_correct %}
+                                        <span class="status-correct"><i class='bx bx-check-circle'></i> Automatically Correct</span>
+                                    {% else %}
+                                        <span class="status-incorrect"><i class='bx bx-x-circle'></i> Automatically Incorrect</span>
+                                    {% endif %}
+                                </p>
+                            {% else %}
+                                <p style="text-align:right;">
+                                    <strong>Status:</strong>
+                                    <span class="status-manual"><i class='bx bx-pencil'></i> Requires Manual Review</span>
+                                </p>
+                            {% endif %}
+
+                        </div>
+                    {% endfor %}
+                </div>
+
             </div>
-        {% endif %}
-    </div>
+        {% endfor %}
+
+    {% else %}
+        <div class="no-submissions">
+            <i class="bx bx-data"></i>
+            <p style="color:#999; font-size:1.1rem;">No students have submitted this quiz yet.</p>
+        </div>
+    {% endif %}
+
+</div>
 </body>
 </html>
