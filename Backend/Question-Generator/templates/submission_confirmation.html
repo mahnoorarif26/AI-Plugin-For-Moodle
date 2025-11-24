@@ -1,99 +1,242 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Submission Confirmed</title>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Confirmation</title>
     <style>
-        /* Orange Color Definitions */
+        /* Define Colors for attractiveness and consistency */
         :root {
-            --primary-orange: #ff9f1c; /* Main Orange color */
-            --dark-orange: #cc7a00;    /* Darker Orange for hover */
-            --soft-orange-bg: #fff3e0; /* Very light orange for score background */
+            --primary-orange: #ff9f1c; 
+            --dark-orange: #cc7a00;   
+            --success-green: #2ecc71;  
+            --info-blue: #3498db;
+            --warning-yellow: #f1c40f;
+            --danger-red: #e74c3c;
+            --background-light: #F5F6F8; /* New Light Blue-Gray Background */
         }
 
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f7f9fc;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            /* 1. UPDATED BACKGROUND COLOR */
+            background-color: var(--background-light);
+            color: #333;
+            line-height: 1.6;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
         }
-        .confirmation-box {
+        
+        .confirmation-container {
             background: white;
             padding: 40px;
             border-radius: 15px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             text-align: center;
-            /* Changed from green to Primary Orange */
-            border-top: 5px solid var(--primary-orange);
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #e0e0e0;
         }
-        .icon-success {
-            font-size: 72px;
-            /* Changed from green to Primary Orange */
-            color: var(--primary-orange);
+        
+        .success-icon {
+            font-size: 64px;
             margin-bottom: 20px;
+            /* Added animation for visual appeal */
+            animation: pulse 1.5s infinite alternate;
         }
-        h1 {
-            color: #333;
-            font-size: 1.8em;
-            margin-bottom: 10px;
+        
+        .confirmation-title {
+            font-size: 28px;
+            font-weight: 700;
+            /* 4. Use primary orange for title */
+            color: var(--primary-orange);
+            margin-bottom: 15px;
         }
-        p {
-            color: #555;
+        
+        .confirmation-message {
+            font-size: 16px;
+            color: #7f8c8d;
             margin-bottom: 25px;
-            line-height: 1.6;
+            line-height: 1.8;
         }
-        .score-info {
-            /* Changed from light green to Soft Orange BG */
-            background-color: var(--soft-orange-bg);
-            padding: 15px;
+        
+        .score-display {
+            background: #e8f5e8;
+            border: 2px solid var(--success-green);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            transition: transform 0.3s;
+        }
+
+        .score-display:hover {
+            transform: scale(1.02);
+        }
+        
+        .score-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--success-green);
+        }
+        
+        .score-text {
+            font-size: 16px;
+            color: #388e3c;
+            margin-top: 5px;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 25px 0;
+            text-align: left;
+        }
+        
+        .detail-item {
+            padding: 12px;
+            background: #f8f9fa;
             border-radius: 8px;
-            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .score-info strong {
-            display: block;
-            font-size: 1.2em;
-            /* Changed from green to Primary Orange */
-            color: var(--primary-orange);
+        
+        .detail-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 3px;
         }
-        .btn-home {
-            /* Changed from blue to Primary Orange */
+        
+        .detail-value {
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary {
+            /* 4. Use primary orange for main button */
             background-color: var(--primary-orange);
             color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: background-color 0.3s;
         }
-        .btn-home:hover {
-            /* Changed from dark blue to Darker Orange */
+        
+        .btn-primary:hover {
             background-color: var(--dark-orange);
+            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+        }
+        
+        /* 4. Styling the secondary button (Dashboard button only) */
+        .btn-secondary-info {
+            background-color: var(--info-blue);
+            color: white;
+        }
+        
+        .btn-secondary-info:hover {
+            background-color: #2980b9;
+        }
+        
+        /* Timeout and Assignment Styles Updated to use defined colors */
+        .timeout-warning {
+            background: #fdf6e6; /* Light warning yellow */
+            border: 2px solid var(--warning-yellow);
+            color: #a07400; /* Darker yellow text */
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        
+        .assignment-pending {
+            background: #eef7ff; /* Light info blue */
+            border: 2px solid var(--info-blue);
+            color: #2980b9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        
+        /* Keyframe for pulse effect */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
         }
     </style>
 </head>
 <body>
-    <div class="confirmation-box">
-        <i class='bx bx-check-circle icon-success'></i>
-        <h1>Submission Successful!</h1>
-        <p>Thank you, **{{ student_name or 'Student' }}**, your quiz **{{ quiz_title }}** has been submitted.</p>
+    <div class="confirmation-container">
+        {% if time_exceeded %}
+            <div class="success-icon">⏳</div>
+            <h1 class="confirmation-title">Time Limit Exceeded</h1>
+            <div class="timeout-warning">
+                {{ confirmation_message }}
+            </div>
+        {% elif is_assignment %}
+            <div class="success-icon">📝</div>
+            <h1 class="confirmation-title">Assignment Submitted</h1>
+            <div class="assignment-pending">
+                {{ confirmation_message }}
+            </div>
+        {% else %}
+            <div class="success-icon" style="color: var(--success-green);">🎉</div>
+            <h1 class="confirmation-title">{{ item_type }} Submitted Successfully</h1>
+            <div class="confirmation-message">
+                {{ confirmation_message }}
+            </div>
+            
+            {% if not is_assignment %}
+            <div class="score-display">
+                
+                <div class="score-text">Your Score (Pending Grade)</div>
+            </div>
+            {% endif %}
+        {% endif %}
         
-        <div class="score-info">
-            <p>Your instant score (Auto-graded questions only): 
-                <strong>{{ score }} out of {{ total }}</strong>
-            </p>
-            <p style="font-size: 0.9em; color: #888; margin-top: 10px;">
-                *Short/Long answers require manual review by the instructor to finalize your grade.*
-            </p>
+        <div class="details-grid">
+            <div class="detail-item">
+                <div class="detail-label">{{ item_type }} Title</div>
+                <div class="detail-value">{{ quiz_title }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Student Name</div>
+                <div class="detail-value">{{ student_name }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Submission ID</div>
+                <div class="detail-value">{{ submission_id }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Submitted At</div>
+                <div class="detail-value">{{ now }}</div>
+            </div>
         </div>
         
-        <a href="{{ url_for('student_index') }}" class="btn-home">
-            <i class='bx bx-list-ul'></i> Go to Available Quizzes
-        </a>
+        <div style="margin-top: 30px;">
+            <a href="/student" class="btn btn-primary">
+                Back to Dashboard
+            </a>
+            </div>
     </div>
-</body>
+
+    </body>
 </html>

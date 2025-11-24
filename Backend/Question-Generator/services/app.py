@@ -5,12 +5,9 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Any
 import time
-import firebase_admin
-from firebase_admin import credentials, firestore
 
 from dotenv import load_dotenv
-from firebase_admin.firestore import Query
-
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, abort
@@ -22,14 +19,6 @@ from services.db import (
     save_submission as save_submission_to_store,  # Singular - save_submission
     get_submitted_quiz_ids  # This was missing from your db.py
 )
-
-
-load_dotenv()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccountKey.json")
-
-if not GROQ_API_KEY:
-    raise RuntimeError("❌ GROQ_API_KEY is missing in environment (.env).")
 
 # ====== LLM / UTILS ======
 from utils import (
@@ -45,21 +34,6 @@ from utils.groq_utils import (
     extract_subtopics_llm,
     generate_quiz_from_subtopics_llm,
 )
-
-
-# === FIREBASE INIT (MISSING) ===
-from firebase_admin import credentials, firestore
-
-if not firebase_admin._apps:
-    cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
-    if not cred_path:
-        raise ValueError("❌ FIREBASE_SERVICE_ACCOUNT_PATH missing in .env file")
-
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred)
-
-_db = firestore.client()
-
 
 # --- Configuration Section ---
 
@@ -87,18 +61,6 @@ ALL_ASSIGNMENTS = load_assignments_data()
 
 
 # --- End Configuration Section ---
-# ===============================
-# FIREBASE INITIALIZATION
-# ===============================
-db = None
-try:
-    cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_PATH)
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    print("✅ Firebase App Initialized successfully.")
-except Exception as e:
-    print(f"⚠️ WARNING: Firebase failed to initialize. Error: {e}")
-    db = None
 # ===============================
 # APP CONFIGURATION
 # ===============================
@@ -563,61 +525,24 @@ def teacher_manual():
 
 @app.route('/teacher/submissions/<quiz_id>', methods=['GET'])
 def teacher_submissions(quiz_id):
-    """View student submissions for a specific quiz (The Solved Quiz Fetch)."""
-    if db is None:
-        return ("Firestore connection failed.", 500)
-
+    """View student submissions for a specific quiz (UI shell; wire your data in template)."""
     quiz_data = get_quiz_by_id(quiz_id)
     if not quiz_data:
         return ("Quiz not found.", 404)
-
-    # Create a map for quick question lookup
-    questions_map = {q.get('id'): q for q in quiz_data.get('questions', []) if q.get('id')}
-    quiz_title = quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
-
+    quiz_title = quiz_data.get("title") or quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
     try:
-        submissions_ref = db.collection('AIquizzes').document(quiz_id).collection('submissions')
-        # Fetch submissions
-        docs = submissions_ref.order_by("submitted_at", direction=Query.DESCENDING).stream()
-
-        submissions_list = []
-        for doc in docs:
-            submission = doc.to_dict()
-            processed_answers = {}
-            for q_id, student_response in submission.get('answers', {}).items():
-                q_data = questions_map.get(q_id)
-                if not q_data:
-                    continue
-                correct_answer = q_data.get('correct_answer', 'N/A')
-                
-                # Check correctness only for auto-graded types (mcq, true_false)
-                is_correct = None
-                if q_data.get('type') in ['mcq', 'true_false']:
-                    is_correct = str(student_response).strip().lower() == str(correct_answer).strip().lower()
-                
-                processed_answers[q_id] = {
-                    'prompt': q_data.get('prompt') or q_data.get('question_text'),
-                    'type': q_data.get('type'),
-                    'response': student_response,
-                    'correct_answer': correct_answer,
-                    'is_correct': is_correct # True/False/None (for manual)
-                }
-
-            submissions_list.append({
-                "id": doc.id,
-                "student_name": submission.get("student_name", "Anonymous"),
-                "student_email": submission.get("student_email", "N/A"),
-                "score": submission.get("score", 0),
-                "total_questions": submission.get("total_questions", len(questions_map)),
-                "submitted_at_str": submission.get('submitted_at').strftime('%Y-%m-%d %H:%M') if submission.get('submitted_at') and isinstance(submission.get('submitted_at'), datetime) else 'Unknown Date',
-                "answers": processed_answers,
-            })
-
-        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=submissions_list)
-
+        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=[])
     except Exception as e:
         print(f"❌ Error fetching submissions: {e}")
         return ("Failed to load submissions.", 500)
+
+# ===============================
+# HEALTH
+# ===============================
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"ok": True})
+
 # ===============================
 # QUIZ GEN API (unchanged)
 # ===============================
