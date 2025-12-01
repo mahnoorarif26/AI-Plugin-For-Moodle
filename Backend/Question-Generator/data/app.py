@@ -33,6 +33,55 @@ from utils.groq_utils import (
     extract_subtopics_llm,
     generate_quiz_from_subtopics_llm,
 )
+# -----------------------------------imports for quiz grading-----------------------------------
+import os
+import sys
+import importlib.util
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ---- Find the nearest 'Question-Generator' directory above this file ----
+HERE = os.path.dirname(__file__)  # e.g. .../Backend/Question-Generator/services
+qg_dir = HERE
+
+while qg_dir and os.path.basename(qg_dir) != "Question-Generator":
+    parent = os.path.dirname(qg_dir)
+    if parent == qg_dir:
+        # We walked all the way up and never found it
+        raise FileNotFoundError(
+            "Could not locate 'Question-Generator' directory from " + HERE
+        )
+    qg_dir = parent
+
+QG_ROOT = qg_dir
+GRADER_FILE = os.path.join(QG_ROOT, "quiz grading", "grader.py")
+
+# ---- Make sure grader.py's folder is importable (for llm.py, prompts.py, etc.) ----
+QUIZ_GRADING_DIR = os.path.dirname(GRADER_FILE)
+if QUIZ_GRADING_DIR not in sys.path:
+    sys.path.insert(0, QUIZ_GRADING_DIR)
+
+# Optional: one-time sanity check while wiring this up
+print("Grader at:", GRADER_FILE, "exists:", os.path.exists(GRADER_FILE))
+
+if not os.path.exists(GRADER_FILE):
+    raise FileNotFoundError(f"grader.py not found at {GRADER_FILE}")
+
+# ---- Dynamic import of quiz grading/grader.py ----
+spec = importlib.util.spec_from_file_location("quizgrading.grader", GRADER_FILE)
+grader_mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(grader_mod)
+
+QuizGrader = grader_mod.QuizGrader
+
+grader = QuizGrader(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model=os.getenv("GROQ_MODEL"),
+    default_policy=os.getenv("GRADING_POLICY", "balanced"),
+)
+
 
 # ===============================
 # ENV / CONFIG

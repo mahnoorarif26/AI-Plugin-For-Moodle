@@ -273,27 +273,29 @@
             countDisplay.textContent = charCount;
         }
 
+        // Avoid double prompts on navigation when submitting
+        let submissionInProgress = false;
+
         function validateSubmission() {
             let allAnswered = true;
             const textareas = document.querySelectorAll('.answer-textarea');
-            
-            textareas.forEach((textarea, index) => {
+
+            // Highlight empty answers, but do not block submit
+            textareas.forEach((textarea) => {
                 if (textarea.value.trim() === '') {
                     allAnswered = false;
-                    // Highlight empty answers
                     textarea.style.borderColor = '#e74c3c';
                 } else {
                     textarea.style.borderColor = '#e9ecef';
                 }
             });
 
-            if (!allAnswered) {
-                if (!confirm('Some questions are unanswered. Are you sure you want to submit?')) {
-                    return;
-                }
-            }
+            const confirmMsg = allAnswered
+              ? 'Are you sure you want to submit your assignment? You cannot make changes after submission.'
+              : 'You left some answers blank. Submit your assignment anyway? You cannot make changes after submission.';
 
-            if (confirm('Are you sure you want to submit your assignment? You cannot make changes after submission.')) {
+            if (confirm(confirmMsg)) {
+                submissionInProgress = true; // prevent beforeunload prompt
                 document.getElementById('assignmentForm').submit();
             }
         }
@@ -356,9 +358,12 @@
 
         // Prevent accidental navigation
         window.addEventListener('beforeunload', function (e) {
+            if (submissionInProgress) {
+                return; // allow navigation without prompt during submit
+            }
             const hasAnswers = Array.from(document.querySelectorAll('.answer-textarea'))
                 .some(textarea => textarea.value.trim() !== '');
-            
+
             if (hasAnswers) {
                 e.preventDefault();
                 e.returnValue = 'You have unsaved work. Are you sure you want to leave?';
