@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -559,7 +559,7 @@
                 gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
 
                 try {
-                    const response = await fetch('/api/grades');
+                    const response = await fetch('/api/grades?refresh=1');
                     const data = await response.json();
                     console.log('Grades API response:', data);
 
@@ -593,8 +593,8 @@
 
                     if (type === 'grade') {
                         // Custom rendering for Grade items (Logic preserved)
-                        const percentage = item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : 'N/A';
-                        const scoreDisplay = `${item.score || 'N/A'}/${item.max_score || 'N/A'}`;
+                        const percentage = item.max_score > 0 ? Math.ceil((item.score / item.max_score) * 100) : 'N/A';
+                        const scoreDisplay = `${Math.ceil(item.score || 0)}/${Math.ceil(item.max_score || 0)}`;
                         
                         card.className = 'grade-card';
                         innerHTML = `
@@ -649,6 +649,23 @@
                 loadGrades();
             }
         });
+
+        // Auto-open Grades tab when navigated with ?section=grades
+        (function(){
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const section = (params.get('section')||'').toLowerCase();
+                if(section === 'grades'){
+                    // Try to click the Grades menu item (keeps UI logic consistent)
+                    const btn = document.querySelector('.menu-item[data-target="grades"]');
+                    if(btn){ btn.click(); }
+                    // Fallback: load grades directly
+                    if(typeof loadGrades === 'function'){
+                        loadGrades();
+                    }
+                }
+            } catch (e) { /* no-op */ }
+        })();
     </script>
 </body>
 </html>

@@ -206,8 +206,12 @@
             
             {% if not is_assignment %}
             <div class="score-display">
-                
-                <div class="score-text">Your Score (Pending Grade)</div>
+                {% if score is number and total is number and total > 0 %}
+                    <div class="score-number">{{ (score|float)|round(0, 'ceil') }} / {{ (total|float)|round(0, 'ceil') }}</div>
+                    <div class="score-text">Your Score</div>
+                {% else %}
+                    <div class="score-text">Your Score (Pending Grade)</div>
+                {% endif %}
             </div>
             {% endif %}
         {% endif %}
@@ -227,15 +231,20 @@
             </div>
             <div class="detail-item">
                 <div class="detail-label">Submitted At</div>
-                <div class="detail-value">{{ now }}</div>
+                <div class="detail-value">{{ submitted_at or now }}</div>
             </div>
         </div>
         
         <div style="margin-top: 30px;">
-            <a href="/student" class="btn btn-primary">
-                Back to Dashboard
-            </a>
-            </div>
+            {% if submission_id and submission_id != 'N/A' %}
+                <a href="/student/grade/{{ submission_id }}" class="btn btn-secondary-info" style="margin-right:10px;">
+                    See My Grade
+                </a>
+            {% else %}
+                <span style="display:inline-block;margin-right:10px;color:#7f8c8d;">Grade link unavailable (no submission id)</span>
+            {% endif %}
+            <a href="/student" class="btn btn-primary">Back to Dashboard</a>
+        </div>
     </div>
 
     </body>

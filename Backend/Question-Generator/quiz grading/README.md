@@ -8,10 +8,10 @@ Overview
 Quick Start
 - Set environment variable `GROQ_API_KEY` (use `.env` locally).
 - Install: `pip install -r requirements.txt`
-- Run: `python app.py`
+- Run: `python app.py`(first cd "AI-Plugin-For-Moodle/Backend/Question-Generator")
 - Health: `GET /healthz`
 - Grade: `POST /api/grade` (JSON)
-- Grade (uploads): `POST /api/grade-upload` (multipart; JSON quiz + JSON or PDF answers)
+- Grade (uploads): `POST /api/grade-upload` (multipart; JSON quiz(.json file) + JSON or PDF answers)
 
 POST /api/grade
 Request JSON shape:
