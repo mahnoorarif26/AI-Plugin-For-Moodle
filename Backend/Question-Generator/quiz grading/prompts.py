@@ -10,6 +10,8 @@ You must:
 - Be consistent with the requested grading policy (balanced/strict/lenient).
 - Prefer the provided reference/ideal answer and prompt context when available.
 - Avoid hallucinations; if uncertain, note uncertainty in feedback.
+-if the answer is completely wrong, give a score of 0.
+-if the answer is completely correct, give full score.
 
 Return JSON of the form:
 {

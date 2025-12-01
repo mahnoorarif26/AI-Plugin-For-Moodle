@@ -1,6 +1,7 @@
 import os
 import math
 import re
+import difflib
 from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -23,6 +24,7 @@ class GradeResult:
     verdict: Optional[str] = None
     feedback: Optional[str] = None
     criteria: Optional[List[Dict[str, Any]]] = None
+    expected: Optional[str] = None
 
 
 def _normalize_bool(val: Any) -> Optional[bool]:
@@ -38,12 +40,29 @@ def _normalize_bool(val: Any) -> Optional[bool]:
     return None
 
 
+def _norm_text(s: str) -> str:
+    try:
+        return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
+    except Exception:
+        return (s or "").strip().lower()
+
+
 def _letter_for_option_text(options: List[str], option_text: str) -> Optional[str]:
     try:
-        norm = option_text.strip().lower()
+        norm = _norm_text(option_text)
         for idx, opt in enumerate(options):
-            if opt.strip().lower() == norm:
-                return chr(ord('A') + idx)
+                if _norm_text(opt) == norm:
+                    return chr(ord('A') + idx)
+        # Fuzzy: choose the best match if sufficiently similar
+        best = None
+        best_ratio = 0.0
+        for idx, opt in enumerate(options):
+            ratio = difflib.SequenceMatcher(None, norm, _norm_text(opt)).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best = idx
+        if best is not None and best_ratio >= 0.75:
+            return chr(ord('A') + best)
     except Exception:
         pass
     return None
@@ -65,6 +84,20 @@ def _letter_from_any(answer: Any, options: List[str]) -> Optional[str]:
     by_text = _letter_for_option_text(options, s)
     if by_text:
         return by_text
+    # Fuzzy: treat long free-text answers as best-match to options
+    try:
+        norm = _norm_text(s)
+        best = None
+        best_ratio = 0.0
+        for idx, opt in enumerate(options):
+            ratio = difflib.SequenceMatcher(None, norm, _norm_text(opt)).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best = idx
+        if best is not None and best_ratio >= 0.75:
+            return chr(ord('A') + best)
+    except Exception:
+        pass
     return None
 
 
@@ -174,8 +207,26 @@ class QuizGrader:
         prompt = (q.get("prompt") or q.get("question_text") or "").strip()
         student_answer = (str(ans) if ans is not None else "").strip()
         reference_answer = None
-        if isinstance(q.get("answer"), str):
-            reference_answer = q.get("answer")
+        # Prefer a string reference; if dict or list appears, stringify
+        ref_candidates = [
+            q.get("answer"),
+            q.get("reference_answer"),
+            q.get("expected_answer"),
+            q.get("ideal_answer"),
+            q.get("solution"),
+            q.get("model_answer"),
+        ]
+        for rc in ref_candidates:
+            if rc is None:
+                continue
+            if isinstance(rc, str):
+                reference_answer = rc
+                break
+            try:
+                reference_answer = str(rc)
+                break
+            except Exception:
+                continue
 
         weights = rubric_weights or _policy_weights(policy)
 
@@ -206,6 +257,7 @@ class QuizGrader:
                 criteria=[
                     {"name": "accuracy", "score": score, "max": max_score, "feedback": fb}
                 ],
+                expected=reference_answer,
             )
 
         user_prompt = build_freeform_user_prompt(
@@ -240,6 +292,7 @@ class QuizGrader:
                 verdict=verdict,
                 feedback=feedback,
                 criteria=criteria,
+                expected=reference_answer,
             )
         except Exception as e:
             score, fb = _heuristic_overlap_score(reference_answer or "", student_answer, max_score)
@@ -253,6 +306,7 @@ class QuizGrader:
                 criteria=[
                     {"name": "accuracy", "score": score, "max": max_score, "feedback": fb}
                 ],
+                expected=reference_answer,
             )
 
     def grade_quiz(
@@ -301,6 +355,7 @@ class QuizGrader:
                     **({"verdict": r.verdict} if r.verdict is not None else {}),
                     **({"feedback": r.feedback} if r.feedback else {}),
                     **({"criteria": r.criteria} if r.criteria else {}),
+                    **({"expected": r.expected} if r.expected is not None else {}),
                 }
                 for r in results
             ],

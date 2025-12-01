@@ -102,14 +102,14 @@
                         
                         {% if question.type == 'mcq' %}
                             {% if question.options %}
+                                {% set letters = ['A','B','C','D'] %}
                                 {% for option in question.options %}
                                     <label class="radio-label" style="display: block; margin-bottom: 8px;">
-                                        <input type="radio" 
-                                            name="{{ question.id }}" 
-                                            value="{{ option }}" 
-                                            required 
+                                        <input type="radio"
+                                            name="{{ question.id }}"
+                                            value="{{ letters[loop.index0] }}"
                                             style="margin-right: 5px;">
-                                        {{ option }}
+                                        {{ letters[loop.index0] }}) {{ option }}
                                     </label>
                                 {% endfor %}
                             {% endif %}
@@ -118,22 +118,22 @@
                             <div class="field">
                                 <label class="label" style="font-weight:600;">Select True / False:</label>
                                 <label style="display:block; margin-bottom:8px;">
-                                    <input type="radio" name="{{ question.id }}" value="True" required style="margin-right:5px;"> 
+                                    <input type="radio" name="{{ question.id }}" value="True" style="margin-right:5px;"> 
                                     True
                                 </label>
                                 <label style="display:block; margin-bottom:8px;">
-                                    <input type="radio" name="{{ question.id }}" value="False" required style="margin-right:5px;"> 
+                                    <input type="radio" name="{{ question.id }}" value="False" style="margin-right:5px;"> 
                                     False
                                 </label>
                             </div>
 
                         {% elif question.type == 'short' %}
                             <label for="{{ question.id }}" style="font-weight: 500;">Your answer (Short Answer):</label>
-                            <input type="text" name="{{ question.id }}" id="{{ question.id }}" required placeholder="Enter your short answer here...">
+                            <input type="text" name="{{ question.id }}" id="{{ question.id }}" placeholder="Enter your short answer here...">
 
                         {% elif question.type == 'long' or question.type == 'essay' %}
                             <label for="{{ question.id }}" style="font-weight: 500;">Your detailed answer (Long Answer/Essay):</label>
-                            <textarea name="{{ question.id }}" id="{{ question.id }}" rows="5" required placeholder="Write your explanation here..."></textarea>
+                            <textarea name="{{ question.id }}" id="{{ question.id }}" rows="5" placeholder="Write your explanation here..."></textarea>
 
                         {% endif %}
                         
