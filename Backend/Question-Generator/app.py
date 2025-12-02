@@ -483,21 +483,47 @@ def extract_subtopics():
             'analysis': document_analysis  # Store analysis for later use
         }
 
-        # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
+                # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
         # Use adaptive chunking to get the most relevant content for subtopic detection
         chunks_with_metadata = processor.adaptive_chunking(raw_text, document_analysis)
         
-        # Use first 2-3 chunks for subtopic extraction (saves tokens while maintaining quality)
-        sample_chunks = chunks_with_metadata[:3]
+        # ✅ Smart sampling across the *whole* document for subtopic extraction
+        total_chunks = len(chunks_with_metadata)
+        sample_chunks: List[Dict[str, Any]] = []
+
+        if total_chunks == 0:
+            sample_chunks = []
+        elif total_chunks <= 6:
+            # Small PDF → use all chunks
+            sample_chunks = chunks_with_metadata
+        else:
+            # Larger PDF → pick ~6 chunks spread from start to end
+            num_samples = 6
+            step = max(1, total_chunks // num_samples)
+
+            indices = set()
+            indices.add(0)                    # very beginning
+            indices.add(total_chunks - 1)     # very end
+
+            # middle positions
+            for i in range(1, num_samples - 1):
+                idx = i * step
+                if 0 <= idx < total_chunks:
+                    indices.add(idx)
+
+            for idx in sorted(indices):
+                sample_chunks.append(chunks_with_metadata[idx])
+
         sample_text = "\n\n".join(chunk['text'] for chunk in sample_chunks)
-        
-        # If we have section-based chunks, prioritize those for subtopic extraction
+
+        # If we have section-based chunks, still prioritize those for subtopic extraction
         section_chunks = [chunk for chunk in chunks_with_metadata if chunk.get('chunk_type') == 'section']
         if section_chunks:
             # Use section headings as potential subtopics
             section_based_subtopics = [chunk.get('section', '') for chunk in section_chunks if chunk.get('section')]
             if section_based_subtopics:
                 sample_text += "\n\nDocument Sections: " + ", ".join(section_based_subtopics)
+
 
         print(f"📊 Subtopic Extraction Analysis:")
         print(f"   - Structure Score: {document_analysis.get('structure_score', 0):.2f}")
