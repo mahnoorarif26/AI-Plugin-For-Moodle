@@ -10,63 +10,63 @@ class SmartPDFProcessor:
         self.chunk_overlap = chunk_overlap
     
     def extract_pdf_text(self, file_storage) -> Tuple[str, Dict[str, Any]]:
-        """
-        Enhanced PDF extraction with structure analysis.
-        Returns both text and document analysis.
-        """
-        data = file_storage.read()
-        reader = PdfReader(BytesIO(data))
+            data = file_storage.read()
+            reader = PdfReader(BytesIO(data))
         
-        document_analysis = {
-            'total_pages': len(reader.pages),
-            'pages': [],
-            'structure_score': 0.0,
-            'estimated_tokens': 0
-        }
-        
-        full_text = ""
-        page_texts = []
-        
-        for page_num, page in enumerate(reader.pages):
-            try:
-                page_text = page.extract_text() or ""
-                page_text = re.sub(r'\s+', ' ', page_text).strip()
-                
-                if page_text:
-                    # Analyze page structure
-                    structure_features = self._analyze_page_structure(page_text)
-                    page_info = {
+            document_analysis = {
+                'total_pages': len(reader.pages),
+                'pages': [],
+                'structure_score': 0.0,
+                'estimated_tokens': 0
+            }
+            
+            full_text = ""
+            page_texts = []
+            
+            for page_num, page in enumerate(reader.pages):
+                try:
+                    page_text = page.extract_text() or ""
+                    
+                    # ✅ Preserve newlines for structural analysis
+                    # Collapse horizontal whitespace (spaces/tabs) but keep \n
+                    page_text = re.sub(r'[^\S\r\n]+', ' ', page_text).strip()
+                    
+                    if page_text:
+                        # Analyze page structure
+                        structure_features = self._analyze_page_structure(page_text)
+                        page_info = {
+                            'page_num': page_num + 1,
+                            'text': page_text,
+                            'tokens_est': len(page_text) // 4,
+                            'has_headings': structure_features['has_headings'],
+                            'paragraph_count': structure_features['paragraph_count'],
+                            'structure_score': structure_features['structure_score']
+                        }
+                        
+                        page_texts.append(page_info)
+                        full_text += page_text + "\n\n"
+                        
+                except Exception as e:
+                    print(f"Error processing page {page_num}: {e}")
+                    page_texts.append({
                         'page_num': page_num + 1,
-                        'text': page_text,
-                        'tokens_est': len(page_text) // 4,
-                        'has_headings': structure_features['has_headings'],
-                        'paragraph_count': structure_features['paragraph_count'],
-                        'structure_score': structure_features['structure_score']
-                    }
-                    
-                    page_texts.append(page_info)
-                    full_text += page_text + "\n\n"
-                    
-            except Exception as e:
-                print(f"Error processing page {page_num}: {e}")
-                page_texts.append({
-                    'page_num': page_num + 1,
-                    'text': '',
-                    'tokens_est': 0,
-                    'has_headings': False,
-                    'paragraph_count': 0,
-                    'structure_score': 0.0
-                })
-        
-        # Smart truncation if needed
-        if len(full_text) > self.max_chars:
-            full_text = self._smart_truncate(full_text, page_texts)
-        
-        document_analysis['pages'] = page_texts
-        document_analysis['estimated_tokens'] = len(full_text) // 4
-        document_analysis['structure_score'] = self._calculate_overall_structure_score(page_texts)
-        
-        return full_text, document_analysis
+                        'text': '',
+                        'tokens_est': 0,
+                        'has_headings': False,
+                        'paragraph_count': 0,
+                        'structure_score': 0.0
+                    })
+            
+            # Smart truncation if needed
+            if len(full_text) > self.max_chars:
+                full_text = self._smart_truncate(full_text, page_texts)
+            
+            document_analysis['pages'] = page_texts
+            document_analysis['estimated_tokens'] = len(full_text) // 4
+            document_analysis['structure_score'] = self._calculate_overall_structure_score(page_texts)
+            
+            return full_text, document_analysis
+
     
     def _analyze_page_structure(self, text: str) -> Dict[str, Any]:
         """Analyze how structured the page content is."""
@@ -170,7 +170,34 @@ class SmartPDFProcessor:
             truncated = truncated[:last_paragraph]
         
         return truncated
-    
+    def _add_overlap(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Add character-level overlap between consecutive chunks.
+        This helps preserve context across chunk boundaries.
+        """
+        if not chunks or self.chunk_overlap <= 0:
+            return chunks
+
+        overlapped: List[Dict[str, Any]] = []
+        prev_text = ""
+
+        for i, chunk in enumerate(chunks):
+            text = chunk.get("text", "")
+            if i == 0:
+                # first chunk unchanged
+                overlapped.append(chunk)
+            else:
+                # take tail from previous chunk and prepend
+                tail = prev_text[-self.chunk_overlap:]
+                new_text = (tail + "\n\n" + text).strip()
+                new_chunk = dict(chunk)
+                new_chunk["text"] = new_text
+                overlapped.append(new_chunk)
+
+            prev_text = overlapped[-1]["text"]
+
+        return overlapped
+
     def adaptive_chunking(self, text: str, document_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Adaptive chunking based on document structure analysis.
@@ -246,6 +273,7 @@ class SmartPDFProcessor:
                         current_chunk = sub_chunks[-1]['text'] if sub_chunks else ""
         
         # Add the final chunk
+                # Add the final chunk
         if current_chunk.strip():
             chunks.append({
                 'text': current_chunk.strip(),
@@ -253,7 +281,9 @@ class SmartPDFProcessor:
                 'chunk_type': 'section'
             })
         
-        return chunks
+        # Add overlap between section chunks for better context
+        return self._add_overlap(chunks)
+
     
     def _paragraph_chunking(self, text: str) -> List[Dict[str, Any]]:
         """Chunk by paragraphs for moderately structured documents."""
@@ -282,7 +312,9 @@ class SmartPDFProcessor:
                 'chunk_type': 'paragraph_group'
             })
         
-        return chunks
+        # Add overlap between paragraph-based chunks
+        return self._add_overlap(chunks)
+
     
     def _sentence_aware_chunking(self, text: str) -> List[Dict[str, Any]]:
         """Chunk by sentences for poorly structured documents."""
@@ -313,7 +345,9 @@ class SmartPDFProcessor:
                 'chunk_type': 'sentence_group'
             })
         
-        return chunks
+        # Add overlap between sentence-based chunks
+        return self._add_overlap(chunks)
+
     
     def _split_large_chunk(self, text: str, section: str) -> List[Dict[str, Any]]:
         """Split chunks that are too large."""

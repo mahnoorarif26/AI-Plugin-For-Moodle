@@ -931,3 +931,84 @@ select{
   font-weight: 600;
 }
 
+/* ===== VIEW LIST (Quizzes / Assignments) ===== */
+
+#view-list-container {
+  max-width: 1200px;
+  margin: 40px auto 0;
+}
+
+#view-list-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 16px;
+}
+
+/* Reuse .quiz-card look, just small tweaks for list */
+.quiz-list-card {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  min-height: auto;           /* don't force 300px for list cards */
+}
+
+/* Top row inside card: title + badge */
+.quiz-list-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.quiz-list-title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.quiz-list-kind {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Meta line: "8 questions • 4 MCQ • 4 Short • Created: ..." */
+.quiz-list-meta {
+  margin: 8px 0 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Actions row: buttons */
+.quiz-list-actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Smaller buttons for list cards */
+.generate-btn.small,
+.btn.small {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+/* Simple badges by kind (optional) */
+.badge-quiz {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  background: var(--orange-soft);
+  color: var(--orange-3);
+  font-weight: 700;
+}
+
+.badge-assignment {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 700;
+}
