@@ -1,11 +1,108 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Plugin for Moodle</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <style>
+
+        /* ===== ROOT VARIABLES ===== */
+:root{
+  --banner-height: 72px; 
+  --pad: 12px;
+  --glass-bg: white; 
+  --glass-border: rgba(255,255,255,.45);
+
+  /* Orange brand */
+  --orange-1: #ff9f1c;
+  --orange-2: #ff7a1a;
+  --orange-3: #ff6b35;
+  --orange-soft: #ffd9b8;
+
+  /* Card */
+  --card-radius: 22px;
+  --card-border: #e5e7eb;
+  --text: #0f172a;
+  --muted: #475569;
+}
+
+/* ===== CARDS GRID STYLES ===== */
+.cards-container{
+  display:grid; 
+  grid-template-columns:repeat(3,1fr); 
+  gap:25px;
+  max-width:1200px; 
+  margin:0 auto; 
+  margin-top:40px;
+}
+
+.quiz-card{
+  background:white; 
+  border-radius:15px; 
+  padding:25px;
+  box-shadow:0 5px 15px rgba(0,0,0,0.1);
+  transition: all .3s ease; 
+  display:flex; 
+  flex-direction:column; 
+  min-height:300px;
+  border:1px solid #eef2f7;
+}
+
+.quiz-card:hover{ 
+  transform:translateY(-5px); 
+  box-shadow:0 10px 25px rgba(0,0,0,0.15); 
+}
+
+.quiz-card h2{ 
+  color:#fa8c26; 
+  margin-bottom:15px; 
+  font-size:20px; 
+}
+
+.quiz-card p{ 
+  color:#666; 
+  margin-bottom:20px; 
+  flex-grow:1; 
+}
+
+.quiz-card a {
+  text-decoration:none; 
+  text-align:center; 
+
+}
+
+.card-icon{ 
+  font-size:40px; 
+  color:#fa8c26; 
+  margin-bottom:15px; 
+}
+
+.generate-btn{
+  background: linear-gradient(to right, #ffb366, #fb9026);
+  color:white; 
+  border:none; 
+  padding:12px 20px; 
+  border-radius:8px; 
+  font-weight:600;
+  cursor:pointer; 
+  transition:all .3s ease; 
+  margin-top:auto;
+}
+
+.generate-btn:hover{ 
+  background: linear-gradient(to right, #fd9f41, #ffb366);
+  box-shadow:0 4px 12px rgba(253,159,65,0.3);
+}
+
+@media (max-width: 820px){ 
+  .cards-container{ 
+    grid-template-columns:1fr; 
+    max-width:500px; 
+  } 
+}
+
+
         /* Base styles */
         * {
             margin: 0;
@@ -19,106 +116,136 @@
             color: #3d2a1b; 
             line-height: 1.6;
         }
+
+        /* --- Consistent Top Bar Styles --- */
+        /* Top bar */
+.topbar {
+  height: 72px;                 /* was 56 */
+  padding: 0 24px;              /* a bit wider */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.topbar span { font-weight: 600; color: #475569; margin-top: -15px;}
+
+.topbar .brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px; 
+  font-weight: 900;
+  font-size: 18px;
+}
+.topbar .brand i { font-size: 20px; }
+
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+}
+.topnav .link {
+  background: transparent;
+  border: 0;
+  padding: 10px 14px; font-size: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.topnav .link:hover {
+  box-shadow: 0 8px 18px rgba(255, 122, 26, 0.35);
+}
+
+@media (max-width: 900px) {
+  .home-grid { grid-template-columns: 1fr; }
+}
+
+.headline {
+  font-size: clamp(40px, 4vw,50px);
+  margin: 0 0 20px;
+  font-weight: 1000;
+  color: #0f172a;
+  text-shadow: 
+    0 1px 0 #ccc,
+    0 2px 0 #c9c9c9,
+    0 3px 0 #bbb,
+    0 4px 0 #b9b9b9,
+    0 5px 0 #aaa,
+    0 6px 1px rgba(0,0,0,.1),
+    0 0 5px rgba(0,0,0,.1),
+    0 1px 3px rgba(0,0,0,.3),
+    0 3px 5px rgba(0,0,0,.2),
+    0 5px 10px rgba(0,0,0,.25),
+    0 10px 10px rgba(0,0,0,.2),
+    0 20px 20px rgba(0,0,0,.15);
+  letter-spacing: -0.025em;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.headline:hover {
+  transform: translateY(-3px) scale(1.02);
+  text-shadow: 
+    0 1px 0 #ccc,
+    0 2px 0 #c9c9c9,
+    0 3px 0 #bbb,
+    0 4px 0 #b9b9b9,
+    0 5px 0 #aaa,
+    0 6px 1px rgba(0,0,0,.1),
+    0 0 5px rgba(0,0,0,.1),
+    0 1px 3px rgba(0,0,0,.4),
+    0 3px 5px rgba(0,0,0,.3),
+    0 5px 10px rgba(0,0,0,.3),
+    0 10px 10px rgba(0,0,0,.25),
+    0 20px 20px rgba(0,0,0,.2),
+    0 30px 30px rgba(0,0,0,.15);
+}
+
+.headline span {
+  background: linear-gradient(135deg, #ff6b35, #ff9f1c, #ff7a1a, #ff6b35);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradient-shift 4s ease infinite;
+  text-shadow: none; /* Remove shadow from gradient text */
+  position: relative;
+         z-index: 1;
+        }
+        .subhead {
+            font-size: 18px;
+            opacity: 0.8;
+            margin-top: 32px;
+        }
         
+        /* --- End of Top Bar Styles Update --- */
+
+        * { box-sizing: border-box; }
+
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: linear-gradient(180deg,#eef1f6, #f8fafc);
+  color: var(--text);
+  min-height:100vh;
+}
+
+main { 
+  padding: calc(var(--banner-height) + var(--pad) * 2) var(--pad) var(--pad); 
+}
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
         
-        /* HEADER: Contains Logo and Navigation */
-        header {
-            background-color: white; 
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            padding: 10px 0;
-            margin-bottom: 20px;
-        }
-        
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo {
-            font-size: 28px;
-            font-weight: 800;
-            color: #e67e22; /* Primary Orange */
-        }
-        
-        /* User Info - Subtle visual refinement */
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            font-weight: 600;
-        }
-        
-        .avatar {
-            width: 40px; 
-            height: 40px;
-            border-radius: 50%;
-            background-color: #e67e22; /* Primary Orange */
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        
-        /* TOP NAVIGATION BAR */
-        .top-nav {
-            display: flex;
-            gap: 5px; 
-        }
-
-        /* Dashboard Layout - Removed grid for sidebar */
-        .dashboard {
-            display: block; 
-        }
-        
-        .menu-item {
-            padding: 10px 15px; 
-            border-radius: 8px; 
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            align-items: center;
-            gap: 8px; 
-            font-weight: 600;
-            color: #7a5f4a; 
-        }
-        
-        .menu-item i { 
-            font-size: 16px; 
-            width: 18px;
-            text-align: center;
-        }
-
-        .menu-item span {
-            display: none; 
-        }
-
-        .menu-item:hover {
-            background-color: #fff3e0; /* Light orange hover */
-            color: #e67e22; /* Orange hover text */
-        }
-        
-        .menu-item.active {
-            background-color: #e67e22; /* Primary Orange */
-            color: white;
-            font-weight: 700;
-            box-shadow: 0 2px 5px rgba(230, 126, 34, 0.2); 
-        }
-
-        .menu-item.active i {
-            color: white;
-        }
-
         /* Main Content - Cleaner look */
         .main-content {
             background-color: white;
@@ -129,7 +256,7 @@
             border: 1px solid #e0e0e0; 
         }
         
-        /* --- Styles for content sections --- */
+        /* --- Styles for content sections (Rest of the previous styles) --- */
 
         .section-title {
             font-size: 26px; 
@@ -191,23 +318,21 @@
         }
         
         .assignment-card, .quiz-card {
-            /* --- UPDATED BACKGROUND COLOR --- */
-            background-color: #F5F6F8; /* Changed to match body background */
+            background-color: #F5F6F8;
             padding: 25px;
             border-radius: 10px;
             border-left: 6px solid #f39c12; 
             transition: transform 0.2s ease, box-shadow 0.3s ease;
         }
         
-        /* Adjusted hover background for assignment/quiz cards */
         .assignment-card:hover, .quiz-card:hover {
             transform: translateY(-3px); 
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            background-color: #ffffff; /* Still a subtle white on hover */
+            background-color: #ffffff;
         }
 
         .grade-card {
-            background-color: #fffaf0; /* Kept unique for grades */
+            background-color: #fffaf0;
             padding: 25px;
             border-radius: 10px;
             border-left: 6px solid #f39c12; 
@@ -306,7 +431,7 @@
         }
         
         .hidden {
-            display: none;
+            display: none !important;
         }
         
         .loading {
@@ -334,20 +459,19 @@
             border-radius: 8px;
         }
 
-        /* Media Queries - Keep responsive design strong */
+        /* Media Queries */
         @media (max-width: 900px) {
-            .header-content {
+            .topbar {
                 flex-direction: column;
-                align-items: flex-start;
+                height: auto;
+                padding: 15px 24px;
                 gap: 15px;
             }
-
-            .top-nav {
-                margin-left: 0;
+            .topnav {
                 width: 100%;
                 justify-content: space-around;
                 flex-wrap: wrap;
-                border-top: 1px solid #e0e0e0; 
+                border-top: 1px solid #f0f0f0; 
                 padding-top: 10px;
             }
             
@@ -362,78 +486,63 @@
             }
         }
         @media (max-width: 500px) {
-            .top-nav {
+            .topnav {
                 flex-direction: column;
                 align-items: stretch;
             }
+            .topnav .link {
+                text-align: center;
+            }
         }
+        /* Add this to your CSS */
+/* This will target buttons in all cards */
+.quiz-card .btn-primary,
+.assignment-card .btn-primary,
+.grade-card .btn-secondary {
+    background: white !important;
+    color: #fa8c26 !important;
+    border: 2px solid #fa8c26 !important;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.quiz-card .btn-primary:hover,
+.assignment-card .btn-primary:hover,
+.grade-card .btn-secondary:hover {
+    background: #fa8c26 !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(250, 140, 38, 0.3);
+}
     </style>
+
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo">Student Dashboard</div>
-            
-            <div class="top-nav">
-                <div class="menu-item active" data-target="profile">
-                    <span>👤</span> Profile
-                </div>
-                <div class="menu-item" data-target="assignments">
-                    <span>📝</span> Assignments
-                </div>
-                <div class="menu-item" data-target="quizzes">
-                    <span>📋</span> Quizzes
-                </div>
-                <div class="menu-item" data-target="grades">
-                    <span>📋</span> Grades
-                </div>
-            </div>
-            
-            <div class="user-info">
-                <div class="avatar">JS</div>
-                <div>John Smith</div>
-            </div>
+    <nav class="topbar" role="navigation" aria-label="Primary">
+        <div class="brand">
+            <i class='bx bx-bulb card-icon'></i>
+            <span>AI Plugin</span>
         </div>
-    </header>
+        <ul class="topnav">
+            <li><button class="link active" data-route="profile">profile</button></li>
+            <li><button class="link" data-route="quizzes">Quizzes</button></li>
+            <li><button class="link" data-route="assignments">Assignments</button></li>
+
+            <li><button class="link" data-route="grades">Grades</button></li>
+        </ul>
+    </nav>
 
     <div class="container">
         <div class="dashboard">
             <div class="main-content">
                 <div id="profile" class="content-section">
                     <h2 class="section-title">Student Profile</h2>
-                    <div class="profile-info">
-                        <div class="info-card">
-                            <h3>Personal Information</h3>
-                            <div class="info-item">
-                                <span>Full Name:</span>
-                                <span>John Smith</span>
-                            </div>
-                            <div class="info-item">
-                                <span>Student ID:</span>
-                                <span>S123456</span>
-                            </div>
-                            <div class="info-item">
-                                <span>Email:</span>
-                                <span>student@example.com</span>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <h3>Academic Information</h3>
-                            <div class="info-item">
-                                <span>Program:</span>
-                                <span>Computer Science</span>
-                            </div>
-                            <div class="info-item">
-                                <span>Year:</span>
-                                <span>3rd Year</span>
-                            </div>
-                            <div class="info-item">
-                                <span>Status:</span>
-                                <span>Active</span>
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
                 
                 <div id="assignments" class="content-section hidden">
@@ -469,203 +578,183 @@
         </div>
     </div>
 
-    <script>
-        // *** JAVASCRIPT LOGIC - REMOVED TIME LIMIT ***
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuItems = document.querySelectorAll('.menu-item');
-            const contentSections = document.querySelectorAll('.content-section');
-            
-            // Navigation logic
-            menuItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    menuItems.forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    contentSections.forEach(section => section.classList.add('hidden'));
-                    const targetId = this.getAttribute('data-target');
-                    document.getElementById(targetId).classList.remove('hidden');
-                    
-                    if (targetId === 'assignments') {
-                        loadAssignments();
-                    } else if (targetId === 'quizzes') {
-                        loadQuizzes();
-                    } else if (targetId === 'grades') {
-                        loadGrades();
-                    }
-                });
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const topnavLinks = document.querySelectorAll('.topnav .link');
+        const contentSections = document.querySelectorAll('.content-section');
+        
+        // Navigation logic - FIXED: Now using .link buttons
+        topnavLinks.forEach(item => {
+            item.addEventListener('click', function() {
+                // Remove active class from all links
+                topnavLinks.forEach(i => i.classList.remove('active'));
+                
+                // Add active class to clicked link
+                this.classList.add('active');
+                
+                // Hide all content sections
+                contentSections.forEach(section => section.classList.add('hidden'));
+                
+                // Show the target section
+                const targetId = this.getAttribute('data-route');
+                document.getElementById(targetId).classList.remove('hidden');
+                
+                // Load data for the section
+                if (targetId === 'assignments') {
+                    loadAssignments();
+                } else if (targetId === 'quizzes') {
+                    loadQuizzes();
+                } else if (targetId === 'grades') {
+                    loadGrades();
+                }
             });
-            
-            // Load assignments from backend (API call only)
-            async function loadAssignments() {
-                const assignmentsList = document.getElementById('assignments-list');
-                assignmentsList.innerHTML = '<div class="loading">Loading assignments...</div>';
-                
-                try {
-                    const response = await fetch('/api/quizzes?kind=assignment');
-                    const data = await response.json();
-                    console.log('Assignments API response:', data);
-                    
-                    if (data.success && data.items && data.items.length > 0) {
-                        // Removed the dummy date assignment here as it's no longer displayed
-                        renderItems(assignmentsList, data.items, 'assignment');
-                    } else {
-                        assignmentsList.innerHTML = '<div class="empty-state">No assignments available at the moment.</div>';
-                    }
-                } catch (error) {
-                    console.error('Error loading assignments:', error);
-                    assignmentsList.innerHTML = `
-                        <div class="error">
-                            Failed to load assignments. (Check API endpoint)
-                            <button onclick="loadAssignments()" class="btn btn-secondary" style="margin-top: 10px;">
-                                Retry
-                            </button>
-                        </div>
-                    `;
-                }
-            }
-            
-            // Load quizzes from backend (API call only)
-            async function loadQuizzes() {
-                const quizzesList = document.getElementById('quizzes-list');
-                quizzesList.innerHTML = '<div class="loading">Loading quizzes...</div>';
-                
-                try {
-                    const response = await fetch('/api/quizzes?kind=quiz');
-                    const data = await response.json();
-                    console.log('Quizzes API response:', data);
-                    
-                    if (data.success && data.items && data.items.length > 0) {
-                        // *** REMOVED TIME LIMIT COMPLETELY ***
-                        renderItems(quizzesList, data.items, 'quiz');
-                    } else {
-                        quizzesList.innerHTML = '<div class="empty-state">No quizzes available at the moment.</div>';
-                    }
-                } catch (error) {
-                    console.error('Error loading quizzes:', error);
-                    quizzesList.innerHTML = `
-                        <div class="error">
-                            Failed to load quizzes. (Check API endpoint)
-                            <button onclick="loadQuizzes()" class="btn btn-secondary" style="margin-top: 10px;">
-                                Retry
-                            </button>
-                        </div>
-                    `;
-                }
-            }
-
-            // Load grades from backend (API call only)
-            async function loadGrades() {
-                const gradesList = document.getElementById('grades-list');
-                gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
-
-                try {
-                    const response = await fetch('/api/grades?refresh=1');
-                    const data = await response.json();
-                    console.log('Grades API response:', data);
-
-                    if (data.success && data.items && data.items.length > 0) {
-                        renderItems(gradesList, data.items, 'grade');
-                    } else {
-                        // *** UPDATED TO SHOW "No grades are added" ***
-                        gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
-                    }
-                } catch (error) {
-                    console.error('Error loading grades:', error);
-                    gradesList.innerHTML = `
-                        <div class="error">
-                            Failed to load grades. (Check API endpoint)
-                            <button onclick="loadGrades()" class="btn btn-secondary" style="margin-top: 10px;">
-                                Retry
-                            </button>
-                        </div>
-                    `;
-                }
-            }
-            
-            // Helper function to render items (REMOVED time limit display)
-            function renderItems(container, items, type) {
-                container.innerHTML = '';
-                
-                items.forEach(item => {
-                    const card = document.createElement('div');
-                    
-                    let innerHTML = '';
-
-                    if (type === 'grade') {
-                        // Custom rendering for Grade items (Logic preserved)
-                        const percentage = item.max_score > 0 ? Math.ceil((item.score / item.max_score) * 100) : 'N/A';
-                        const scoreDisplay = `${Math.ceil(item.score || 0)}/${Math.ceil(item.max_score || 0)}`;
-                        
-                        card.className = 'grade-card';
-                        innerHTML = `
-                            <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
-                            <div class="grade-details">
-                                <span>Date: ${item.date || 'N/A'}</span>
-                                <span>Percentage: ${percentage}%</span>
-                                <span class="grade-score">${scoreDisplay}</span>
-                            </div>
-                            <div style="margin-top: 15px;">
-                                <a href="/student/grade/${item.id}" class="btn btn-secondary">
-                                    View Details
-                                </a>
-                            </div>
-                        `;
-
-                    } else {
-                        // Logic for Assignments/Quizzes (UPDATED - REMOVED TIME LIMIT)
-                        card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
-                        const questionsCount = item.questions_count || 
-                            (item.questions ? item.questions.length : 0);
-                        
-                        // *** REMOVED TIME LIMIT DISPLAY COMPLETELY ***
-                        innerHTML = `
-                            <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
-                            <div class="${type}-details">
-                                <span>Questions: ${questionsCount}</span>
-                                <span class="status ${item.status || (type === 'quiz' ? 'upcoming' : 'pending')}">
-                                    ${item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : (type === 'quiz' ? 'Available' : 'Pending')}
-                                </span>
-                            </div>
-                            <div style="margin-top: 15px;">
-                                <a href="/student/${type}/${item.id}" class="btn btn-primary">
-                                    ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
-                                </a>
-                            </div>
-                        `;
-                    }
-                    
-                    card.innerHTML = innerHTML;
-                    container.appendChild(card);
-                });
-            }
-            
-            // Load initial data based on current active section (Logic preserved)
-            const activeSection = document.querySelector('.content-section:not(.hidden)');
-            if (activeSection && activeSection.id === 'assignments') {
-                loadAssignments();
-            } else if (activeSection && activeSection.id === 'quizzes') {
-                loadQuizzes();
-            } else if (activeSection && activeSection.id === 'grades') {
-                loadGrades();
-            }
         });
-
-        // Auto-open Grades tab when navigated with ?section=grades
-        (function(){
+        
+        // Load assignments from backend
+        async function loadAssignments() {
+            const assignmentsList = document.getElementById('assignments-list');
+            assignmentsList.innerHTML = '<div class="loading">Loading assignments...</div>';
+            
             try {
-                const params = new URLSearchParams(window.location.search);
-                const section = (params.get('section')||'').toLowerCase();
-                if(section === 'grades'){
-                    // Try to click the Grades menu item (keeps UI logic consistent)
-                    const btn = document.querySelector('.menu-item[data-target="grades"]');
-                    if(btn){ btn.click(); }
-                    // Fallback: load grades directly
-                    if(typeof loadGrades === 'function'){
-                        loadGrades();
-                    }
+                const response = await fetch('/api/quizzes?kind=assignment');
+                const data = await response.json();
+                console.log('Assignments API response:', data);
+                
+                if (data.success && data.items && data.items.length > 0) {
+                    renderItems(assignmentsList, data.items, 'assignment');
+                } else {
+                    assignmentsList.innerHTML = '<div class="empty-state">No assignments available at the moment.</div>';
                 }
-            } catch (e) { /* no-op */ }
-        })();
-    </script>
+            } catch (error) {
+                console.error('Error loading assignments:', error);
+                assignmentsList.innerHTML = `
+                    <div class="error">
+                        Failed to load assignments. (Check API endpoint)
+                        <button onclick="loadAssignments()" class="btn btn-secondary" style="margin-top: 10px;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load quizzes from backend
+        async function loadQuizzes() {
+            const quizzesList = document.getElementById('quizzes-list');
+            quizzesList.innerHTML = '<div class="loading">Loading quizzes...</div>';
+            
+            try {
+                const response = await fetch('/api/quizzes?kind=quiz');
+                const data = await response.json();
+                console.log('Quizzes API response:', data);
+                
+                if (data.success && data.items && data.items.length > 0) {
+                    renderItems(quizzesList, data.items, 'quiz');
+                } else {
+                    quizzesList.innerHTML = '<div class="empty-state">No quizzes available at the moment.</div>';
+                }
+            } catch (error) {
+                console.error('Error loading quizzes:', error);
+                quizzesList.innerHTML = `
+                    <div class="error">
+                        Failed to load quizzes. (Check API endpoint)
+                        <button onclick="loadQuizzes()" class="btn btn-secondary" style="margin-top: 10px;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Load grades from backend
+        async function loadGrades() {
+            const gradesList = document.getElementById('grades-list');
+            gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
+
+            try {
+                const response = await fetch('/api/grades');
+                const data = await response.json();
+                console.log('Grades API response:', data);
+
+                if (data.success && data.items && data.items.length > 0) {
+                    renderItems(gradesList, data.items, 'grade');
+                } else {
+                    gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
+                }
+            } catch (error) {
+                console.error('Error loading grades:', error);
+                gradesList.innerHTML = `
+                    <div class="error">
+                        Failed to load grades. (Check API endpoint)
+                        <button onclick="loadGrades()" class="btn btn-secondary" style="margin-top: 10px;">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Helper function to render items
+        function renderItems(container, items, type) {
+            container.innerHTML = '';
+            
+            items.forEach(item => {
+                const card = document.createElement('div');
+                
+                let innerHTML = '';
+
+                if (type === 'grade') {
+                    const percentage = item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : 'N/A';
+                    const scoreDisplay = `${item.score || 'N/A'}/${item.max_score || 'N/A'}`;
+                    
+                    card.className = 'grade-card';
+                    innerHTML = `
+                        <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
+                        <div class="grade-details">
+                            <span>Date: ${item.date || 'N/A'}</span>
+                            <span>Percentage: ${percentage}%</span>
+                            <span class="grade-score">${scoreDisplay}</span>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <a href="/student/grade/${item.id}" class="btn btn-secondary">
+                                View Details
+                            </a>
+                        </div>
+                    `;
+
+                } else {
+                    card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
+                    const questionsCount = item.questions_count || 
+                        (item.questions ? item.questions.length : 0);
+                    
+                    innerHTML = `
+                        <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
+                        <div class="${type}-details">
+                            <span>Questions: ${questionsCount}</span>
+                            <span class="status ${item.status || (type === 'quiz' ? 'upcoming' : 'pending')}">
+                                ${item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : (type === 'quiz' ? 'Available' : 'Pending')}
+                            </span>
+                        </div>
+                        <div style="margin-top: 15px;">
+                            <a href="/student/${type}/${item.id}" class="btn btn-primary">
+                                ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
+                            </a>
+                        </div>
+                    `;
+                }
+                
+                card.innerHTML = innerHTML;
+                container.appendChild(card);
+            });
+        }
+        
+        // Initialize the first active section
+        const activeLink = document.querySelector('.topnav .link.active');
+        if (activeLink) {
+            // Trigger click on the active link to load initial data
+            activeLink.click();
+        }
+    });
+</script>
 </body>
 </html>
