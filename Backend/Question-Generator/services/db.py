@@ -250,11 +250,29 @@ def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]
         print("ℹ️ Submissions require Firestore; skipping (no _db).")
         return None
     try:
-        # Determine collection based on quiz type
+        # Determine collection robustly so quiz submissions go under AIquizzes
         quiz_data = get_quiz_by_id(quiz_id)
         collection_name = "AIquizzes"  # default
-        if quiz_data and quiz_data.get("metadata", {}).get("kind") == "assignment":
+
+        # 1) Prefer explicit submission kind when present
+        kind_hint = (student_data or {}).get("kind", "").lower()
+        if kind_hint in ("assignment_submission", "assignment"):
             collection_name = "assignments"
+        elif kind_hint in ("quiz_submission", "quiz"):
+            collection_name = "AIquizzes"
+        else:
+            # 2) Prefer actual parent doc location (if it already exists)
+            try:
+                if _db.collection("AIquizzes").document(quiz_id).get().exists:
+                    collection_name = "AIquizzes"
+                elif _db.collection("assignments").document(quiz_id).get().exists:
+                    collection_name = "assignments"
+            except Exception:
+                pass
+            # 3) Fallback to metadata.kind when still ambiguous
+            if collection_name == "AIquizzes":
+                if quiz_data and quiz_data.get("metadata", {}).get("kind") == "assignment":
+                    collection_name = "assignments"
 
         payload = {
             "quiz_id": quiz_id,
