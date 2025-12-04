@@ -102,7 +102,28 @@ def build_user_prompt(
     if type_contract_parts:
         counts_contract = "Generate EXACTLY these question type counts: " + ", ".join(type_contract_parts) + "."
 
-    joined = "\n\n---\n\n".join(pdf_chunks[:10])  # keep prompt manageable
+    # ✅ Sample chunks across the *whole* document instead of only the first 10
+    max_chunks = 10
+    total_chunks = len(pdf_chunks)
+
+    if total_chunks <= max_chunks:
+        sampled_chunks = pdf_chunks
+    else:
+        # spread indices roughly from start to end
+        step = total_chunks / max_chunks
+        sampled_indices = []
+        for k in range(max_chunks):
+            idx = int(k * step)
+            if idx >= total_chunks:
+                idx = total_chunks - 1
+            sampled_indices.append(idx)
+
+        # ensure uniqueness & sorted order
+        sampled_indices = sorted(set(sampled_indices))
+        sampled_chunks = [pdf_chunks[i] for i in sampled_indices]
+
+    joined = "\n\n---\n\n".join(sampled_chunks)
+
 
     return f"""
 You will read the provided PDF excerpts and generate STRICT JSON ONLY.
