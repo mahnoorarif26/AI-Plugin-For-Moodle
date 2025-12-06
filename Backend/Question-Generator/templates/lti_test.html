@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LTI Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .info {
+            background-color: #f0f8ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>LTI Integration Test</h1>
+    
+    <div class="info">
+        <p><strong>User ID:</strong> {{ user_id }}</p>
+        <p><strong>Roles:</strong> {{ roles }}</p>
+        <p><strong>Course ID:</strong> {{ course_id }}</p>
+        <p><strong>Course Title:</strong> {{ course_title }}</p>
+    </div>
+    
+    {% if 'Instructor' in roles %}
+        <div class="success">
+            <p>✓ You are an Instructor</p>
+            <a href="/teacher" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Go to Teacher Dashboard
+            </a>
+        </div>
+    {% else %}
+        <div>
+            <p>You are a Student</p>
+            <a href="/student" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                Go to Student Dashboard
+            </a>
+        </div>
+    {% endif %}
+    
+    <hr>
+    <h3>Test Links:</h3>
+    <ul>
+        <li><a href="/lti/launch">LTI Launch Endpoint</a></li>
+        <li><a href="/lti/login">LTI Login Endpoint</a></li>
+        <li><a href="/.well-known/jwks.json">JWKS Endpoint</a></li>
+        <li><a href="/teacher/generate">Quiz Generator</a></li>
+    </ul>
+</body>
+</html>
