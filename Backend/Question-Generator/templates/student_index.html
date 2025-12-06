@@ -666,13 +666,14 @@ main {
             }
         }
 
-        // Load grades from backend
+        // Load grades from backend - UPDATED FIX
         async function loadGrades() {
             const gradesList = document.getElementById('grades-list');
             gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
 
             try {
-                const response = await fetch('/api/grades');
+                // CHANGED: Using /api/test-grades instead of /api/grades
+                const response = await fetch('/api/test-grades');
                 const data = await response.json();
                 console.log('Grades API response:', data);
 
