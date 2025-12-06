@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Plugin for Moodle</title>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='assignments.css') }}">
+
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <nav class="topbar" role="navigation" aria-label="Primary">
+    <div class="brand">
+      <i class='bx bx-bulb card-icon'></i>
+      <span>AI Plugin</span>
+    </div>
+    <ul class="topnav">
+      <li><button class="link" data-route="home">Home</button></li>
+      <li><button class="link" data-route="generate">Quizzes</button></li>
+      <li><button class="link" data-route="assignments">Assignments</button></li>
+      <li><button class="link" data-route="view">View</button></li>
+      <li><button class="link" data-route="grades">Grades</button></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <!-- HOME -->
+    <section id="section-home">
+      <div class="home-grid">
+        <div class="home-left">
+          <h1 class="headline">Welcome to <span>AI Plugin</span></h1>
+          <p class="subhead">
+            Experience the future of learning with our AI-powered<br/>
+            Moodle plugin. Transform any study material into interactive<br/>
+            quizzes and assignments — automatically, intelligently.
+          </p>
+        </div>
+
+        <div class="home-right">
+          <div class="rotate-card has-bg" 
+               style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
+               aria-live="polite">
+            <div id="rotate-text" class="rotate-text">
+              <span>Smart PDF Conversion — Automatically generate quizzes from textbooks and materials</span>
+              <span>Instant Quiz Creation — Quickly transform study content into assessment tools</span>
+              <span>Personalized Assessment — Customize question distribution and complexity levels</span>
+              <span>Manual Authoring — Craft bespoke questions with comprehensive creation tools</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- GENERATE -->
+    <section id="section-generate" style="display:none;">
+      <div class="cards-container">
+        <div class="quiz-card" id="card-auto">
+          <i class='bx bx-brain card-icon'></i>
+          <h2>AI-Powered Quiz</h2>
+          <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
+          <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
+        </div>
+
+        <!-- Customize Quiz Card -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>Customize Quiz</h2>
+          <p>Pick exact counts per type, plus scenario/code flags.</p>
+          <button class="generate-btn" id="btn-open-custom">Customize Now</button>
+        </div>
+
+        <!-- Manual Creation Card -->
+        <div class="quiz-card">
+          <i class='bx bx-edit card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Create questions from scratch with full control.</p>
+          <a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a>
+        </div>
+      </div>
+
+      <!-- Generated Quiz Output Section -->
+      <section id="quiz-section" aria-live="polite" style="display:none">
+        <div class="quiz-out-head">
+          <h2>Generated Quiz</h2>
+          <div class="quiz-actions">
+
+            <button class="btn" id="btn-send" type="button">Send</button>
+            <button class="btn" id="btn-publish" type="button">Publish</button>
+            <span id="publish-note" class="muted" style="margin-left:8px;"></span>
+          </div>
+        </div>
+        <div id="quiz-container" class="quiz-out"></div>
+      </section>
+    </section>
+
+    <!-- VIEW QUIZZES -->
+    <section id="section-view" style="display:none;">
+  <div class="cards-container">
+    <!-- View Quizzes -->
+    <div class="quiz-card">
+      <i class='bx bx-show card-icon'></i>
+      <h2>View Quizzes</h2>
+      <p>See all quizzes you have generated or created manually.</p>
+      <button class="generate-btn" id="btn-view-quizzes">View Quizzes</button>
+    </div>
+
+    <!-- View Assignments -->
+    <div class="quiz-card">
+      <i class='bx bx-task card-icon'></i>
+      <h2>View Assignments</h2>
+      <p>See all assignments generated from PDFs or topics.</p>
+      <button class="generate-btn" id="btn-view-assignments">View Assignments</button>
+    </div>
+  </div>
+
+  <!-- Shared list area -->
+  <div id="view-list-container">
+    <h2 id="view-list-title">Quizzes</h2>
+    <div id="quiz-list"></div>
+  </div>
+</section>
+
+    <!-- STUDENT GRADES (placeholder page) -->
+    <section id="section-grades" style="display:none;">
+      <div class="grades-header">
+        <h2>Student Grades</h2>
+      </div>
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h2>Grades page</h2>
+        <p>Grades logic is not implemented yet. This is placeholder text as requested.</p>
+      </div>
+    </section>
+
+    <section id="section-assignments" style="display:none;">
+      <div class="cards-container">
+        <!-- Card 1 -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>From PDF (Detect Subtopics)</h2>
+          <p>Upload a PDF. We'll detect subtopics and generate assignment questions per subtopic.</p>
+          <button id="btn-open-assign-pdf" class="generate-btn">Generate</button>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="quiz-card">
+          <i class='bx bx-list-ul card-icon'></i>
+          <h2>By Topics</h2>
+          <p>Type topics (one per line) and generate assignment questions from them.</p>
+          <button id="btn-open-assign-topics" class="generate-btn">Generate</button>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="quiz-card">
+          <i class='bx bx-edit-alt card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Compose your own questions, add marks, and organize into sections.</p>
+          <button id="btn-open-assign-manual" class="generate-btn">Start Creating</button>
+        </div>
+        <div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
+</section>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Modals -->
+  <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitleAuto">Generate Quiz from PDF</h3>
+        <div class="modal-actions">
+          <button class="btn ghost" id="btn-cancel">Close</button>
+          <button class="generate-btn" id="btn-generate">Generate</button>
+        </div>
+      </div>
+      <div class="section-title">1) Upload PDF</div>
+      <div id="uploader" class="uploader">
+        <b>Drop PDF here</b> or click to select
+        <small>Accepted: .pdf (max ~25MB)</small>
+        <input id="fileInput" type="file" accept="application/pdf" hidden />
+      </div>
+      <div id="fileNameDisplay" class="file-name"></div>
+      <div class="progress" id="progress"><div></div></div>
+
+    </div>
+  </div>
+
+  <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
+      <div class="modal-actions">
+          <button class="btn ghost" id="btn-cancel-custom">Close</button>
+          <button class="generate-btn" id="btn-generate-custom">Generate</button>
+        </div>
+      </div>
+
+      <div class="section-title">1) Upload PDF</div>
+      <div id="uploader-custom" class="uploader">
+        <b>Drop PDF here</b> or click to select
+        <small>Accepted: .pdf (max ~25MB)</small>
+        <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
+      </div>
+      <div id="fileNameDisplayCustom" class="file-name"></div>
+      <div class="center-btn-wrapper">
+        <button id="btn-detect-subtopics" type="button" class="btn detect-btn">Detect Subtopics</button>
+      </div>
+
+
+      <div id="subtopics-section" style="display:none; margin-top:10px;">
+        <p><strong>Select subtopics:</strong></p>
+        <div id="subtopics-list" class="subtopics-list"></div>
+      </div>
+
+      <div class="section-title">2) Question Counts</div>
+      <div class="counts-grid">
+        <div class="field">
+          <label class="label" for="mcqCount">MCQ</label>
+          <input id="mcqCount" type="number" min="0" max="30" value="4" />
+        </div>
+        <div class="field">
+          <label class="label" for="tfCount">True / False</label>
+          <input id="tfCount" type="number" min="0" max="30" value="0" />
+        </div>
+        <div class="field">
+          <label class="label" for="shortCount">Short</label>
+          <input id="shortCount" type="number" min="0" max="20" value="5" />
+        </div>
+        <div class="field">
+          <label class="label" for="longCount">Long</label>
+          <input id="longCount" type="number" min="0" max="20" value="0" />
+        </div>
+      </div>
+
+      <div class="section-title">3) Difficulty level</div>
+      <div class="form-row">
+        <div class="field">
+          <label class="label">Mode</label>
+          <select id="difficultyModeCustom">
+            <option value="auto">Auto (AI decides)</option>
+            <option value="custom">Custom % mix</option>
+          </select>
+          <div class="hint">Use custom only if you want a specific E/M/H distribution.</div>
+        </div>
+        <div class="field">
+          <label class="label">Validate</label>
+          <button class="btn" id="btn-validate-mix" type="button">Sum = 100%</button>
+        </div>
+      </div>
+      <div id="diffRowC1" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Easy %</label>
+          <input id="easyPctC" type="number" min="0" max="100" value="30" />
+        </div>
+        <div class="field">
+          <label class="label">Medium %</label>
+          <input id="medPctC" type="number" min="0" max="100" value="50" />
+        </div>
+      </div>
+      <div id="diffRowC2" class="form-row" style="display:none">
+        <div class="field">
+          <label class="label">Hard %</label>
+          <input id="hardPctC" type="number" min="0" max="100" value="20" />
+        </div>
+      </div>
+
+      <div class="progress" id="progress-custom"><div></div></div>
+    </div>
+  </div>
+  <!-- Assignment From PDF Modal -->
+  <div id="modal-assign-pdf" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Generate Assignment from PDF</h3>
+        <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
+      </div>
+
+      <!-- 1) Upload PDF – same style as quiz builder -->
+      <div class="section-title">1) Upload PDF</div>
+      <div id="assign-uploader" class="uploader">
+        <b>Drop PDF here</b> or click to select
+        <small>Accepted: .pdf (max ~25MB)</small>
+        <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
+      </div>
+      <div id="assignFileNameDisplay" class="file-name-display"></div>
+
+      <!-- 2) Total tasks -->
+      <div class="section-title" style="margin-top:18px;">2) Total Tasks</div>
+      <div class="field">
+        <label class="label" for="assign-pdf-count">Total Tasks</label>
+        <input type="number" id="assign-pdf-count" min="1" value="5" />
+      </div>
+
+      <!-- Generate button -->
+      <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+        <button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignment By Topics Modal -->
+  <div id="modal-assign-topics" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      
+      <!-- Header -->
+      <div class="modal-head">
+        <h3>Generate Assignment by Topics</h3>
+        <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+
+        <!-- Section title -->
+        <div class="section-title">1) Enter Topics</div>
+
+        <label class="field">
+          <span>Topics (one per line)</span>
+          <textarea id="assign-topics-text" rows="5"
+            placeholder="e.g. Binary Search Trees&#10Sorting Algorithms&#10Machine Learning"></textarea>
+        </label>
+
+        <!-- Section title -->
+        <div class="section-title" style="margin-top:18px;">2) Number of Tasks</div>
+
+        <label class="field">
+          <span>Total Tasks</span>
+          <input type="number" id="assign-topics-count" min="1" value="4" />
+        </label>
+
+        <!-- CTA Button -->
+        <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+          <button class="generate-btn" type="button" id="btn-assign-topics-generate">
+            Generate Assignment
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Quiz Settings Modal -->
+  <div id="quiz-settings-modal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Quiz Settings</h3>
+        <div class="modal-actions">
+          <button class="btn ghost" type="button" id="btn-settings-close">Close</button>
+          <button class="generate-btn" type="button" id="btn-settings-save">Save</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label class="label" for="settings-time-limit">Time limit (minutes)</label>
+          <input type="number" id="settings-time-limit" min="5" max="180" value="30" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="settings-due-date">Due date (optional)</label>
+          <input type="datetime-local" id="settings-due-date" />
+        </div>
+
+        <div class="field">
+          <label class="label" for="settings-note">Additional note to students</label>
+          <textarea id="settings-note" rows="3"
+            placeholder="e.g. Attempt this quiz before Sunday 11:59 PM."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Scripts (deferred) -->
+  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='assignments.js') }}"></script>
+  <script src="{{ url_for('static', filename='view_items.js') }}"></script>
+
+  <!-- Router + Home Rotator -->
+  <script defer>
+  (function () {
+    const $ = (sel) => document.querySelector(sel);
+    const id = (s) => document.getElementById(s);
+
+    function showEl(el){ if(!el) return; el.hidden = false; el.style.removeProperty('display'); }
+    function hideEl(el){ if(!el) return; el.hidden = true; el.style.display = 'none'; }
+
+    // sections map - ADDED ASSIGNMENTS SECTION
+    const sections = {
+      home:       id('section-home'),
+      generate:   id('section-generate'),
+      assignments: id('section-assignments'), // ADDED THIS LINE
+      view:       id('section-view'),
+      grades:     id('section-grades'),
+    };
+
+    // -------- View Quizzes loader --------
+    async function loadQuizzes() {
+      window.loadQuizzes = loadQuizzes; // allow publish.js to call it after publishing
+
+      const listBox = id('quiz-list');
+      const emptyBox = id('quiz-empty');
+      if (!listBox) return;
+
+      listBox.innerHTML = '<div class="muted">Loading…</div>';
+      if (emptyBox) emptyBox.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/quizzes');
+        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+        const items = await res.json();
+
+        if (!Array.isArray(items) || items.length === 0) {
+          listBox.innerHTML = '';
+          if (emptyBox) emptyBox.style.display = '';
+          return;
+        }
+
+        listBox.innerHTML = items.map(qz => {
+          const total =
+            (typeof qz.questions_count === 'number' ? qz.questions_count : null) ??
+            (qz.counts ? Object.values(qz.counts).reduce((a, b) => a + (b || 0), 0) : 0);
+
+          const created = qz.created_at ? new Date(qz.created_at).toLocaleString() : '';
+          return `
+            <div class="quiz-item">
+              <div class="quiz-title">${qz.title || 'AI Generated Quiz'}</div>
+              <div class="quiz-meta">
+                ${total} questions${created ? ` • ${created}` : ''}
+              </div>
+              <div class="quiz-actions">
+                <a class="btn" href="/student/quiz/${qz.id}">Open</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error(e);
+        listBox.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
+      }
+    }
+
+    // -------- Router --------
+    function showSection(route) {
+      Object.values(sections).forEach(hideEl);
+      showEl(sections[route] || sections.home);
+      if (route === 'view') loadQuizzes();
+    }
+    window.showSection = showSection;
+
+    // Topnav
+    document.querySelectorAll('.topnav .link').forEach(btn => {
+      btn.addEventListener('click', () => showSection(btn.dataset.route));
+    });
+
+    // Initial route (?route=...)
+    const params  = new URLSearchParams(location.search);
+    showSection(params.get('route') || 'home');
+
+    // -------- Rotating text on Home --------
+    (function initRotator() {
+      const container = id('rotate-text');
+      if (!container) return;
+      const items = Array.from(container.querySelectorAll('span'));
+      if (items.length <= 1) return;
+
+      let idx = 0;
+      items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
+
+      setInterval(() => {
+        const cur = items[idx];
+        if (!cur) return;
+        cur.style.opacity = 0;
+        setTimeout(() => {
+          cur.style.display = 'none';
+          idx = (idx + 1) % items.length;
+          const nxt = items[idx];
+          nxt.style.display = '';
+          requestAnimationFrame(() => { nxt.style.opacity = 1; });
+        }, 200);
+      }, 2800);
+    })();
+  })();
+  </script>
+
+</body>
+</html>

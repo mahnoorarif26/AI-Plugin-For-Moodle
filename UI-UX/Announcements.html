@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Announcements | Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Same variables & styling from Courses page */
+        :root {
+            --primary: #FF7F27;
+            --primary-dark: #E56A17;
+            --primary-light: #FFE0B2;
+            --primary-extra-light: #FFF3E0;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --dark: #333333;
+            --text-light: #666666;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--light-gray);
+        }
+        /* Sidebar same as Courses page */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+            color: var(--white);
+            padding: 30px 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+        }
+        .sidebar-header {
+            padding: 0 25px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        .sidebar-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+        .sidebar-nav {
+            list-style: none;
+        }
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--white);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        .sidebar-nav li a:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 4px solid var(--white);
+        }
+        .sidebar-nav li a.active {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border-left: 4px solid var(--white);
+        }
+        .sidebar-nav i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .page-header h1 {
+            color: var(--primary-dark);
+            font-size: 2rem;
+        }
+        .search-bar {
+            display: flex;
+            width: 300px;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+            font-size: 1rem;
+        }
+        .search-bar button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .search-bar button:hover {
+            background-color: var(--primary-dark);
+        }
+        /* Announcement cards match course cards */
+        .announcement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        .announcement-card {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .announcement-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .announcement-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 20px;
+            position: relative;
+        }
+        .announcement-header h3 {
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+        .announcement-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        .announcement-icon {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 2.5rem;
+            opacity: 0.2;
+        }
+        .announcement-body {
+            padding: 20px;
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+        .announcement-body p {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            background-color: var(--primary);
+            color: white;
+        }
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-graduation-cap"></i> Student Portal</h2>
+            <p><b>Data Science - Spring 2025</b></p>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="profile.html"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="assignments.html"><i class="fas fa-tasks"></i> Assignments</a></li>
+            <li><a href="quizzes.html"><i class="fas fa-question-circle"></i> Quizzes</a></li>
+            <li><a href="grades.html"><i class="fas fa-chart-bar"></i> Grades</a></li>
+            <li><a href="announcements.html" class="active"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="messages.html"><i class="fas fa-envelope"></i> Messages</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1><i class="fas fa-bullhorn"></i> Announcements</h1>
+            <div class="search-bar">
+                <input type="text" placeholder="Search announcements...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+
+        <div class="announcement-grid">
+            <!-- Announcement 1 -->
+            <div class="announcement-card">
+                <div class="announcement-header">
+                    <i class="fas fa-calendar-day announcement-icon"></i>
+                    <h3>Midterm Exam Schedule</h3>
+                    <p>Posted on: Aug 12, 2025</p>
+                </div>
+                <div class="announcement-body">
+                    <p>The midterm exam will be held from Sept 10 to Sept 15. Please check your course pages for specific dates and times.</p>
+                    <a href="#" class="btn">Read More</a>
+                </div>
+            </div>
+
+            <!-- Announcement 2 -->
+            <div class="announcement-card">
+                <div class="announcement-header">
+                    <i class="fas fa-laptop announcement-icon"></i>
+                    <h3>Online Workshop on AI</h3>
+                    <p>Posted on: Aug 8, 2025</p>
+                </div>
+                <div class="announcement-body">
+                    <p>Join us for a special online workshop on AI applications in data science. Limited seats available, register soon!</p>
+                    <a href="#" class="btn">Read More</a>
+                </div>
+            </div>
+
+            <!-- Announcement 3 -->
+            <div class="announcement-card">
+                <div class="announcement-header">
+                    <i class="fas fa-exclamation-circle announcement-icon"></i>
+                    <h3>Assignment Submission Reminder</h3>
+                    <p>Posted on: Aug 5, 2025</p>
+                </div>
+                <div class="announcement-body">
+                    <p>Please submit your Machine Learning assignment by Aug 15. Late submissions will not be accepted without prior approval.</p>
+                    <a href="#" class="btn">Read More</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
