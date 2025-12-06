@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submission Confirmation</title>
+    <style>
+        /* Define Colors for attractiveness and consistency */
+        :root {
+            --primary-orange: #ff9f1c; 
+            --dark-orange: #cc7a00;   
+            --success-green: #2ecc71;  
+            --info-blue: #3498db;
+            --warning-yellow: #f1c40f;
+            --danger-red: #e74c3c;
+            --background-light: #F5F6F8; /* New Light Blue-Gray Background */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            /* 1. UPDATED BACKGROUND COLOR */
+            background-color: var(--background-light);
+            color: #333;
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .confirmation-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            /* Added animation for visual appeal */
+            animation: pulse 1.5s infinite alternate;
+        }
+        
+        .confirmation-title {
+            font-size: 28px;
+            font-weight: 700;
+            /* 4. Use primary orange for title */
+            color: var(--primary-orange);
+            margin-bottom: 15px;
+        }
+        
+        .confirmation-message {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            line-height: 1.8;
+        }
+        
+        .score-display {
+            background: #e8f5e8;
+            border: 2px solid var(--success-green);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            transition: transform 0.3s;
+        }
+
+        .score-display:hover {
+            transform: scale(1.02);
+        }
+        
+        .score-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: var(--success-green);
+        }
+        
+        .score-text {
+            font-size: 16px;
+            color: #388e3c;
+            margin-top: 5px;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 25px 0;
+            text-align: left;
+        }
+        
+        .detail-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+        
+        .detail-value {
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary {
+            /* 4. Use primary orange for main button */
+            background-color: var(--primary-orange);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--dark-orange);
+            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+        }
+        
+        /* 4. Styling the secondary button (Dashboard button only) */
+        .btn-secondary-info {
+            background-color: var(--info-blue);
+            color: white;
+        }
+        
+        .btn-secondary-info:hover {
+            background-color: #2980b9;
+        }
+        
+        /* Timeout and Assignment Styles Updated to use defined colors */
+        .timeout-warning {
+            background: #fdf6e6; /* Light warning yellow */
+            border: 2px solid var(--warning-yellow);
+            color: #a07400; /* Darker yellow text */
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        
+        .assignment-pending {
+            background: #eef7ff; /* Light info blue */
+            border: 2px solid var(--info-blue);
+            color: #2980b9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 600;
+        }
+        
+        /* Keyframe for pulse effect */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="confirmation-container">
+        {% if time_exceeded %}
+            <div class="success-icon">⏳</div>
+            {% if submission_id and submission_id != 'N/A' %}
+            <div class="score-display" id="live-score-box">
+                <div class="score-number" id="live-score-number" style="display:none"></div>
+                <div class="score-text" id="live-score-text">Your Score (Pending Grade)</div>
+            </div>
+            {% endif %}
+            <h1 class="confirmation-title">Time Limit Exceeded</h1>
+            <div class="timeout-warning">
+                {{ confirmation_message }}
+            </div>
+        {% elif is_assignment %}
+            <div class="success-icon">📝</div>
+            <h1 class="confirmation-title">Assignment Submitted</h1>
+            <div class="assignment-pending">
+                {{ confirmation_message }}
+            </div>
+            {% if submission_id and submission_id != 'N/A' %}
+            <div class="score-display" id="live-score-box">
+                <div class="score-number" id="live-score-number" style="display:none"></div>
+                <div class="score-text" id="live-score-text">Your Score (Pending Grade)</div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="success-icon" style="color: var(--success-green);">🎉</div>
+            <h1 class="confirmation-title">{{ item_type }} Submitted Successfully</h1>
+            <div class="confirmation-message">
+                {{ confirmation_message }}
+            </div>
+            
+            {% if not is_assignment %}
+            <div class="score-display" id="live-score-box">
+                {% if score is number and total is number and total > 0 %}
+                    <div class="score-number" id="live-score-number">{{ (score|float)|round(0, 'ceil') }} / {{ (total|float)|round(0, 'ceil') }}</div>
+                    <div class="score-text" id="live-score-text">Your Score</div>
+                {% else %}
+                    <div class="score-number" id="live-score-number" style="display:none"></div>
+                    <div class="score-text" id="live-score-text">Your Score (Pending Grade)</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% endif %}
+        
+        <div class="details-grid">
+            <div class="detail-item">
+                <div class="detail-label">{{ item_type }} Title</div>
+                <div class="detail-value">{{ quiz_title }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Student Name</div>
+                <div class="detail-value">{{ student_name }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Submission ID</div>
+                <div class="detail-value">{{ submission_id }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Submitted At</div>
+                <div class="detail-value">{{ submitted_at or now }}</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            {% if submission_id and submission_id != 'N/A' %}
+                <a href="/student/grade/{{ submission_id }}" class="btn btn-primary" style="margin-right:10px;">
+                    View Details
+                </a>
+            {% else %}
+                <span style="display:inline-block;margin-right:10px;color:#7f8c8d;">Grade link unavailable (no submission id)</span>
+            {% endif %}
+            <a href="/student" class="btn btn-primary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    </body>
+    <script>
+      (function(){
+        try{
+          const subId = "{{ submission_id }}";
+          if(!subId || subId === 'N/A') return;
+          const scoreNum = document.getElementById('live-score-number');
+          const scoreText = document.getElementById('live-score-text');
+          if(!scoreNum || !scoreText) return;
+          if(scoreNum.style.display !== 'none' && (scoreNum.textContent||'').trim() !== '') return;
+          const ceil = (v)=> Math.ceil(Number(v||0));
+          let tries = 0, maxTries = 20;
+          async function poll(){
+            tries++;
+            try{
+              const resp = await fetch(`/api/submissions/${encodeURIComponent(subId)}?refresh=1`, { cache: 'no-store' });
+              const data = await resp.json();
+              if(data && data.success && data.submission && data.submission.max_total != null){
+                const s = ceil(data.submission.score);
+                const m = ceil(data.submission.max_total);
+                scoreNum.textContent = `${s}/${m}`;
+                scoreNum.style.display = 'block';
+                scoreText.textContent = 'Your Score';
+                return;
+              }
+            }catch(e){}
+            if(tries < maxTries) setTimeout(poll, 1500);
+          }
+          poll();
+        }catch(e){}
+      })();
+    </script>
+</html>
+
+    <script>
+      (function(){
+        try{
+          const subId = "{{ submission_id }}";
+          if(!subId || subId === 'N/A') return;
+          const scoreBox = document.getElementById('live-score-box');
+          const scoreNum = document.getElementById('live-score-number');
+          const scoreText = document.getElementById('live-score-text');
+          if(!scoreBox || !scoreText) return;
+          if(scoreNum && scoreNum.style.display !== 'none' && (scoreNum.textContent||'').trim() !== '') return;
+          const ceil = (v)=> Math.ceil(Number(v||0));
+          let attempts = 0; const maxAttempts = 20;
+          async function poll(){
+            attempts++;
+            try{
+              const r = await fetch('/api/grades?refresh=1',{cache:'no-store'});
+              const data = await r.json();
+              const items = (data && data.items) ? data.items : [];
+              const it = items.find(x => String(x.id) === String(subId));
+              if(it && it.max_score != null){
+                const s = ceil(it.score);
+                const m = ceil(it.max_score);
+                if(scoreNum){ scoreNum.textContent = `${s}/${m}`; scoreNum.style.display = 'block'; }
+                if(scoreText){ scoreText.textContent = 'Your Score'; }
+                return;
+              }
+            }catch(e){}
+            if(attempts < maxAttempts){ setTimeout(poll, 1500); }
+          }
+          poll();
+        }catch(e){}
+      })();
+    </script>

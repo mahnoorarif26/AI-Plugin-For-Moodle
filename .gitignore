@@ -1,0 +1,25 @@
+# Environment variables
+.env
+Backend/Question-Generator/.env
+
+# Firebase service account key
+Backend/Question-Generator/serviceAccountKey.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.venv/
+
+# Logs
+*.log
+
+# IDE/project files
+.vscode/
+.idea/
+serviceAccountKey
+serviceAccountKey.json

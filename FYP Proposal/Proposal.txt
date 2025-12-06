@@ -1,0 +1,12 @@
+This folder contains the proposal for our Final Year Project (FYP) — Smart Evaluation In e-Learning: An AI-Plugin For Moodle App.
+
+Our project extends Moodle by adding:
+
+Automatic quiz generation from uploaded course PDFs.
+
+AI-powered grading for multiple-choice and short-answer questions.
+
+Adaptive learning recommendations for students based on performance.
+
+The proposal document outlines the problem statement, objectives, methodology, tools & technologies,and expected outcomes for the project.
+
