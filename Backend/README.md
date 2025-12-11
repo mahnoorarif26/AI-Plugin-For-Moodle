@@ -13,6 +13,13 @@ Quick Start
 - Grade: `POST /api/grade` (JSON)
 - Grade (uploads): `POST /api/grade-upload` (multipart; JSON quiz(.json file) + JSON or PDF answers)
 
+Teacher Views/APIs
+- Teacher dashboard: `GET /teacher` (HTML list of quizzes/assignments with submission counts)
+- Teacher submissions (HTML): `GET /teacher/submissions/<quiz_id>`
+- Teacher grades summary (HTML): `GET /teacher?route=grades` (shows submissions + averages)
+- List quizzes (JSON): `GET /api/teacher/quizzes`
+- Quiz submissions (JSON): `GET /api/teacher/quizzes/<quiz_id>/submissions`
+
 POST /api/grade
 Request JSON shape:
 {

@@ -19,6 +19,12 @@ from services.db import (
     get_submitted_quiz_ids
 )
 
+from services import db as _db_mod
+try:
+    from firebase_admin.firestore import Query  # optional; for order_by
+except Exception:
+    Query = None  # type: ignore
+
 # ====== LLM / UTILS ======
 from utils import (
     extract_pdf_text, 
@@ -330,8 +336,92 @@ def teacher_submissions(quiz_id):
         return ("Quiz not found.", 404)
     quiz_title = quiz_data.get("title") or quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
     try:
-        # Pass empty list; implement fetching in your template/server as needed
-        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=[])
+        fs = getattr(_db_mod, '_db', None)
+        if fs is None:
+            return ("Firestore connection failed.", 500)
+        collection_name = 'assignments' if quiz_data.get('metadata', {}).get('kind') == 'assignment' else 'AIquizzes'
+        submissions_ref = fs.collection(collection_name).document(quiz_id).collection('submissions')
+        try:
+            if Query is not None:
+                docs = submissions_ref.order_by('submitted_at', direction=Query.DESCENDING).stream()
+            else:
+                docs = submissions_ref.stream()
+        except Exception:
+            docs = submissions_ref.stream()
+        questions_map = {q.get('id'): q for q in (quiz_data.get('questions') or []) if q.get('id')}
+        submissions_list = []
+        for doc in docs:
+            submission = doc.to_dict() or {}
+            processed_answers = {}
+            grading_items = submission.get('grading_items') or []
+            grade_map = {}
+            try:
+                for gi in grading_items:
+                    qid = gi.get('question_id') or gi.get('id')
+                    if qid:
+                        grade_map[str(qid)] = gi
+            except Exception:
+                grade_map = {}
+            for qid, resp in (submission.get('answers') or {}).items():
+                qd = questions_map.get(qid)
+                if not qd:
+                    continue
+                correct = (
+                    qd.get('answer')
+                    or qd.get('correct_answer')
+                    or qd.get('reference_answer')
+                    or qd.get('expected_answer')
+                    or qd.get('ideal_answer')
+                )
+                is_correct = None
+                if (qd.get('type') or '').lower() in ('mcq','true_false') and correct is not None:
+                    is_correct = str(resp).strip().lower() == str(correct).strip().lower()
+                def _default_max(t):
+                    t = (t or '').lower()
+                    return 1 if t in ('mcq','true_false') else (3 if t=='short' else (5 if t=='long' else 1))
+                gi = grade_map.get(str(qid)) or {}
+                q_max = gi.get('max_score') if gi.get('max_score') is not None else gi.get('max')
+                if q_max is None:
+                    q_max = qd.get('max_score') if qd.get('max_score') is not None else _default_max(qd.get('type'))
+                q_score = gi.get('score')
+                if q_score is None and is_correct is not None:
+                    q_score = q_max if is_correct else 0
+                processed_answers[qid] = {
+                    'prompt': qd.get('prompt') or qd.get('question_text'),
+                    'type': qd.get('type'),
+                    'response': resp,
+                    'correct_answer': correct,
+                    'is_correct': is_correct,
+                    'score': q_score,
+                    'max_score': q_max,
+                    'feedback': gi.get('feedback') if isinstance(gi, dict) else None,
+                }
+            computed_max_total = submission.get('max_total')
+            if computed_max_total is None:
+                def _default_max(t):
+                    t = (t or '').lower()
+                    return 1 if t in ('mcq','true_false') else (3 if t=='short' else (5 if t=='long' else 1))
+                try:
+                    computed_max_total = sum(float((qq.get('max_score') if qq.get('max_score') is not None else _default_max(qq.get('type')))) for qq in (quiz_data.get('questions') or []))
+                except Exception:
+                    computed_max_total = len(questions_map)
+
+            # compute display score from processed answers if possible
+            try:
+                display_score = sum(float((v.get('score') or 0)) for v in processed_answers.values() if isinstance(v, dict))
+            except Exception:
+                display_score = float(submission.get('score') or 0)
+
+            submissions_list.append({
+                'id': doc.id,
+                'student_name': submission.get('student_name') or submission.get('name') or 'Anonymous',
+                'student_email': submission.get('student_email') or submission.get('email') or 'N/A',
+                'score': display_score,
+                'total_questions': computed_max_total,
+                'submitted_at_str': submission.get('submitted_at').strftime('%Y-%m-%d %H:%M') if hasattr(submission.get('submitted_at'), 'strftime') else str(submission.get('submitted_at') or ''),
+                'answers': processed_answers,
+            })
+        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=submissions_list)
     except Exception as e:
         print(f"❌ Error fetching submissions: {e}")
         return ("Failed to load submissions.", 500)

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -390,16 +390,16 @@
             
             <div class="top-nav">
                 <div class="menu-item active" data-target="profile">
-                    <span>👤</span> Profile
+                    <span>??</span> Profile
                 </div>
                 <div class="menu-item" data-target="assignments">
-                    <span>📝</span> Assignments
+                    <span>??</span> Assignments
                 </div>
                 <div class="menu-item" data-target="quizzes">
-                    <span>📋</span> Quizzes
+                    <span>??</span> Quizzes
                 </div>
                 <div class="menu-item" data-target="grades">
-                    <span>📋</span> Grades
+                    <span>??</span> Grades
                 </div>
             </div>
             
@@ -677,12 +677,12 @@
                         innerHTML = `
                             <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
                             <div class="grade-details">
-                                <span>Date: ${dateDisplay}</span>
+                                <span style="background:#eef5ff;color:#1f6feb;padding:2px 8px;border-radius:12px;">${dateDisplay}</span>
                                 <span>Percentage: ${percentage}%</span>
                                 <span class="grade-score">${scoreDisplay}</span>
                             </div>
                             <div style="margin-top: 15px;">
-                                <a href="/student/grade/${item.id}" class="btn btn-secondary">
+                                <a href="/student/grade/${item.id}?quiz_id=${encodeURIComponent(item.quiz_id || '')}" class="btn btn-secondary">
                                     View Details
                                 </a>
                             </div>

@@ -250,7 +250,7 @@
         
         <div style="margin-top: 30px;">
             {% if submission_id and submission_id != 'N/A' %}
-                <a href="/student/grade/{{ submission_id }}" class="btn btn-primary" style="margin-right:10px;">
+                <a href="/student/grade/{{ submission_id }}?quiz_id={{ quiz_id }}" class="btn btn-primary" style="margin-right:10px;">
                     View Details
                 </a>
             {% else %}
@@ -275,7 +275,7 @@
           async function poll(){
             tries++;
             try{
-              const resp = await fetch(`/api/submissions/${encodeURIComponent(subId)}?refresh=1`, { cache: 'no-store' });
+              const resp = await fetch(`/api/submissions/${encodeURIComponent(subId)}?refresh=1&quiz_id={{ quiz_id }}`, { cache: 'no-store' });
               const data = await resp.json();
               if(data && data.success && data.submission && data.submission.max_total != null){
                 const s = ceil(data.submission.score);

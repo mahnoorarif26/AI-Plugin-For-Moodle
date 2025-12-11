@@ -173,6 +173,18 @@
 
                             <p class="correct-answer"><strong>Correct Answer:</strong> {{ q.correct_answer }}</p>
 
+                            <p style="margin-left:12px;">
+                                <strong>Score:</strong>
+                                {% if q.score is not none %}
+                                  {{ q.score }} / {{ q.max_score }}
+                                {% else %}
+                                  - / {{ q.max_score }}
+                                {% endif %}
+                            </p>
+                            {% if q.feedback %}
+                              <p style="margin-left:12px; color:#555;"><strong>Feedback:</strong> {{ q.feedback }}</p>
+                            {% endif %}
+
                             {% if q.type in ['mcq', 'true_false'] %}
                                 <p style="text-align:right;">
                                     <strong>Status:</strong>
