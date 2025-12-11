@@ -18,6 +18,11 @@
       <span>AI Plugin</span>
     </div>
     <ul class="topnav">
+      <li>
+        <button class="link" id="nav-back" onclick="goBackOr('{{ url_for('teacher_index') }}')" aria-label="Go back">
+          <i class='bx bx-arrow-back'></i> Back
+        </button>
+      </li>
       <li><button class="link" data-route="home">Home</button></li>
       <li><button class="link" data-route="generate">Quizzes</button></li>
       <li><button class="link" data-route="assignments">Assignments</button></li>
@@ -417,16 +422,92 @@
       }
     }
 
+    // -------- Teacher Grades loader --------
+    async function loadTeacherGrades() {
+      const section = id('section-grades');
+      if (!section) return;
+      // Build container markup dynamically to replace placeholder
+      section.innerHTML = `
+        <div class="grades-header"><h2>Student Grades</h2></div>
+        <div id="teacher-grades" class="cards-container"></div>
+        <div id="teacher-grades-empty" class="empty-state" style="display:none;">
+          <div class="empty-icon"><i class='bx bx-data'></i></div>
+          <h2>No submissions yet</h2>
+          <p>When students submit quizzes or assignments, summaries will appear here.</p>
+        </div>`;
+
+      const box = id('teacher-grades');
+      const empty = id('teacher-grades-empty');
+      if (!box) return;
+      box.innerHTML = '<div class="muted">Loading...</div>';
+      if (empty) empty.style.display = 'none';
+      try {
+        const res = await fetch('/api/teacher/quizzes', { cache: 'no-store' });
+        if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
+        const data = await res.json();
+        const items = (data && data.items) || [];
+        if (!Array.isArray(items) || items.length === 0) {
+          box.innerHTML = '';
+          if (empty) empty.style.display = '';
+          return;
+        }
+        // group by kind
+        const quizzes = items.filter(it => (it.kind || 'quiz') !== 'assignment');
+        const assignments = items.filter(it => (it.kind || 'quiz') === 'assignment');
+        function card(it) {
+          const avg = (it.average_percent == null) ? '—' : `${Math.round(it.average_percent)}%`;
+          return `
+            <div class="quiz-card">
+              <i class='bx bx-bar-chart-alt-2 card-icon'></i>
+              <h2>${it.title || 'Untitled'}</h2>
+              <p>${(it.kind || 'quiz').toUpperCase()} • Submissions: ${it.submissions_count || 0}</p>
+              <p>Average: ${avg}</p>
+              <a class="generate-btn" href="/teacher/submissions/${it.id}" target="_blank" rel="noopener noreferrer">View Submissions</a>
+            </div>`;
+        }
+        const html = [];
+        if (quizzes.length) {
+          html.push(`<h3 style="grid-column:1/-1">Quizzes</h3>`);
+          html.push(quizzes.map(card).join(''));
+        }
+        if (assignments.length) {
+          html.push(`<h3 style="grid-column:1/-1">Assignments</h3>`);
+          html.push(assignments.map(card).join(''));
+        }
+        box.innerHTML = html.join('');
+      } catch (e) {
+        console.error('loadTeacherGrades', e);
+        box.innerHTML = '<div class="muted">Failed to load grades.</div>';
+      }
+    }
+
+    // Back navigation with safe fallback (avoids redirect loops)
+    function goBackOr(fallbackUrl){
+      try{
+        const ref = document.referrer;
+        const sameOrigin = ref && new URL(ref, location.href).origin === location.origin;
+        if (sameOrigin && history.length > 1){
+          history.back();
+        } else {
+          location.href = fallbackUrl || '/teacher';
+        }
+      }catch(e){
+        location.href = fallbackUrl || '/teacher';
+      }
+    }
+
     // -------- Router --------
     function showSection(route) {
       Object.values(sections).forEach(hideEl);
       showEl(sections[route] || sections.home);
       if (route === 'view') loadQuizzes();
+      if (route === 'grades') loadTeacherGrades();
     }
     window.showSection = showSection;
 
-    // Topnav
+    // Topnav (skip the Back button which uses history)
     document.querySelectorAll('.topnav .link').forEach(btn => {
+      if (btn.id === 'nav-back') return;
       btn.addEventListener('click', () => showSection(btn.dataset.route));
     });
 

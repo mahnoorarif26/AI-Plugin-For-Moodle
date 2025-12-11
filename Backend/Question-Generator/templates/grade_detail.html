@@ -9,6 +9,8 @@
     .container{max-width:1000px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.08);padding:24px}
     .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
     .title{font-size:22px;font-weight:700}
+    # Add time pill
+    .timepill{background:#e6f0ff;border:1px solid #99b7ff;padding:10px 14px;border-radius:8px;font-weight:600;color:#1f4fd6;margin-left:8px}
     .score{background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-weight:600}
     table{width:100%;border-collapse:collapse;margin-top:16px}
     th,td{padding:10px 12px;border-bottom:1px solid #eee;vertical-align:top}
@@ -38,7 +40,7 @@
   <div class="container">
     <div class="header">
       <div class="title">{{ quiz_title }}</div>
-      <div class="score">Score: {{ ((score or 0)|float|round(0, 'ceil')) }} / {{ ((max_total or total or 0)|float|round(0, 'ceil')) }}</div>
+      <div><span class="score">Score: {{ ((score or 0)|float|round(0, 'ceil')) }} / {{ ((max_total or total or 0)|float|round(0, 'ceil')) }}</span><span class="timepill">Submitted: {{ submitted_at or '' }}</span></div>
     </div>
     <div class="muted">Submission ID: <span class="mono">{{ submission_id }}</span> • {{ submitted_at or '' }}</div>
 
