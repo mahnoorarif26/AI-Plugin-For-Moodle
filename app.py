@@ -23,9 +23,7 @@ from services.db import (
     list_quizzes,
     save_submission as save_submission_to_store,
     get_submitted_quiz_ids
-    # ADD THIS LINE:,# Assuming this function exists in services.db
 )
-
 
 # ====== LLM / UTILS ======
 from utils import (
@@ -151,16 +149,6 @@ def root_redirect():
 
 
 #??????????????????????????????????????????????????????
-
-def get_submissions_by_quiz_id(quiz_id: str) -> list:
-    """
-    Fetches all student submissions for a given quiz ID.
-    (You need to implement the actual database logic here)
-    """
-    # Example placeholder return:
-    # submissions = db.collection('submissions').where('quiz_id', '==', quiz_id).get()
-    # return [doc.to_dict() for doc in submissions]
-    return []
 #????????????????????????????????????????????????????/
 # LTI Launch Endpoint (MAIN)
 # ===============================
@@ -468,19 +456,6 @@ def teacher_submissions(quiz_id):
     except Exception as e:
         print(f"❌ Error fetching submissions: {e}")
         return ("Failed to load submissions.", 500)
-    
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-@app.route("/api/quizzes/<quiz_id>", methods=["GET"])
-def api_get_quiz(quiz_id):
-    """Fetch a single quiz by ID as JSON for the frontend."""
-    quiz_data = get_quiz_by_id(quiz_id)
-    if not quiz_data:
-        # Important: Use consistent JSON response for errors
-        return jsonify({"error": "Quiz not found"}), 404 
-
-    # Ensure you return only the necessary data (the whole quiz object)
-    return jsonify(quiz_data), 200
 
 # ===============================
 # HEALTH
@@ -1005,27 +980,17 @@ def api_publish_quiz(quiz_id):
     # optional: mark as published; no-op is fine
     return jsonify({"quiz_id": quiz_id, "status": "published"}), 200
 
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 @app.route('/teacher/preview/<quiz_id>')
 def teacher_preview(quiz_id):
-    """
-    Preview quiz as teacher.
-    Loads the full quiz data, including questions and answers,
-    and passes it to the teacher_preview.html template.
-    """
+    """Preview quiz as teacher"""
     quiz_data = get_quiz_by_id(quiz_id)
     if not quiz_data:
         return "Quiz not found", 404
     
-    # 💡 Ensure 'quiz_data' is complete here (questions, answers, metadata)
-    # The template 'teacher_preview.html' will use this data to render the quiz.
     return render_template(
         'teacher_preview.html',
         quiz=quiz_data,
-        quiz_id=quiz_id,
-        # Optional: Pass title separately for template clarity
-        quiz_title=quiz_data.get('title', f"Quiz {quiz_id}")
+        quiz_id=quiz_id
     )
 
 @app.route('/api/quizzes/<quiz_id>/send', methods=['POST'])
@@ -1058,7 +1023,11 @@ def send_quiz_to_students(quiz_id):
         return jsonify({"error": str(e)}), 500
 
 
-
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+@app.route('/teacher_preview')
+def teacher_preview_page():
+    return render_template("teacher_preview.html")
 #?????????????????????????????????
     
 @app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])

@@ -3,206 +3,416 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submissions for {{ quiz_title }}</title>
+    <title>Quiz Submissions - {{ quiz_title }}</title>
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-
     <style>
-        :root {
-            --primary-orange: #ff9f1c;
-            --dark-orange: #cc7a00;
-            --status-correct: #28a745;
-            --status-incorrect: #dc3545;
-            --status-manual: #ffc107;
-            --back-link-default: #6c757d;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: #f7f9fc;
-            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 25px;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #ddd;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .back-btn {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .quiz-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             margin-bottom: 30px;
         }
 
-        .header h1 {
-            color: var(--primary-orange);
-            margin: 0;
-            font-size: 1.8rem;
-        }
-
-        .back-link {
-            text-decoration: none;
-            color: var(--back-link-default);
-            font-weight: 500;
-            transition: 0.3s;
-        }
-
-        .back-link:hover {
-            color: var(--primary-orange);
-        }
-
-        .submission-card {
-            background: #fff;
-            padding: 22px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
-            margin-bottom: 25px;
-        }
-
-        .student-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px dashed #eee;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-        }
-
-        .student-info h2 {
-            margin: 0;
-            font-size: 1.3rem;
-            color: #333;
-            font-weight: 600;
-        }
-
-        .submission-details p {
-            margin: 0;
-            text-align: right;
-        }
-
-        .question-review {
-            margin-top: 10px;
-        }
-
-        .question-block {
-            padding: 12px 0;
-            border-top: 1px dotted #eee;
-        }
-
-        .question-block p {
-            margin: 5px 0;
-        }
-
-        .student-response {
-            color: var(--primary-orange);
-            margin-left: 12px;
-        }
-
-        .correct-answer {
-            color: var(--status-correct);
-            margin-left: 12px;
-        }
-
-        .status-correct {
-            color: var(--status-correct);
-            font-weight: 600;
-        }
-
-        .status-incorrect {
-            color: var(--status-incorrect);
-            font-weight: 600;
-        }
-
-        .status-manual {
-            color: var(--status-manual);
-            font-weight: 600;
-        }
-
-        .no-submissions {
-            background: white;
-            padding: 45px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
             text-align: center;
         }
 
-        .no-submissions i {
-            font-size: 48px;
-            color: var(--status-manual);
-            margin-bottom: 16px;
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .submissions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .submissions-table th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .submissions-table td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .submissions-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-graded {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .view-btn:hover {
+            background: #0056b3;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            color: #dee2e6;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            color: #6c757d;
+        }
+
+        .detail-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .detail-panel.active {
+            display: block;
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .close-detail {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        .question-review {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .student-answer {
+            padding: 10px;
+            background: #e7f1ff;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            color: #004085;
+        }
+
+        .correct-answer {
+            padding: 10px;
+            background: #d4edda;
+            border-radius: 6px;
+            color: #155724;
         }
     </style>
 </head>
-
 <body>
-<div class="container">
+    <div class="container">
+        <div class="header">
+            <button class="back-btn" onclick="window.history.back()">
+                <i class="bx bx-arrow-back"></i> Back to Dashboard
+            </button>
+            <h1 class="quiz-title">{{ quiz_title }}</h1>
+            <div style="width: 120px;"></div> <!-- Spacer for alignment -->
+        </div>
 
-    <div class="header">
-        <h1>Submissions for: <strong>{{ quiz_title }}</strong></h1>
-        <a href="{{ url_for('teacher_index') }}" class="back-link">
-            <i class='bx bx-arrow-back'></i> Back to Quizzes List
-        </a>
+        <div class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ submissions|length }}</div>
+                    <div class="stat-label">Total Submissions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% set graded_count = submissions|selectattr("is_graded")|list|length %}
+                        {{ graded_count }}
+                    </div>
+                    <div class="stat-label">Graded</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% if submissions|length > 0 %}
+                            {% set avg_score = submissions|selectattr("score", "number")|map(attribute="score")|list|sum / submissions|selectattr("score", "number")|list|length if submissions|selectattr("score", "number")|list|length > 0 else 0 %}
+                            {{ "%.1f"|format(avg_score) }}
+                        {% else %}
+                            0.0
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Average Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% if quiz_data and quiz_data.questions %}
+                            {{ quiz_data.questions|length }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Total Questions</div>
+                </div>
+            </div>
+
+            {% if submissions %}
+                <table class="submissions-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Submitted</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in submissions %}
+                        <tr>
+                            <td>{{ submission.student_name }}</td>
+                            <td>{{ submission.submitted_at }}</td>
+                            <td>
+                                {% if submission.score == "Not graded" %}
+                                    {{ submission.score }}
+                                {% else %}
+                                    {{ submission.score }} / {{ submission.total_questions }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-badge {% if submission.is_graded %}status-graded{% else %}status-pending{% endif %}">
+                                    {% if submission.is_graded %}Graded{% else %}Pending{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="view-btn" onclick="viewSubmission('{{ submission.id }}')">
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">
+                    <i class="bx bx-file"></i>
+                    <h3>No Submissions Yet</h3>
+                    <p>Students haven't submitted this quiz yet.</p>
+                </div>
+            {% endif %}
+
+            <div id="detailPanel" class="detail-panel">
+                <!-- Detail content will be loaded here via JavaScript -->
+            </div>
+        </div>
     </div>
 
-    {% if submissions %}
-        {% for sub in submissions %}
-            <div class="submission-card">
+    <script>
+        async function viewSubmission(submissionId) {
+            try {
+                const response = await fetch(`/api/submissions/${submissionId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
 
-                <div class="student-info">
-                    <h2>
-                        <i class='bx bx-user-circle'></i>
-                        {{ sub.student_name }} ({{ sub.student_email }})
-                    </h2>
+                // Fetch quiz data to get correct answers
+                const quizResponse = await fetch(`/api/quizzes/{{ quiz_id }}`);
+                const quizData = await quizResponse.json();
+                
+                if (!quizData.success) {
+                    alert('Error loading quiz data');
+                    return;
+                }
 
-                    <div class="submission-details">
-                        <p><strong>Score: {{ sub.score }} / {{ sub.total_questions }}</strong></p>
-                        <p style="font-size: 0.9rem; color: #777;">Submitted: {{ sub.submitted_at_str }}</p>
+                const submission = data;
+                const quiz = quizData.quiz;
+                
+                // Build detail view
+                let detailHTML = `
+                    <div class="detail-header">
+                        <h2>Submission Details</h2>
+                        <button class="close-detail" onclick="closeDetail()">×</button>
                     </div>
-                </div>
+                    
+                    <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px;">
+                        <p><strong>Student:</strong> ${submission.student || submission.studentName || 'Unknown'}</p>
+                        <p><strong>Submitted:</strong> ${submission.date || 'Unknown'}</p>
+                        <p><strong>Score:</strong> ${submission.score || 'Not graded'}</p>
+                    </div>
+                `;
 
-                <div class="question-review">
-                    {% for q_id, q in sub.answers.items() %}
-                        <div class="question-block">
+                // Add question reviews if we have answers
+                if (submission.answers && submission.answers.length > 0) {
+                    detailHTML += '<h3 style="margin-bottom: 15px;">Question Review</h3>';
+                    
+                    submission.answers.forEach((answerObj, index) => {
+                        const question = quiz.questions ? quiz.questions[index] : null;
+                        detailHTML += `
+                            <div class="question-review">
+                                <div class="question-text">
+                                    Q${index + 1}: ${question ? question.prompt || 'Question text not available' : 'Question not found'}
+                                </div>
+                                <div class="student-answer">
+                                    <strong>Student's Answer:</strong> ${answerObj.answer || 'No answer provided'}
+                                </div>
+                                ${question && question.correct_answer ? `
+                                <div class="correct-answer">
+                                    <strong>Correct Answer:</strong> ${question.correct_answer}
+                                </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                } else {
+                    detailHTML += '<p>No answers available for this submission.</p>';
+                }
 
-                            <p><strong>{{ loop.index }}. {{ q.prompt }}</strong></p>
+                document.getElementById('detailPanel').innerHTML = detailHTML;
+                document.getElementById('detailPanel').classList.add('active');
+                
+                // Scroll to detail panel
+                document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                console.error('Error loading submission:', error);
+                alert('Failed to load submission details');
+            }
+        }
 
-                            <p class="student-response"><strong>Student Response:</strong> {{ q.response }}</p>
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('active');
+        }
 
-                            <p class="correct-answer"><strong>Correct Answer:</strong> {{ q.correct_answer }}</p>
-
-                            {% if q.type in ['mcq', 'true_false'] %}
-                                <p style="text-align:right;">
-                                    <strong>Status:</strong>
-                                    {% if q.is_correct %}
-                                        <span class="status-correct"><i class='bx bx-check-circle'></i> Automatically Correct</span>
-                                    {% else %}
-                                        <span class="status-incorrect"><i class='bx bx-x-circle'></i> Automatically Incorrect</span>
-                                    {% endif %}
-                                </p>
-                            {% else %}
-                                <p style="text-align:right;">
-                                    <strong>Status:</strong>
-                                    <span class="status-manual"><i class='bx bx-pencil'></i> Requires Manual Review</span>
-                                </p>
-                            {% endif %}
-
-                        </div>
-                    {% endfor %}
-                </div>
-
-            </div>
-        {% endfor %}
-
-    {% else %}
-        <div class="no-submissions">
-            <i class="bx bx-data"></i>
-            <p style="color:#999; font-size:1.1rem;">No students have submitted this quiz yet.</p>
-        </div>
-    {% endif %}
-
-</div>
+        // Auto-refresh submissions every 30 seconds
+        setInterval(() => {
+            if (!document.getElementById('detailPanel').classList.contains('active')) {
+                window.location.reload();
+            }
+        }, 30000);
+    </script>
 </body>
 </html>
