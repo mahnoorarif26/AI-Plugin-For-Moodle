@@ -666,14 +666,13 @@ main {
             }
         }
 
-        // Load grades from backend - UPDATED FIX
+        // Load grades from backend
         async function loadGrades() {
             const gradesList = document.getElementById('grades-list');
             gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
 
             try {
-                // CHANGED: Using /api/test-grades instead of /api/grades
-                const response = await fetch('/api/test-grades');
+                const response = await fetch('/api/grades');
                 const data = await response.json();
                 console.log('Grades API response:', data);
 
@@ -696,59 +695,59 @@ main {
         }
         
         // Helper function to render items
-        function renderItems(container, items, type) {
-            container.innerHTML = '';
+        // Helper function to render items
+        // Helper function to render items
+        // Helper function to render items
+function renderItems(container, items, type) {
+    container.innerHTML = '';
+    
+    items.forEach(item => {
+        const card = document.createElement('div');
+        
+        let innerHTML = '';
+
+        if (type === 'grade') {
+            const percentage = item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : 'N/A';
+            const scoreDisplay = `${item.score || 'N/A'}/${item.max_score || 'N/A'}`;
             
-            items.forEach(item => {
-                const card = document.createElement('div');
-                
-                let innerHTML = '';
+            card.className = 'grade-card';
+            innerHTML = `
+                <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
+                <div class="grade-details">
+                    <span>Date: ${item.date || 'N/A'}</span>
+                    <span>Percentage: ${percentage}%</span>
+                    <span class="grade-score">${scoreDisplay}</span>
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="/student/grade/${item.id}" class="btn btn-secondary">
+                        View Details
+                    </a>
+                </div>
+            `;
 
-                if (type === 'grade') {
-                    const percentage = item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : 'N/A';
-                    const scoreDisplay = `${item.score || 'N/A'}/${item.max_score || 'N/A'}`;
-                    
-                    card.className = 'grade-card';
-                    innerHTML = `
-                        <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
-                        <div class="grade-details">
-                            <span>Date: ${item.date || 'N/A'}</span>
-                            <span>Percentage: ${percentage}%</span>
-                            <span class="grade-score">${scoreDisplay}</span>
-                        </div>
-                        <div style="margin-top: 15px;">
-                            <a href="/student/grade/${item.id}" class="btn btn-secondary">
-                                View Details
-                            </a>
-                        </div>
-                    `;
-
-                } else {
-                    card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
-                    const questionsCount = item.questions_count || 
-                        (item.questions ? item.questions.length : 0);
-                    
-                    innerHTML = `
-                        <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
-                        <div class="${type}-details">
-                            <span>Questions: ${questionsCount}</span>
-                            <span class="status ${item.status || (type === 'quiz' ? 'upcoming' : 'pending')}">
-                                ${item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : (type === 'quiz' ? 'Available' : 'Pending')}
-                            </span>
-                        </div>
-                        <div style="margin-top: 15px;">
-                            <a href="/student/${type}/${item.id}" class="btn btn-primary">
-                                ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
-                            </a>
-                        </div>
-                    `;
-                }
-                
-                card.innerHTML = innerHTML;
-                container.appendChild(card);
-            });
+        } else {
+            card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
+            const questionsCount = item.questions_count || 
+                (item.questions ? item.questions.length : 0);
+            
+            innerHTML = `
+                <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
+                <div class="${type}-details">
+                    <span>Questions: ${questionsCount}</span>
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="/student/${type}/${item.id}" class="btn btn-primary">
+                        ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
+                    </a>
+                </div>
+            `;
         }
         
+        card.innerHTML = innerHTML;
+        container.appendChild(card);
+    });
+}
+            
         // Initialize the first active section
         const activeLink = document.querySelector('.topnav .link.active');
         if (activeLink) {
