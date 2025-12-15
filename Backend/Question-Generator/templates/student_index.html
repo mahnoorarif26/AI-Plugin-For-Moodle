@@ -357,8 +357,6 @@ main {
             color: #9b7a66; 
             font-size: 15px; 
             margin-bottom: 15px;
-            border-bottom: 1px dashed #fce8cd;
-            padding-bottom: 10px;
         }
         
         .assignment-details span, .quiz-details span, .grade-details span {
@@ -519,6 +517,11 @@ main {
     color: white !important;
     box-shadow: 0 4px 12px rgba(250, 140, 38, 0.3);
 }
+
+.grade-divider{
+    border-bottom:1px solid #fa8c26;
+    margin:6px 0 12px;
+}
     </style>
 
 </head>
@@ -580,6 +583,26 @@ main {
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const fmtScore = (n) => {
+            const num = Number(n);
+            return Number.isFinite(num) ? Math.ceil(num) : 0;
+        };
+        const fmtDate = (v) => {
+            try {
+                if (!v) return 'N/A';
+                const d = new Date(v);
+                if (Number.isNaN(d.getTime())) return 'N/A';
+                return d.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'UTC'
+                });
+            } catch (e) { return 'N/A'; }
+        };
         const topnavLinks = document.querySelectorAll('.topnav .link');
         const contentSections = document.querySelectorAll('.content-section');
         
@@ -666,7 +689,7 @@ main {
             }
         }
 
-        // Load grades from backend
+        // Load grades from backend and separate quizzes vs assignments
         async function loadGrades() {
             const gradesList = document.getElementById('grades-list');
             gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
@@ -676,11 +699,21 @@ main {
                 const data = await response.json();
                 console.log('Grades API response:', data);
 
-                if (data.success && data.items && data.items.length > 0) {
-                    renderItems(gradesList, data.items, 'grade');
-                } else {
+                const items = (data.success && data.items) ? data.items : [];
+                if (!items.length) {
                     gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
+                    return;
                 }
+                const grouped = { quiz: [], assignment: [] };
+                items.forEach(it => {
+                    const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
+                    grouped[k].push(it);
+                });
+
+                gradesList.innerHTML = `
+                    ${renderGradeGroup('Quizzes', grouped.quiz)}
+                    ${renderGradeGroup('Assignments', grouped.assignment)}
+                `;
             } catch (error) {
                 console.error('Error loading grades:', error);
                 gradesList.innerHTML = `
@@ -693,11 +726,18 @@ main {
                 `;
             }
         }
+
+        function renderGradeGroup(title, arr){
+            if(!arr || !arr.length) return '';
+            return `
+                <div class="grade-group">
+                    <h3 class="grade-group-title">${title}</h3>
+                    <div class="grade-divider"></div>
+                    ${arr.map(renderGradeCard).join('')}
+                </div>
+            `;
+        }
         
-        // Helper function to render items
-        // Helper function to render items
-        // Helper function to render items
-        // Helper function to render items
 function renderItems(container, items, type) {
     container.innerHTML = '';
     
@@ -707,24 +747,8 @@ function renderItems(container, items, type) {
         let innerHTML = '';
 
         if (type === 'grade') {
-            const percentage = item.max_score > 0 ? ((item.score / item.max_score) * 100).toFixed(0) : 'N/A';
-            const scoreDisplay = `${item.score || 'N/A'}/${item.max_score || 'N/A'}`;
-            
+            card.innerHTML = renderGradeCard(item);
             card.className = 'grade-card';
-            innerHTML = `
-                <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
-                <div class="grade-details">
-                    <span>Date: ${item.date || 'N/A'}</span>
-                    <span>Percentage: ${percentage}%</span>
-                    <span class="grade-score">${scoreDisplay}</span>
-                </div>
-                <div style="margin-top: 15px;">
-                    <a href="/student/grade/${item.id}" class="btn btn-secondary">
-                        View Details
-                    </a>
-                </div>
-            `;
-
         } else {
             card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
             const questionsCount = item.questions_count || 
@@ -736,16 +760,35 @@ function renderItems(container, items, type) {
                     <span>Questions: ${questionsCount}</span>
                 </div>
                 <div style="margin-top: 15px;">
-                    <a href="/student/${type}/${item.id}" class="btn btn-primary">
+                    <a href="/student/${type}/${item.id}" class="btn btn-primary" target="_blank" rel="noopener">
                         ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
                     </a>
                 </div>
             `;
+            card.innerHTML = innerHTML;
         }
         
-        card.innerHTML = innerHTML;
         container.appendChild(card);
     });
+}
+
+function renderGradeCard(item){
+    const s = fmtScore(item.score);
+    const m = fmtScore(item.max_score);
+    const scoreDisplay = `${s}/${m || 'N/A'}`;
+    return `
+        <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
+        <div class="grade-details">
+            <span>Date: ${item.date_human || fmtDate(item.date)}</span>
+            <span class="grade-score">${scoreDisplay}</span>
+        </div>
+        <div style="margin-top: 15px;">
+            <a href="/student/grade/${item.id}" class="btn btn-secondary" target="_blank" rel="noopener">
+                View Details
+            </a>
+        </div>
+        <div class="grade-divider"></div>
+    `;
 }
             
         // Initialize the first active section
