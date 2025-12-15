@@ -40,7 +40,11 @@
       <div class="title">{{ quiz_title }}</div>
       <div class="score">Score: {{ ((score or 0)|float|round(0, 'ceil')) }} / {{ ((max_total or total or 0)|float|round(0, 'ceil')) }}</div>
     </div>
-    <div class="muted">Submission ID: <span class="mono">{{ submission_id }}</span> • {{ submitted_at or '' }}</div>
+    <div class="muted">
+      Submission ID: <span class="mono">{{ submission_id }}</span>
+      {% if student_email %} • Student: {{ student_email }}{% endif %}
+      • {{ submitted_at or '' }}
+    </div>
 
     <table>
       <thead>
@@ -86,7 +90,7 @@
       </tbody>
   </table>
 
-    <a class="back" href="/student">Back to Dashboard</a>
+    <a class="back" href="{{ back_url or '/student' }}">Back to Dashboard</a>
   </div>
   <script>
     function needsToggle(block){
