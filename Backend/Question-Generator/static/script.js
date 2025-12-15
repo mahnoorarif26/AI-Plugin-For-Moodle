@@ -12,6 +12,34 @@ const ENDPOINT = "/api/quiz/from-pdf";
 /* ===========================
    Helpers
 =========================== */
+function formatDateTime(value){
+  try{
+    const d = value instanceof Date ? value : new Date(value);
+    if(!d || Number.isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'UTC'
+    });
+  }catch(e){
+    return '';
+  }
+}
+
+function formatScoreCeil(val){
+  const n = Number(val);
+  if (Number.isFinite(n)) return Math.ceil(n);
+  return 0;
+}
+
+// Expose helpers for other scripts
+window.__fmtDateTime = formatDateTime;
+window.__fmtScore = formatScoreCeil;
+
 function showToast(msg, ms=2500){
   const toastEl = document.getElementById('toast');
   if (!toastEl) return;
@@ -71,7 +99,7 @@ function renderQuiz(questions, metadata = {}) {
     <div class="quiz-metadata">
       <p><strong>Total Questions:</strong> ${questions.length}</p>
       ${metadata.source_file ? `<p><strong>Source:</strong> ${metadata.source_file}</p>` : ''}
-      ${metadata.generated_at ? `<p><strong>Generated:</strong> ${new Date(metadata.generated_at).toLocaleString()}</p>` : ''}
+      ${metadata.generated_at ? `<p><strong>Generated:</strong> ${formatDateTime(metadata.generated_at)}</p>` : ''}
     </div>
   `;
 
@@ -263,7 +291,7 @@ function copyQuizAsText() {
   let text = `GENERATED QUIZ\n`;
   text += `====================\n`;
   text += `Total Questions: ${__lastQuizData.questions.length}\n`;
-  text += `Generated: ${new Date().toLocaleString()}\n\n`;
+  text += `Generated: ${formatDateTime(new Date())}\n\n`;
   
   __lastQuizData.questions.forEach((q, index) => {
     const questionText = q.prompt || q.question_text || 'No question text';

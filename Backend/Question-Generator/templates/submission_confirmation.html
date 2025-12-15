@@ -183,15 +183,15 @@
         }
         
         .btn-secondary {
-            background: linear-gradient(135deg, var(--info-blue), #2980b9);
+            background: #fa8c26;
             color: white;
             position: relative;
             overflow: hidden;
         }
         
         .btn-secondary:hover {
-            background: linear-gradient(135deg, #2980b9, var(--info-blue));
-            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+            background: #f57c00;
+            box-shadow: 0 8px 20px rgba(250, 140, 38, 0.3);
             transform: translateY(-3px);
         }
 
@@ -384,10 +384,14 @@
         </div>
         
         <div style="margin-top: 30px;">
-
             <a href="/student" class="btn btn-primary">
                 <i class='bx bx-home'></i> Back to Dashboard
             </a>
+            {% if submission_id and submission_id != 'N/A' %}
+            <a href="/student/grade/{{ submission_id }}" class="btn btn-secondary" target="_blank" rel="noopener">
+                <i class='bx bx-show'></i> View Details
+            </a>
+            {% endif %}
         </div>
     </div>
 </body>
