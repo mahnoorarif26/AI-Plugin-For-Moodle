@@ -91,7 +91,7 @@
                 <p style="color: #f44336; font-weight: bold;">TIME LIMIT: 10 minutes. The quiz will auto-submit when the timer expires.</p>
             </div>
 
-            <form action="{{ url_for('student_submit_quiz') }}" method="POST" id="quiz-form">
+            <form action="{{ url_for('submit_quiz') }}" method="POST" id="quiz-form">
                 <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
                 <input type="hidden" name="student_name" value="{{ student_name }}">
                 

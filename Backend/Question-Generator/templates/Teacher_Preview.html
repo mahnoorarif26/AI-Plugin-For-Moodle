@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submissions for {{ quiz_title }}</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-orange: #ff9f1c;
+            --dark-orange: #cc7a00;
+            --status-correct: #28a745;
+            --status-incorrect: #dc3545;
+            --status-manual: #ffc107;
+            --back-link-default: #6c757d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #f7f9fc;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary-orange);
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: var(--back-link-default);
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-orange);
+        }
+
+        .submission-card {
+            background: #fff;
+            padding: 22px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            margin-bottom: 25px;
+        }
+
+        .student-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .student-info h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .submission-details p {
+            margin: 0;
+            text-align: right;
+        }
+
+        .question-review {
+            margin-top: 10px;
+        }
+
+        .question-block {
+            padding: 12px 0;
+            border-top: 1px dotted #eee;
+        }
+
+        .question-block p {
+            margin: 5px 0;
+        }
+
+        .student-response {
+            color: var(--primary-orange);
+            margin-left: 12px;
+        }
+
+        .correct-answer {
+            color: var(--status-correct);
+            margin-left: 12px;
+        }
+
+        .status-correct {
+            color: var(--status-correct);
+            font-weight: 600;
+        }
+
+        .status-incorrect {
+            color: var(--status-incorrect);
+            font-weight: 600;
+        }
+
+        .status-manual {
+            color: var(--status-manual);
+            font-weight: 600;
+        }
+
+        .no-submissions {
+            background: white;
+            padding: 45px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .no-submissions i {
+            font-size: 48px;
+            color: var(--status-manual);
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>Submissions for: <strong>{{ quiz_title }}</strong></h1>
+        <a href="{{ url_for('teacher_index') }}" class="back-link">
+            <i class='bx bx-arrow-back'></i> Back to Quizzes List
+        </a>
+    </div>
+
+    {% if submissions %}
+        {% for sub in submissions %}
+            <div class="submission-card">
+
+                <div class="student-info">
+                    <h2>
+                        <i class='bx bx-user-circle'></i>
+                        {{ sub.student_name }} ({{ sub.student_email }})
+                    </h2>
+
+                    <div class="submission-details">
+                        <p><strong>Score: {{ sub.score }} / {{ sub.total_questions }}</strong></p>
+                        <p style="font-size: 0.9rem; color: #777;">Submitted: {{ sub.submitted_at_str }}</p>
+                    </div>
+                </div>
+
+                <div class="question-review">
+                    {% for q_id, q in sub.answers.items() %}
+                        <div class="question-block">
+
+                            <p><strong>{{ loop.index }}. {{ q.prompt }}</strong></p>
+
+                            <p class="student-response"><strong>Student Response:</strong> {{ q.response }}</p>
+
+                            <p class="correct-answer"><strong>Correct Answer:</strong> {{ q.correct_answer }}</p>
+
+                            {% if q.type in ['mcq', 'true_false'] %}
+                                <p style="text-align:right;">
+                                    <strong>Status:</strong>
+                                    {% if q.is_correct %}
+                                        <span class="status-correct"><i class='bx bx-check-circle'></i> Automatically Correct</span>
+                                    {% else %}
+                                        <span class="status-incorrect"><i class='bx bx-x-circle'></i> Automatically Incorrect</span>
+                                    {% endif %}
+                                </p>
+                            {% else %}
+                                <p style="text-align:right;">
+                                    <strong>Status:</strong>
+                                    <span class="status-manual"><i class='bx bx-pencil'></i> Requires Manual Review</span>
+                                </p>
+                            {% endif %}
+
+                        </div>
+                    {% endfor %}
+                </div>
+
+            </div>
+        {% endfor %}
+
+    {% else %}
+        <div class="no-submissions">
+            <i class="bx bx-data"></i>
+            <p style="color:#999; font-size:1.1rem;">No students have submitted this quiz yet.</p>
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

@@ -122,12 +122,16 @@
     <section id="section-grades" style="display:none;">
       <div class="grades-header">
         <h2>Student Grades</h2>
+        <p class="muted">Latest graded submissions. Scores are rounded up to whole numbers.</p>
       </div>
-      <div class="empty-state">
-        <div class="empty-icon">📝</div>
-        <h2>Grades page</h2>
-        <p>Grades logic is not implemented yet. This is placeholder text as requested.</p>
+      <div class="grades-controls">
+        <label class="label" for="grades-email">Student email (leave blank to view all)</label>
+        <div class="inline-input">
+          <input type="email" id="grades-email" placeholder="student@example.com" value="student@example.com" />
+          <button class="btn" id="btn-refresh-grades">Refresh</button>
+        </div>
       </div>
+      <div id="grades-list" class="grades-list"></div>
     </section>
 
     <section id="section-assignments" style="display:none;">
@@ -543,6 +547,16 @@
   (function () {
     const $ = (sel) => document.querySelector(sel);
     const id = (s) => document.getElementById(s);
+    const fmtScore = (n) => (window.__fmtScore ? window.__fmtScore(n) : Math.ceil(Number(n) || 0));
+    const fmtDate = (v) => (window.__fmtDateTime ? window.__fmtDateTime(v) : (v ? new Date(v).toLocaleString() : ''));
+    const groupByKind = (items=[]) => {
+      const out = { quiz: [], assignment: [] };
+      items.forEach(it => {
+        const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
+        out[k].push(it);
+      });
+      return out;
+    };
 
     function showEl(el){ if(!el) return; el.hidden = false; el.style.removeProperty('display'); }
     function hideEl(el){ if(!el) return; el.hidden = true; el.style.display = 'none'; }
@@ -583,7 +597,7 @@
             (typeof qz.questions_count === 'number' ? qz.questions_count : null) ??
             (qz.counts ? Object.values(qz.counts).reduce((a, b) => a + (b || 0), 0) : 0);
 
-          const created = qz.created_at ? new Date(qz.created_at).toLocaleString() : '';
+          const created = fmtDate(qz.created_at);
           return `
             <div class="quiz-item">
               <div class="quiz-title">${qz.title || 'AI Generated Quiz'}</div>
@@ -607,6 +621,7 @@
       Object.values(sections).forEach(hideEl);
       showEl(sections[route] || sections.home);
       if (route === 'view') loadQuizzes();
+      if (route === 'grades') loadGrades();
     }
     window.showSection = showSection;
 
@@ -618,6 +633,69 @@
     // Initial route (?route=...)
     const params  = new URLSearchParams(location.search);
     showSection(params.get('route') || 'home');
+
+    // -------- Grades loader --------
+    async function loadGrades() {
+      const list = id('grades-list');
+      if (!list) return;
+      list.innerHTML = '<div class="muted">Loading grades…</div>';
+      try {
+        const email = (id('grades-email')?.value || '').trim();
+        const url = new URL('/api/grades', window.location.origin);
+        if (email) url.searchParams.set('email', email);
+        url.searchParams.set('refresh', '1');
+        const res = await fetch(url.toString());
+        const data = await res.json();
+        const items = (data && data.items) ? data.items : [];
+        if (!items.length) {
+          list.innerHTML = '<div class="empty-state" style="margin:12px 0;">No grades yet.</div>';
+          return;
+        }
+        const grouped = groupByKind(items);
+
+        function renderGroup(kindLabel, arr) {
+          if (!arr.length) return '';
+          return `
+            <div class="grades-group">
+              <h3 class="grade-group-title">${kindLabel}</h3>
+              ${arr.map(g => {
+                const s = fmtScore(g.score);
+                const m = fmtScore(g.max_score);
+                const when = g.date_human || fmtDate(g.date);
+                const who = g.student_email || g.student_name || 'Unknown student';
+                return `
+                  <div class="quiz-card grade-card">
+                    <div class="quiz-title">${g.title || 'Graded item'}</div>
+                    <div class="quiz-meta">
+                      <span class="badge">${g.kind || 'quiz'}</span>
+                      ${when ? `<span class="muted">• ${when}</span>` : ''}
+                      <span class="muted">• ${who}</span>
+                    </div>
+                    <div class="grade-line">
+                      <div class="grade-score">${s}/${m}</div>
+                      <div class="grade-actions">
+                        <a class="btn btn-dark" href="/student/grade/${g.id}?origin=teacher" target="_blank" rel="noopener">View details</a>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
+
+        list.innerHTML =
+          renderGroup('Quizzes', grouped.quiz) +
+          renderGroup('Assignments', grouped.assignment);
+      } catch (e) {
+        console.error(e);
+        list.innerHTML = '<div class="muted">Failed to load grades.</div>';
+      }
+    }
+    window.loadGrades = loadGrades;
+
+    const refreshBtn = id('btn-refresh-grades');
+    if (refreshBtn) refreshBtn.addEventListener('click', loadGrades);
 
     // -------- Rotating text on Home --------
     (function initRotator() {

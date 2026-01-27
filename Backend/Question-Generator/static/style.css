@@ -1012,3 +1012,59 @@ select{
   color: #0369a1;
   font-weight: 700;
 }
+
+/* Grades page tweaks */
+#section-grades .grades-controls{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin:10px 0 16px;
+}
+#section-grades .inline-input{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+#section-grades .grades-list .grade-card{
+  min-height:unset;
+  margin-bottom:12px;
+}
+#section-grades .badge{
+  display:inline-block;
+  padding:4px 8px;
+  border-radius:12px;
+  background:#eef2f7;
+  color:#475569;
+  font-size:12px;
+}
+#section-grades .grade-line{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:12px;
+  font-weight:600;
+}
+#section-grades .grade-score{
+  font-size:20px;
+}
+#section-grades .grade-actions{
+  margin-left:auto;
+}
+#section-grades .btn-dark{
+  background:#ffffff;
+  color:#111827;
+  border:1px solid #111827;
+}
+#section-grades .btn-dark:hover{
+  background:#f1f5f9;
+}
+.grades-group{
+  margin-bottom:20px;
+}
+.grade-group-title{
+  margin:12px 4px 8px;
+  font-size:16px;
+  font-weight:700;
+  color:#0f172a;
+}
