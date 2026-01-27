@@ -83,20 +83,14 @@
       </div>
 
       <!-- Generated Quiz Output Section -->
-      <section id="quiz-section" aria-live="polite" style="display:none">
+      <section id="quiz-section" style="display:none">
         <div class="quiz-out-head">
-          <h2>Generated Quiz</h2>
-          <div class="quiz-actions">
-
-            <button class="btn" id="btn-send" type="button">Send</button>
-            <button class="btn" id="btn-publish" type="button">Publish</button>
-            <span id="publish-note" class="muted" style="margin-left:8px;"></span>
-          </div>
-        </div>
+           <button id="btn-download">Download PDF</button>
+           <span id="download-note"></span>
+       </div>
         <div id="quiz-container" class="quiz-out"></div>
       </section>
     </section>
-
     <!-- VIEW QUIZZES -->
     <section id="section-view" style="display:none;">
   <div class="cards-container">
@@ -275,76 +269,237 @@
     </div>
   </div>
   <!-- Assignment From PDF Modal -->
+  <!-- Enhanced Assignment From PDF Modal -->
   <div id="modal-assign-pdf" class="modal" aria-hidden="true">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 950px;">
       <div class="modal-head">
-        <h3>Generate Assignment from PDF</h3>
-        <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
+        <h3>🎓 Generate Advanced Assignment from PDF</h3>
+        <div class="modal-actions">
+          <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
+          <button class="generate-btn" type="button" id="btn-assign-pdf-detect"> Generate</button>
+        </div>
       </div>
 
-      <!-- 1) Upload PDF – same style as quiz builder -->
-      <div class="section-title">1) Upload PDF</div>
-      <div id="assign-uploader" class="uploader">
-        <b>Drop PDF here</b> or click to select
-        <small>Accepted: .pdf (max ~25MB)</small>
-        <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
-      </div>
-      <div id="assignFileNameDisplay" class="file-name-display"></div>
-
-      <!-- 2) Total tasks -->
-      <div class="section-title" style="margin-top:18px;">2) Total Tasks</div>
-      <div class="field">
-        <label class="label" for="assign-pdf-count">Total Tasks</label>
-        <input type="number" id="assign-pdf-count" min="1" value="5" />
-      </div>
-
-      <!-- Generate button -->
-      <div style="margin-top:20px; display:flex; justify-content:flex-end;">
-        <button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Assignment By Topics Modal -->
-  <div id="modal-assign-topics" class="modal" aria-hidden="true">
-    <div class="modal-card">
-      
-      <!-- Header -->
-      <div class="modal-head">
-        <h3>Generate Assignment by Topics</h3>
-        <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
-      </div>
-
-      <!-- Body -->
       <div class="modal-body">
+        <!-- Step 1: Upload PDF -->
+        <div class="section-title">1️⃣ Upload Study Material</div>
+        <div id="assign-uploader" class="uploader">
+          <b>Drop PDF here</b> or click to select
+          <small>Accepted: .pdf (max ~25MB)</small>
+          <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
+        </div>
+        <div id="assignFileNameDisplay" class="file-name-display"></div>
 
-        <!-- Section title -->
-        <div class="section-title">1) Enter Topics</div>
+        <!-- Step 2: Assignment Type Distribution -->
+        <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
+        <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+          Choose how many questions of each type you want to generate
+        </p>
 
-        <label class="field">
-          <span>Topics (one per line)</span>
-          <textarea id="assign-topics-text" rows="5"
-            placeholder="e.g. Binary Search Trees&#10Sorting Algorithms&#10Machine Learning"></textarea>
-        </label>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
+          <!-- Conceptual -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">💡</span>
+              <div>
+                <strong>Conceptual</strong>
+                <p>Theory & principles</p>
+              </div>
+            </div>
+            <input type="number" id="conceptual-count" min="0" max="10" value="1">
+          </div>
 
-        <!-- Section title -->
-        <div class="section-title" style="margin-top:18px;">2) Number of Tasks</div>
+          <!-- Scenario-based -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">🎯</span>
+              <div>
+                <strong>Scenario-Based</strong>
+                <p>Real-world application</p>
+              </div>
+            </div>
+            <input type="number" id="scenario-count" min="0" max="10" value="1">
+          </div>
 
-        <label class="field">
-          <span>Total Tasks</span>
-          <input type="number" id="assign-topics-count" min="1" value="4" />
-        </label>
+          <!-- Research-based -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">🔬</span>
+              <div>
+                <strong>Research-Based</strong>
+                <p>Investigation & analysis</p>
+              </div>
+            </div>
+            <input type="number" id="research-count" min="0" max="10" value="1">
+          </div>
 
-        <!-- CTA Button -->
-        <div style="margin-top:20px; display:flex; justify-content:flex-end;">
-          <button class="generate-btn" type="button" id="btn-assign-topics-generate">
-            Generate Assignment
-          </button>
+          <!-- Project-based -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">🛠️</span>
+              <div>
+                <strong>Project-Based</strong>
+                <p>Practical implementation</p>
+              </div>
+            </div>
+            <input type="number" id="project-count" min="0" max="10" value="0">
+          </div>
+
+          <!-- Case Study -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">📋</span>
+              <div>
+                <strong>Case Study</strong>
+                <p>Complex situation analysis</p>
+              </div>
+            </div>
+            <input type="number" id="case-study-count" min="0" max="10" value="0">
+          </div>
+
+          <!-- Comparative Analysis -->
+          <div class="assignment-type-card">
+            <div class="type-header">
+              <span class="type-icon">⚖️</span>
+              <div>
+                <strong>Comparative</strong>
+                <p>Compare & contrast</p>
+              </div>
+            </div>
+            <input type="number" id="comparative-count" min="0" max="10" value="1">
+          </div>
         </div>
 
+        <!-- Step 3: Difficulty -->
+        <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
+        <div class="field">
+          <select id="assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+            <option value="auto">Auto (AI decides based on content)</option>
+            <option value="easy">Easy (Beginner level)</option>
+            <option value="medium">Medium (Intermediate level)</option>
+            <option value="hard">Hard (Advanced level)</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
+
+
+  <!-- Enhanced Assignment By Topics Modal -->
+<div id="modal-assign-topics" class="modal" aria-hidden="true">
+  <div class="modal-card" style="max-width: 950px;">
+    
+    <!-- Header -->
+    <div class="modal-head">
+      <h3>🎓 Generate Assignment by Topics</h3>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
+        <button class="generate-btn" type="button" id="btn-assign-topics-generate">
+          🚀 Generate
+        </button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Section 1: Enter Topics -->
+      <div class="section-title">1️⃣ Enter Topics</div>
+      <div class="field">
+        <label for="assign-topics-text">
+          <span>Topics (one per line)</span>
+        </label>
+        <textarea id="assign-topics-text" rows="5"
+          placeholder="e.g.&#10;Binary Search Trees&#10;Sorting Algorithms&#10;Machine Learning Fundamentals&#10;Neural Networks"></textarea>
+      </div>
+
+      <!-- Section 2: Assignment Type Distribution -->
+      <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
+      <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+        Choose how many questions of each type you want to generate
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
+        <!-- Conceptual -->
+        <div class="assignment-type-card">
+          <div class="type-header">
+            <span class="type-icon">💡</span>
+            <div>
+              <strong>Conceptual</strong>
+              <p>Theory & principles</p>
+            </div>
+          </div>
+          <input type="number" id="topics-conceptual-count" min="0" max="10" value="1">
+        </div>
+
+        <!-- Scenario-based -->
+        <div class="assignment-type-card">
+          <div class="type-header">
+            <span class="type-icon">🎯</span>
+            <div>
+              <strong>Scenario-Based</strong>
+              <p>Real-world application</p>
+            </div>
+          </div>
+          <input type="number" id="topics-scenario-count" min="0" max="10" value="1">
+        </div>
+
+        <!-- Research-based -->
+        <div class="assignment-type-card">
+          <div class="type-header">
+            <span class="type-icon">🔬</span>
+            <div>
+              <strong>Research-Based</strong>
+              <p>Investigation & analysis</p>
+            </div>
+          </div>
+          <input type="number" id="topics-research-count" min="0" max="10" value="0">
+        </div>
+
+        <!-- Case Study -->
+        <div class="assignment-type-card">
+          <div class="type-header">
+            <span class="type-icon">📋</span>
+            <div>
+              <strong>Case Study</strong>
+              <p>Complex situation analysis</p>
+            </div>
+          </div>
+          <input type="number" id="topics-case-study-count" min="0" max="10" value="1">
+        </div>
+
+        <!-- Comparative Analysis -->
+        <div class="assignment-type-card">
+          <div class="type-header">
+            <span class="type-icon">⚖️</span>
+            <div>
+              <strong>Comparative</strong>
+              <p>Compare & contrast</p>
+            </div>
+          </div>
+          <input type="number" id="topics-comparative-count" min="0" max="10" value="1">
+        </div>
+      </div>
+
+      <!-- Total Counter -->
+      <div id="topics-total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
+        Total Tasks: <span id="topics-total-tasks-count">4</span>
+      </div>
+
+      <!-- Section 3: Difficulty -->
+      <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
+      <div class="field">
+        <select id="topics-assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+          <option value="auto">Auto (AI decides based on content)</option>
+          <option value="easy">Easy (Beginner level)</option>
+          <option value="medium">Medium (Intermediate level)</option>
+          <option value="hard">Hard (Advanced level)</option>
+        </select>
+      </div>
+
+    </div>
+  </div>
+</div>
 
   <!-- Quiz Settings Modal -->
   <div id="quiz-settings-modal" class="modal" aria-hidden="true">
@@ -382,6 +537,7 @@
   <script src="{{ url_for('static', filename='script.js') }}" defer></script>
   <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
   <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
   <script src="{{ url_for('static', filename='assignments.js') }}"></script>
   <script src="{{ url_for('static', filename='view_items.js') }}"></script>
