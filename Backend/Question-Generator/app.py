@@ -1,12 +1,9 @@
 import os
 import re
-import sys
 import json
 import uuid
-import math
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Any
-import importlib.util
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for,session 
@@ -26,11 +23,9 @@ from services.db import (
     get_quiz_by_id,
     list_quizzes,
     save_submission as save_submission_to_store,
-    get_submitted_quiz_ids,
-    get_submissions_for_quiz
+    get_submitted_quiz_ids
     # ADD THIS LINE:,# Assuming this function exists in services.db
 )
-from services import db as _db_mod
 
 
 # ====== LLM / UTILS ======
@@ -55,32 +50,6 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY is missing in environment (.env).")
-
-# ===============================
-# QUIZ GRADER (from quiz grading/)
-# ===============================
-GRADER_FILE = os.path.join(os.path.dirname(__file__), "quiz grading", "grader.py")
-QUIZ_GRADING_DIR = os.path.dirname(GRADER_FILE)
-if QUIZ_GRADING_DIR not in sys.path:
-    sys.path.insert(0, QUIZ_GRADING_DIR)
-
-grader = None
-if os.path.exists(GRADER_FILE):
-    try:
-        spec = importlib.util.spec_from_file_location("quizgrading.grader", GRADER_FILE)
-        grader_mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(grader_mod)
-        QuizGrader = grader_mod.QuizGrader
-        grader = QuizGrader(
-            api_key=os.getenv("GROQ_API_KEY"),
-            model=os.getenv("GROQ_MODEL"),
-            default_policy=os.getenv("GRADING_POLICY", "balanced"),
-        )
-        print(f"✅ Quiz grader loaded from {GRADER_FILE}")
-    except Exception as e:
-        print(f"⚠️ Quiz grader failed to load: {e}")
-else:
-    print(f"⚠️ Grader file not found at {GRADER_FILE}; grading disabled.")
 
 # ===============================
 # APP
@@ -171,60 +140,6 @@ def _is_likely_heading(line: str) -> bool:
         if 2 <= len(words) <= 8 and len(line) < 60:
             return True
     return False
-
-def _default_max_score(qtype: str) -> float:
-    q = (qtype or "").lower()
-    if q in ("mcq", "true_false", "tf", "truefalse"):
-        return 1.0
-    if q == "short":
-        return 3.0
-    if q in ("long", "conceptual"):
-        return 5.0
-    return 1.0
-
-def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize quiz structure for the grader: ensure answers/max_score are present."""
-    quiz_for_grader = dict(quiz or {})
-    normalized_questions: List[Dict[str, Any]] = []
-    for q in quiz_for_grader.get("questions", []) or []:
-        qq = dict(q)
-        # Normalize answer field
-        if qq.get("answer") is None:
-            for key in ["correct_answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
-                if qq.get(key) is not None:
-                    qq["answer"] = qq.get(key)
-                    break
-        # Default max_score when missing
-        if qq.get("max_score") is None:
-            qq["max_score"] = _default_max_score(qq.get("type"))
-        normalized_questions.append(qq)
-    quiz_for_grader["questions"] = normalized_questions
-    return quiz_for_grader
-
-def _ceil_score(val: Any) -> int:
-    try:
-        return int(math.ceil(float(val)))
-    except Exception:
-        return 0
-
-def _humanize_datetime(val: Any) -> str:
-    """Return a consistent, human-readable UTC timestamp string."""
-    try:
-        if isinstance(val, datetime):
-            dt = val
-        elif isinstance(val, str):
-            # Normalize "Z" suffix to +00:00 for fromisoformat
-            if val.endswith("Z"):
-                val = val.replace("Z", "+00:00")
-            dt = datetime.fromisoformat(val)
-        else:
-            return ""
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        dt = dt.astimezone(timezone.utc)
-        return dt.strftime("%b %d, %Y %H:%M UTC")
-    except Exception:
-        return ""
 
 # ===============================
 # LANDING (always open teacher/generate)
@@ -475,6 +390,7 @@ def submit_quiz():
     if not correct_quiz_data:
         return jsonify({"error": "Quiz not found"}), 404
 
+    score = 0
     total_questions = len(correct_quiz_data.get('questions', []))
     student_answers: Dict[str, str] = {}
 
@@ -482,32 +398,13 @@ def submit_quiz():
         q_id = q.get('id')
         if not q_id:
             continue
-        student_answers[q_id] = (form_data.get(q_id) or '').strip()
+        correct_answer = q.get('correct_answer')
+        student_response = (form_data.get(q_id) or '').strip()
+        student_answers[q_id] = student_response
 
-    # Prefer AI grading when available; fallback to basic MCQ/TF scoring
-    grading_items: List[Dict[str, Any]] = []
-    max_total_calc = None
-    score = 0
-    if grader is not None:
-        try:
-            quiz_for_grader = _prepare_quiz_for_grading(correct_quiz_data)
-            result = grader.grade_quiz(
-                quiz=quiz_for_grader,
-                responses=student_answers,
-                policy=os.getenv("GRADING_POLICY", "balanced"),
-            )
-            score = _ceil_score(result.get('total_score', 0))
-            grading_items = result.get('items') or []
-            max_total_calc = result.get('max_total')
-        except Exception as e:
-            print(f"[quiz_grading] grading failed: {e}")
-    else:
-        for q in correct_quiz_data.get('questions', []):
-            if q.get('type') in ['mcq', 'true_false'] and q.get('correct_answer') is not None:
-                qid = q.get('id')
-                if qid and str(student_answers.get(qid, "")).lower() == str(q.get('correct_answer')).lower():
-                    score += 1
-        score = _ceil_score(score)
+        if q.get('type') in ['mcq', 'true_false'] and correct_answer is not None:
+            if str(student_response).lower() == str(correct_answer).lower():
+                score += 1
 
     # In no-auth mode, use fixed student identity
     submission_data = {
@@ -516,10 +413,6 @@ def submit_quiz():
         "answers": student_answers,
         "score": score,
         "total_questions": total_questions,
-        "grading_items": grading_items,
-        "max_total": max_total_calc,
-        "kind": "quiz_submission",
-        "submitted_at": datetime.utcnow().replace(tzinfo=timezone.utc).isoformat(),
     }
     submission_id = save_submission_to_store(quiz_id, submission_data)
 
@@ -529,13 +422,8 @@ def submit_quiz():
 @app.route('/student/confirmation/<quiz_id>', methods=['GET'])
 def submission_confirmation(quiz_id):
     """Display submission confirmation and score."""
-    score_raw = request.args.get('score', 'N/A')
-    total_raw = request.args.get('total', 'N/A')
-    try:
-        score = _ceil_score(score_raw)
-        total = _ceil_score(total_raw)
-    except Exception:
-        score, total = score_raw, total_raw
+    score = request.args.get('score', 'N/A')
+    total = request.args.get('total', 'N/A')
     submission_id = request.args.get('submission_id', 'N/A')
 
     quiz_data = get_quiz_by_id(quiz_id)
@@ -551,261 +439,6 @@ def submission_confirmation(quiz_id):
         submission_id=submission_id,
         student_name="Student"
     )
-
-# ===============================
-# GRADES + SUBMISSION APIs
-# ===============================
-@app.get('/api/grades')
-def api_grades():
-    """Return graded submissions for a student (requires Firestore)."""
-    email_filter = (request.args.get('email') or '').strip()
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return jsonify({"success": True, "items": []})
-
-    items = []
-    try:
-        for collection_name in ['AIquizzes', 'assignments']:
-            for qdoc in fs.collection(collection_name).stream():
-                qid = qdoc.id
-                quiz = qdoc.to_dict() or {}
-                title = (
-                    quiz.get('title')
-                    or quiz.get('metadata', {}).get('source_file')
-                    or ('Assignment' if collection_name == 'assignments' else 'AI Generated Quiz')
-                )
-
-                # Pre-compute max score in case submissions are missing it
-                max_total_default = 0.0
-                for qq in quiz.get('questions', []) or []:
-                    max_total_default += float(qq.get('max_score') or _default_max_score(qq.get('type')))
-
-                subs_ref = (
-                    fs.collection(collection_name)
-                      .document(qid)
-                      .collection('submissions')
-                )
-                if email_filter:
-                    subs_ref = subs_ref.where('student_email', '==', email_filter)
-                subs = subs_ref.stream()
-                for sd in subs:
-                    s = sd.to_dict() or {}
-
-                    # Auto-grade if grader is available but submission lacks grading_items
-                    if grader is not None and not (s.get('grading_items') or []):
-                        try:
-                            quiz_for_grader = _prepare_quiz_for_grading(quiz)
-                            result = grader.grade_quiz(
-                                quiz=quiz_for_grader,
-                                responses=s.get('answers') or {},
-                                policy=os.getenv("GRADING_POLICY", "balanced"),
-                            )
-                            fs.collection(collection_name).document(qid).collection('submissions').document(sd.id).update({
-                                'score': _ceil_score(result.get('total_score', 0)),
-                                'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
-                                'grading_items': result.get('items') or [],
-                            })
-                            s['score'] = _ceil_score(result.get('total_score', 0))
-                            s['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
-                            s['grading_items'] = result.get('items') or []
-                        except Exception as e:
-                            print(f"[api/grades] auto-grade failed: {e}")
-
-                    items.append({
-                        'id': sd.id,
-                        'title': title,
-                        'date': str(s.get('submitted_at') or ''),
-                        'date_human': _humanize_datetime(s.get('submitted_at') or ''),
-                        'score': _ceil_score(s.get('score') or 0),
-                        'max_score': _ceil_score(s.get('max_total') or max_total_default),
-                        'quiz_id': qid,
-                        'student_email': s.get('student_email') or s.get('email') or '',
-                        'student_name': s.get('student_name') or s.get('name') or '',
-                        'kind': 'assignment' if collection_name == 'assignments' else 'quiz',
-                    })
-        items.sort(key=lambda x: str(x.get('date') or ''), reverse=True)
-        return jsonify({"success": True, "items": items})
-    except Exception as e:
-        return jsonify({"success": False, "error": f"grades_list_failed: {e}"}), 500
-
-
-@app.get('/api/submissions/<submission_id>')
-def api_get_submission(submission_id: str):
-    """Fetch a specific submission by ID (Firestore required)."""
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return jsonify({"success": False, "error": "firestore_disabled"}), 400
-    try:
-        for collection_name in ['AIquizzes', 'assignments']:
-            for qdoc in fs.collection(collection_name).stream():
-                qid = qdoc.id
-                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
-                sub = subref.get()
-                if not sub.exists:
-                    continue
-                s = sub.to_dict() or {}
-                s["score"] = _ceil_score(s.get("score") or 0)
-                s["max_total"] = _ceil_score(s.get("max_total") or 0)
-                s["submitted_at_human"] = _humanize_datetime(s.get("submitted_at") or '')
-                s["student_email"] = s.get("student_email") or s.get("email")
-                s["student_name"] = s.get("student_name") or s.get("name")
-                return jsonify({
-                    "success": True,
-                    "submission": s,
-                    "quiz_id": qid,
-                    "collection": collection_name,
-                })
-        return jsonify({"success": False, "error": "submission_not_found"}), 404
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.post('/api/submissions/<submission_id>/regrade')
-def api_regrade_submission(submission_id: str):
-    """Force regrading of a submission (Firestore required)."""
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return jsonify({"success": False, "error": "firestore_disabled"}), 400
-    if grader is None:
-        return jsonify({"success": False, "error": "grader_unavailable"}), 500
-    try:
-        target = None
-        quiz = None
-        collection_match = None
-        quiz_id = None
-        for collection_name in ['AIquizzes', 'assignments']:
-            for qdoc in fs.collection(collection_name).stream():
-                qid = qdoc.id
-                sub = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id).get()
-                if sub.exists:
-                    target = sub.to_dict() or {}
-                    quiz = qdoc.to_dict() or {}
-                    collection_match = collection_name
-                    quiz_id = qid
-                    break
-            if target:
-                break
-
-        if not target or not quiz or not collection_match:
-            return jsonify({"success": False, "error": "submission_not_found"}), 404
-
-        quiz_for_grader = _prepare_quiz_for_grading(quiz)
-        result = grader.grade_quiz(
-            quiz=quiz_for_grader,
-            responses=target.get('answers') or {},
-            policy=os.getenv('GRADING_POLICY', 'balanced'),
-        )
-        fs.collection(collection_match).document(quiz_id).collection('submissions').document(submission_id).update({
-            'score': _ceil_score(result.get('total_score', 0)),
-            'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
-            'grading_items': result.get('items') or [],
-        })
-
-        return jsonify({"success": True, "result": result})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.get('/student/grade/<submission_id>')
-def student_grade_detail(submission_id: str):
-    """Render grade details page for a submission (Firestore required)."""
-    origin = request.args.get('origin') or 'student'
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return redirect(url_for('student_index'))
-    try:
-        found = None
-        quiz_data = None
-        collection_match = None
-        for collection_name in ['AIquizzes', 'assignments']:
-            for qdoc in fs.collection(collection_name).stream():
-                qid = qdoc.id
-                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
-                sub = subref.get()
-                if not sub.exists:
-                    continue
-                found = sub.to_dict() or {}
-                quiz_data = qdoc.to_dict() or {}
-                collection_match = collection_name
-                quiz_data["id"] = qid
-                break
-            if found:
-                break
-
-        if not found or not quiz_data:
-            return redirect(url_for('student_index'))
-
-        # Auto-grade if missing
-        if grader is not None and not (found.get('grading_items') or []):
-            try:
-                quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
-                result = grader.grade_quiz(
-                    quiz=quiz_for_grader,
-                    responses=found.get('answers') or {},
-                    policy=os.getenv("GRADING_POLICY", "balanced"),
-                )
-                fs.collection(collection_match).document(quiz_data["id"]).collection('submissions').document(submission_id).update({
-                    'score': _ceil_score(result.get('total_score', 0)),
-                    'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
-                    'grading_items': result.get('items') or [],
-                })
-                found['score'] = _ceil_score(result.get('total_score', 0))
-                found['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
-                found['grading_items'] = result.get('items') or []
-            except Exception as e:
-                print(f"[student/grade] auto-grade failed: {e}")
-
-        rows = []
-        total_max = 0.0
-        by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
-        for q in quiz_data.get('questions', []) or []:
-            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
-        total_max = _ceil_score(total_max)
-        for item in found.get('grading_items') or []:
-            qq = by_id.get(item.get('question_id')) or {}
-            expected_val = ""
-            if (qq.get('type') or '').lower() in ('mcq', 'true_false'):
-                expected_val = qq.get('answer') if qq.get('answer') is not None else qq.get('correct_answer')
-            else:
-                for key in ["answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
-                    if qq.get(key):
-                        expected_val = str(qq.get(key))
-                        break
-            rows.append({
-                "prompt": qq.get('prompt') or qq.get('question_text') or '(no prompt)',
-                "student_answer": (found.get('answers') or {}).get(item.get('question_id')),
-                "expected": expected_val,
-                "verdict": item.get('verdict'),
-                "is_correct": item.get('is_correct'),
-                "score": item.get('score'),
-                "max_score": item.get('max_score'),
-            })
-
-        if rows:
-            try:
-                display_score = _ceil_score(sum(float(r.get('score') or 0) for r in rows))
-            except Exception:
-                display_score = found.get('score', 0)
-        else:
-            display_score = _ceil_score(found.get('score', 0))
-        max_total_display = _ceil_score(found.get('max_total') or total_max)
-        back_url = '/teacher/generate' if origin == 'teacher' else url_for('student_index')
-        return render_template(
-            'grade_detail.html',
-            quiz_title=quiz_data.get('title') or quiz_data.get('metadata', {}).get('source_file') or "Submitted Grade",
-            score=display_score,
-            total=total_max,
-            max_total=max_total_display,
-            submission_id=submission_id,
-            submitted_at=_humanize_datetime(found.get('submitted_at') or ''),
-            student_email=found.get('student_email') or found.get('email') or '',
-            student_name=found.get('student_name') or found.get('name') or '',
-            back_url=back_url,
-            rows=rows,
-        )
-    except Exception as e:
-        print(f"[student/grade] failed: {e}")
-        return redirect(url_for('student_index'))
 
 # ===============================
 # TEACHER ROUTES (no auth)
@@ -831,33 +464,8 @@ def teacher_submissions(quiz_id):
         return ("Quiz not found.", 404)
     quiz_title = quiz_data.get("title") or quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
     try:
-        subs_raw = get_submissions_for_quiz(quiz_id) or []
-        submissions = []
-        graded_count = 0
-        for s in subs_raw:
-            score = _ceil_score(s.get("score") or 0)
-            max_total = _ceil_score(s.get("max_total") or s.get("total_questions") or 0)
-            graded = bool(s.get("grading_items")) or score > 0
-            if graded:
-                graded_count += 1
-            submissions.append({
-                "id": s.get("id"),
-                "student_email": s.get("student_email") or s.get("email") or "N/A",
-                "student_name": s.get("student_name") or s.get("name") or "",
-                "score": score,
-                "max_total": max_total,
-                "status": s.get("status") or ("Graded" if graded else "Pending"),
-                "submitted_at": _humanize_datetime(s.get("submitted_at") or ""),
-                "is_graded": graded,
-            })
-        return render_template(
-            'teacher_submissions.html',
-            quiz_title=quiz_title,
-            quiz_id=quiz_id,
-            submissions=submissions,
-            total_submissions=len(submissions),
-            graded_count=graded_count,
-        )
+        # Pass empty list; implement fetching in your template/server as needed
+        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=[])
     except Exception as e:
         print(f"❌ Error fetching submissions: {e}")
         return ("Failed to load submissions.", 500)
