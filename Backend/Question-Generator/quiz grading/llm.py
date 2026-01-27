@@ -14,7 +14,6 @@ def chat_json(
     max_tokens: int = 1200,
 ) -> Dict[str, Any]:
     """Call Groq chat completions in JSON mode and return parsed dict."""
-    # Lazy import to avoid hard dependency during non-LLM flows (e.g., heuristic tests)
     from groq import Groq
     client = Groq(api_key=api_key)
     chat = client.chat.completions.create(
