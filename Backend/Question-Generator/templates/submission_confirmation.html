@@ -4,18 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submission Confirmation</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <style>
-        /* Define Colors for attractiveness and consistency */
+        /* ===== ROOT VARIABLES ===== */
         :root {
-            --primary-orange: #ff9f1c; 
-            --dark-orange: #cc7a00;   
-            --success-green: #2ecc71;  
+            --banner-height: 72px; 
+            --pad: 12px;
+            --glass-bg: white; 
+            --glass-border: rgba(255,255,255,.45);
+            --orange-1: #ff9f1c;
+            --orange-2: #ff7a1a;
+            --orange-3: #ff6b35;
+            --orange-soft: #ffd9b8;
+            --card-radius: 22px;
+            --card-border: #e5e7eb;
+            --text: #0f172a;
+            --muted: #475569;
+            --success-green: #2ecc71;
             --info-blue: #3498db;
             --warning-yellow: #f1c40f;
             --danger-red: #e74c3c;
-            --background-light: #F5F6F8; /* New Light Blue-Gray Background */
         }
 
+        /* ===== BASE STYLES ===== */
         * {
             margin: 0;
             padding: 0;
@@ -24,162 +35,286 @@
         }
         
         body {
-            /* 1. UPDATED BACKGROUND COLOR */
-            background-color: var(--background-light);
-            color: #333;
+            background: linear-gradient(180deg, #eef1f6, #f8fafc);
+            color: var(--text);
             line-height: 1.6;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            padding: var(--pad);
         }
         
         .confirmation-container {
             background: white;
             padding: 40px;
-            border-radius: 15px;
+            border-radius: var(--card-radius);
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             text-align: center;
             max-width: 500px;
             width: 90%;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--card-border);
+            transition: all 0.3s ease;
+        }
+
+        .confirmation-container:hover {
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
         }
         
         .success-icon {
             font-size: 64px;
-            margin-bottom: 20px;
-            /* Added animation for visual appeal */
+            margin-bottom: 25px;
             animation: pulse 1.5s infinite alternate;
         }
         
         .confirmation-title {
             font-size: 28px;
-            font-weight: 700;
-            /* 4. Use primary orange for title */
-            color: var(--primary-orange);
+            font-weight: 900;
+            color: var(--orange-1);
             margin-bottom: 15px;
+            letter-spacing: -0.025em;
+        }
+
+        .confirmation-title:hover {
+            transform: translateY(-2px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
         .confirmation-message {
             font-size: 16px;
-            color: #7f8c8d;
-            margin-bottom: 25px;
+            color: var(--muted);
+            margin-bottom: 30px;
             line-height: 1.8;
         }
         
         .score-display {
-            background: #e8f5e8;
+            background: linear-gradient(135deg, #e8f5e8, #d4f1d4);
             border: 2px solid var(--success-green);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            transition: transform 0.3s;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            transition: transform 0.3s ease;
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.2);
         }
 
         .score-display:hover {
-            transform: scale(1.02);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(46, 204, 113, 0.3);
         }
         
         .score-number {
-            font-size: 36px;
-            font-weight: bold;
+            font-size: 42px;
+            font-weight: 900;
             color: var(--success-green);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .score-text {
             font-size: 16px;
-            color: #388e3c;
-            margin-top: 5px;
+            color: #27ae60;
+            margin-top: 10px;
+            font-weight: 600;
         }
         
         .details-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin: 25px 0;
+            margin: 30px 0;
             text-align: left;
         }
         
         .detail-item {
-            padding: 12px;
+            padding: 15px;
             background: #f8f9fa;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--card-border);
+            transition: all 0.3s ease;
+        }
+
+        .detail-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transform: translateY(-3px);
         }
         
         .detail-label {
             font-weight: 600;
-            color: #555;
+            color: var(--muted);
             font-size: 14px;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         
         .detail-value {
-            color: #2c3e50;
-            font-size: 14px;
-            font-weight: 500;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 600;
         }
         
         .btn {
-            padding: 12px 30px;
+            padding: 14px 32px;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 16px;
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
-            margin: 5px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
         .btn-primary {
-            /* 4. Use primary orange for main button */
-            background-color: var(--primary-orange);
+            background: linear-gradient(135deg, var(--orange-2), var(--orange-1));
             color: white;
+            position: relative;
+            overflow: hidden;
         }
         
         .btn-primary:hover {
-            background-color: var(--dark-orange);
-            box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+            background: linear-gradient(135deg, var(--orange-1), var(--orange-2));
+            box-shadow: 0 8px 20px rgba(255, 122, 26, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
         }
         
-        /* 4. Styling the secondary button (Dashboard button only) */
-        .btn-secondary-info {
-            background-color: var(--info-blue);
+        .btn-secondary {
+            background: #fa8c26;
             color: white;
+            position: relative;
+            overflow: hidden;
         }
         
-        .btn-secondary-info:hover {
-            background-color: #2980b9;
+        .btn-secondary:hover {
+            background: #f57c00;
+            box-shadow: 0 8px 20px rgba(250, 140, 38, 0.3);
+            transform: translateY(-3px);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(-1px);
         }
         
-        /* Timeout and Assignment Styles Updated to use defined colors */
-        .timeout-warning {
-            background: #fdf6e6; /* Light warning yellow */
-            border: 2px solid var(--warning-yellow);
-            color: #a07400; /* Darker yellow text */
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
+        /* Status Cards */
+        .status-card {
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
             font-weight: 600;
+            border: 2px solid;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .timeout-warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-color: var(--warning-yellow);
+            color: #856404;
         }
         
         .assignment-pending {
-            background: #eef7ff; /* Light info blue */
-            border: 2px solid var(--info-blue);
-            color: #2980b9;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-weight: 600;
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            border-color: var(--info-blue);
+            color: #0c5460;
         }
         
         /* Keyframe for pulse effect */
         @keyframes pulse {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.1); }
+            0% { 
+                transform: scale(1); 
+                filter: drop-shadow(0 0 5px rgba(255, 159, 28, 0.3));
+            }
+            100% { 
+                transform: scale(1.1); 
+                filter: drop-shadow(0 0 10px rgba(255, 159, 28, 0.5));
+            }
+        }
+
+        /* Button ripple effect */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+
+        .btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .confirmation-container {
+                padding: 25px;
+                margin: 15px;
+            }
+            
+            .details-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .btn {
+                padding: 12px 24px;
+                font-size: 15px;
+                margin: 5px;
+                display: block;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .success-icon {
+                font-size: 48px;
+            }
+            
+            .confirmation-title {
+                font-size: 24px;
+            }
+            
+            .score-number {
+                font-size: 36px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .confirmation-container {
+                padding: 20px;
+            }
+            
+            .confirmation-title {
+                font-size: 22px;
+            }
+            
+            .score-number {
+                font-size: 32px;
+            }
         }
     </style>
 </head>
@@ -194,13 +329,13 @@
             </div>
             {% endif %}
             <h1 class="confirmation-title">Time Limit Exceeded</h1>
-            <div class="timeout-warning">
+            <div class="status-card timeout-warning">
                 {{ confirmation_message }}
             </div>
         {% elif is_assignment %}
             <div class="success-icon">📝</div>
             <h1 class="confirmation-title">Assignment Submitted</h1>
-            <div class="assignment-pending">
+            <div class="status-card assignment-pending">
                 {{ confirmation_message }}
             </div>
             {% if submission_id and submission_id != 'N/A' %}
@@ -249,18 +384,21 @@
         </div>
         
         <div style="margin-top: 30px;">
+            <a href="/student" class="btn btn-primary">
+                <i class='bx bx-home'></i> Back to Dashboard
+            </a>
             {% if submission_id and submission_id != 'N/A' %}
-                <a href="/student/grade/{{ submission_id }}" class="btn btn-primary" style="margin-right:10px;">
-                    View Details
-                </a>
-            {% else %}
-                <span style="display:inline-block;margin-right:10px;color:#7f8c8d;">Grade link unavailable (no submission id)</span>
+            <a href="/student/grade/{{ submission_id }}" class="btn btn-secondary" target="_blank" rel="noopener">
+                <i class='bx bx-show'></i> View Details
+            </a>
             {% endif %}
-            <a href="/student" class="btn btn-primary">Back to Dashboard</a>
         </div>
     </div>
+</body>
+</html>
 
-    </body>
+            
+    
     <script>
       (function(){
         try{
@@ -327,3 +465,5 @@
         }catch(e){}
       })();
     </script>
+</html>
+</html>

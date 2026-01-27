@@ -80,6 +80,9 @@
             <button class="btn ghost small btn-settings" data-id="${item.id}">
                 Settings
             </button>
+            <button class="btn ghost small btn-submissions" data-id="${item.id}">
+                Submissions
+            </button>
             </div>
         </div>
         `;
@@ -98,6 +101,13 @@
             btn.addEventListener("click", (e) => {
                 const quizId = e.currentTarget.getAttribute("data-id");
                 openSettings(quizId);
+            });
+        });
+
+        document.querySelectorAll(".btn-submissions").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                const quizId = e.currentTarget.getAttribute("data-id");
+                openSubmissions(quizId);
             });
         });
     }
@@ -212,6 +222,11 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+    }
+
+    function openSubmissions(quizId){
+        if (!quizId) return;
+        window.open(`/teacher/submissions/${quizId}`, "_blank");
     }
 
     // Make functions globally available if you ever need them
