@@ -584,7 +584,8 @@
       try {
         const res = await fetch('/api/quizzes');
         if (!res.ok) throw new Error(await res.text().catch(() => res.statusText));
-        const items = await res.json();
+        const data = await res.json();
+        const items = data.items || [];
 
         if (!Array.isArray(items) || items.length === 0) {
           listBox.innerHTML = '';
@@ -610,6 +611,7 @@
             </div>
           `;
         }).join('');
+
       } catch (e) {
         console.error(e);
         listBox.innerHTML = '<div class="muted">Failed to load quizzes.</div>';
