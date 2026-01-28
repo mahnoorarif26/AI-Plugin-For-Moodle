@@ -145,17 +145,15 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
     print(f"📋 Listing quizzes/assignments. Filter by kind: {kind}")
     items: List[Dict[str, Any]] = []
 
-    # Firestore branch
     if _db:
         try:
-            # Search *both* collections
             collections_to_search = []
             if kind == "assignment":
                 collections_to_search = ["assignments"]
             elif kind == "quiz":
                 collections_to_search = ["AIquizzes"]
             else:
-                collections_to_search = ["AIquizzes", "assignments"]  # All items
+                collections_to_search = ["AIquizzes", "assignments"]
 
             for col in collections_to_search:
                 print(f"🔍 Searching collection: {col}")
@@ -165,16 +163,22 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
                     q = d.to_dict() or {}
                     qid = q.get("id") or d.id
                     title = q.get("title") or "Untitled"
-
                     meta = q.get("metadata") or {}
                     
-                    # Determine kind based on collection
                     if col == "assignments":
                         item_kind = "assignment"
                     else:
                         item_kind = meta.get("kind", "quiz")
 
-                    questions_count = len(q.get("questions", []))
+                    questions = q.get("questions", [])
+                    questions_count = len(questions)
+                    
+                    # Calculate counts by type
+                    counts = {}
+                    for question in questions:
+                        qtype = question.get("type", "unknown")
+                        counts[qtype] = counts.get(qtype, 0) + 1
+
                     time_limit_min = q.get("time_limit_min", 60)
 
                     items.append({
@@ -182,18 +186,19 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
                         "title": title,
                         "created_at": q.get("created_at"),
                         "questions_count": questions_count,
+                        "counts": counts,  # Add this
+                        "questions": questions,  # Include full questions
                         "time_limit_min": time_limit_min,
                         "metadata": meta,
-                        "questions": q.get("questions", []),
-                        "kind": item_kind  # Add kind for filtering
+                        "kind": item_kind
                     })
-                    print(f"📝 Found item: {title} (Kind: {item_kind}, Questions: {questions_count})")
+                    print(f"📝 Found: {title} ({item_kind}) - {questions_count} questions")
 
-            print(f"✅ Found {len(items)} items total")
+            print(f"✅ Total items found: {len(items)}")
             return items
             
         except Exception as e:
-            print(f"⚠️ Firestore list failed; falling back to local. Error: {e}")
+            print(f"⚠️ Firestore list failed: {e}")
 
     # Local JSON branch
     print("🔍 Searching local JSON files...")
