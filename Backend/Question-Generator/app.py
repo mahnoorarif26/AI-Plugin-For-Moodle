@@ -1,16 +1,19 @@
 import os
 import re
+import sys
 import json
 import uuid
-from datetime import datetime
+import math
+from datetime import datetime, timezone
 from typing import Dict, List, Any
+import importlib.util
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for,session 
 from flask_cors import CORS
-# Add this after the groq_utils imports
-from utils.assignment_utils import generate_advanced_assignments_llm
+
 from utils.pdf_utils import SmartPDFProcessor
+from utils.assignment_utils import generate_advanced_assignments_llm
 import jwt
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -23,9 +26,11 @@ from services.db import (
     get_quiz_by_id,
     list_quizzes,
     save_submission as save_submission_to_store,
-    get_submitted_quiz_ids
+    get_submitted_quiz_ids,
+    get_submissions_for_quiz
     # ADD THIS LINE:,# Assuming this function exists in services.db
 )
+from services import db as _db_mod
 
 
 # ====== LLM / UTILS ======
@@ -42,7 +47,6 @@ from utils.groq_utils import (
     extract_subtopics_llm,
     generate_quiz_from_subtopics_llm,
 )
-
 # ===============================
 # ENV / CONFIG
 # ===============================
@@ -50,6 +54,32 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("❌ GROQ_API_KEY is missing in environment (.env).")
+
+# ===============================
+# QUIZ GRADER (from quiz grading/)
+# ===============================
+GRADER_FILE = os.path.join(os.path.dirname(__file__), "quiz grading", "grader.py")
+QUIZ_GRADING_DIR = os.path.dirname(GRADER_FILE)
+if QUIZ_GRADING_DIR not in sys.path:
+    sys.path.insert(0, QUIZ_GRADING_DIR)
+
+grader = None
+if os.path.exists(GRADER_FILE):
+    try:
+        spec = importlib.util.spec_from_file_location("quizgrading.grader", GRADER_FILE)
+        grader_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(grader_mod)
+        QuizGrader = grader_mod.QuizGrader
+        grader = QuizGrader(
+            api_key=os.getenv("GROQ_API_KEY"),
+            model=os.getenv("GROQ_MODEL"),
+            default_policy=os.getenv("GRADING_POLICY", "balanced"),
+        )
+        print(f"✅ Quiz grader loaded from {GRADER_FILE}")
+    except Exception as e:
+        print(f"⚠️ Quiz grader failed to load: {e}")
+else:
+    print(f"⚠️ Grader file not found at {GRADER_FILE}; grading disabled.")
 
 # ===============================
 # APP
@@ -140,7 +170,59 @@ def _is_likely_heading(line: str) -> bool:
         if 2 <= len(words) <= 8 and len(line) < 60:
             return True
     return False
+def _default_max_score(qtype: str) -> float:
+    q = (qtype or "").lower()
+    if q in ("mcq", "true_false", "tf", "truefalse"):
+        return 1.0
+    if q == "short":
+        return 3.0
+    if q in ("long", "conceptual"):
+        return 5.0
+    return 1.0
 
+def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize quiz structure for the grader: ensure answers/max_score are present."""
+    quiz_for_grader = dict(quiz or {})
+    normalized_questions: List[Dict[str, Any]] = []
+    for q in quiz_for_grader.get("questions", []) or []:
+        qq = dict(q)
+        # Normalize answer field
+        if qq.get("answer") is None:
+            for key in ["correct_answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
+                if qq.get(key) is not None:
+                    qq["answer"] = qq.get(key)
+                    break
+        # Default max_score when missing
+        if qq.get("max_score") is None:
+            qq["max_score"] = _default_max_score(qq.get("type"))
+        normalized_questions.append(qq)
+    quiz_for_grader["questions"] = normalized_questions
+    return quiz_for_grader
+
+def _ceil_score(val: Any) -> int:
+    try:
+        return int(math.ceil(float(val)))
+    except Exception:
+        return 0
+
+def _humanize_datetime(val: Any) -> str:
+    """Return a consistent, human-readable UTC timestamp string."""
+    try:
+        if isinstance(val, datetime):
+            dt = val
+        elif isinstance(val, str):
+            # Normalize "Z" suffix to +00:00 for fromisoformat
+            if val.endswith("Z"):
+                val = val.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(val)
+        else:
+            return ""
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.astimezone(timezone.utc)
+        return dt.strftime("%b %d, %Y %H:%M UTC")
+    except Exception:
+        return ""
 # ===============================
 # LANDING (always open teacher/generate)
 # ===============================
@@ -149,9 +231,6 @@ def root_redirect():
     """Always land on the teacher generation page."""
     return redirect(url_for('teacher_generate'))
 
-
-
-#??????????????????????????????????????????????????????
 
 def get_submissions_by_quiz_id(quiz_id: str) -> list:
     """
@@ -441,6 +520,260 @@ def submission_confirmation(quiz_id):
     )
 
 # ===============================
+# GRADES + SUBMISSION APIs
+# ===============================
+@app.get('/api/grades')
+def api_grades():
+    """Return graded submissions for a student (requires Firestore)."""
+    email_filter = (request.args.get('email') or '').strip()
+    fs = getattr(_db_mod, '_db', None)
+    if fs is None:
+        return jsonify({"success": True, "items": []})
+
+    items = []
+    try:
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in fs.collection(collection_name).stream():
+                qid = qdoc.id
+                quiz = qdoc.to_dict() or {}
+                title = (
+                    quiz.get('title')
+                    or quiz.get('metadata', {}).get('source_file')
+                    or ('Assignment' if collection_name == 'assignments' else 'AI Generated Quiz')
+                )
+
+                # Pre-compute max score in case submissions are missing it
+                max_total_default = 0.0
+                for qq in quiz.get('questions', []) or []:
+                    max_total_default += float(qq.get('max_score') or _default_max_score(qq.get('type')))
+
+                subs_ref = (
+                    fs.collection(collection_name)
+                      .document(qid)
+                      .collection('submissions')
+                )
+                if email_filter:
+                    subs_ref = subs_ref.where('student_email', '==', email_filter)
+                subs = subs_ref.stream()
+                for sd in subs:
+                    s = sd.to_dict() or {}
+
+                    # Auto-grade if grader is available but submission lacks grading_items
+                    if grader is not None and not (s.get('grading_items') or []):
+                        try:
+                            quiz_for_grader = _prepare_quiz_for_grading(quiz)
+                            result = grader.grade_quiz(
+                                quiz=quiz_for_grader,
+                                responses=s.get('answers') or {},
+                                policy=os.getenv("GRADING_POLICY", "balanced"),
+                            )
+                            fs.collection(collection_name).document(qid).collection('submissions').document(sd.id).update({
+                                'score': _ceil_score(result.get('total_score', 0)),
+                                'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
+                                'grading_items': result.get('items') or [],
+                            })
+                            s['score'] = _ceil_score(result.get('total_score', 0))
+                            s['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
+                            s['grading_items'] = result.get('items') or []
+                        except Exception as e:
+                            print(f"[api/grades] auto-grade failed: {e}")
+
+                    items.append({
+                        'id': sd.id,
+                        'title': title,
+                        'date': str(s.get('submitted_at') or ''),
+                        'date_human': _humanize_datetime(s.get('submitted_at') or ''),
+                        'score': _ceil_score(s.get('score') or 0),
+                        'max_score': _ceil_score(s.get('max_total') or max_total_default),
+                        'quiz_id': qid,
+                        'student_email': s.get('student_email') or s.get('email') or '',
+                        'student_name': s.get('student_name') or s.get('name') or '',
+                        'kind': 'assignment' if collection_name == 'assignments' else 'quiz',
+                    })
+        items.sort(key=lambda x: str(x.get('date') or ''), reverse=True)
+        return jsonify({"success": True, "items": items})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"grades_list_failed: {e}"}), 500
+
+
+@app.get('/api/submissions/<submission_id>')
+def api_get_submission(submission_id: str):
+    """Fetch a specific submission by ID (Firestore required)."""
+    fs = getattr(_db_mod, '_db', None)
+    if fs is None:
+        return jsonify({"success": False, "error": "firestore_disabled"}), 400
+    try:
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in fs.collection(collection_name).stream():
+                qid = qdoc.id
+                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
+                sub = subref.get()
+                if not sub.exists:
+                    continue
+                s = sub.to_dict() or {}
+                s["score"] = _ceil_score(s.get("score") or 0)
+                s["max_total"] = _ceil_score(s.get("max_total") or 0)
+                s["submitted_at_human"] = _humanize_datetime(s.get("submitted_at") or '')
+                s["student_email"] = s.get("student_email") or s.get("email")
+                s["student_name"] = s.get("student_name") or s.get("name")
+                return jsonify({
+                    "success": True,
+                    "submission": s,
+                    "quiz_id": qid,
+                    "collection": collection_name,
+                })
+        return jsonify({"success": False, "error": "submission_not_found"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.post('/api/submissions/<submission_id>/regrade')
+def api_regrade_submission(submission_id: str):
+    """Force regrading of a submission (Firestore required)."""
+    fs = getattr(_db_mod, '_db', None)
+    if fs is None:
+        return jsonify({"success": False, "error": "firestore_disabled"}), 400
+    if grader is None:
+        return jsonify({"success": False, "error": "grader_unavailable"}), 500
+    try:
+        target = None
+        quiz = None
+        collection_match = None
+        quiz_id = None
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in fs.collection(collection_name).stream():
+                qid = qdoc.id
+                sub = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id).get()
+                if sub.exists:
+                    target = sub.to_dict() or {}
+                    quiz = qdoc.to_dict() or {}
+                    collection_match = collection_name
+                    quiz_id = qid
+                    break
+            if target:
+                break
+
+        if not target or not quiz or not collection_match:
+            return jsonify({"success": False, "error": "submission_not_found"}), 404
+
+        quiz_for_grader = _prepare_quiz_for_grading(quiz)
+        result = grader.grade_quiz(
+            quiz=quiz_for_grader,
+            responses=target.get('answers') or {},
+            policy=os.getenv('GRADING_POLICY', 'balanced'),
+        )
+        fs.collection(collection_match).document(quiz_id).collection('submissions').document(submission_id).update({
+            'score': _ceil_score(result.get('total_score', 0)),
+            'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
+            'grading_items': result.get('items') or [],
+        })
+
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.get('/student/grade/<submission_id>')
+def student_grade_detail(submission_id: str):
+    """Render grade details page for a submission (Firestore required)."""
+    origin = request.args.get('origin') or 'student'
+    fs = getattr(_db_mod, '_db', None)
+    if fs is None:
+        return redirect(url_for('student_index'))
+    try:
+        found = None
+        quiz_data = None
+        collection_match = None
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in fs.collection(collection_name).stream():
+                qid = qdoc.id
+                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
+                sub = subref.get()
+                if not sub.exists:
+                    continue
+                found = sub.to_dict() or {}
+                quiz_data = qdoc.to_dict() or {}
+                collection_match = collection_name
+                quiz_data["id"] = qid
+                break
+            if found:
+                break
+
+        if not found or not quiz_data:
+            return redirect(url_for('student_index'))
+
+        # Auto-grade if missing
+        if grader is not None and not (found.get('grading_items') or []):
+            try:
+                quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
+                result = grader.grade_quiz(
+                    quiz=quiz_for_grader,
+                    responses=found.get('answers') or {},
+                    policy=os.getenv("GRADING_POLICY", "balanced"),
+                )
+                fs.collection(collection_match).document(quiz_data["id"]).collection('submissions').document(submission_id).update({
+                    'score': _ceil_score(result.get('total_score', 0)),
+                    'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
+                    'grading_items': result.get('items') or [],
+                })
+                found['score'] = _ceil_score(result.get('total_score', 0))
+                found['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
+                found['grading_items'] = result.get('items') or []
+            except Exception as e:
+                print(f"[student/grade] auto-grade failed: {e}")
+
+        rows = []
+        total_max = 0.0
+        by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
+        for q in quiz_data.get('questions', []) or []:
+            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
+        total_max = _ceil_score(total_max)
+        for item in found.get('grading_items') or []:
+            qq = by_id.get(item.get('question_id')) or {}
+            expected_val = ""
+            if (qq.get('type') or '').lower() in ('mcq', 'true_false'):
+                expected_val = qq.get('answer') if qq.get('answer') is not None else qq.get('correct_answer')
+            else:
+                for key in ["answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
+                    if qq.get(key):
+                        expected_val = str(qq.get(key))
+                        break
+            rows.append({
+                "prompt": qq.get('prompt') or qq.get('question_text') or '(no prompt)',
+                "student_answer": (found.get('answers') or {}).get(item.get('question_id')),
+                "expected": expected_val,
+                "verdict": item.get('verdict'),
+                "is_correct": item.get('is_correct'),
+                "score": item.get('score'),
+                "max_score": item.get('max_score'),
+            })
+
+        if rows:
+            try:
+                display_score = _ceil_score(sum(float(r.get('score') or 0) for r in rows))
+            except Exception:
+                display_score = found.get('score', 0)
+        else:
+            display_score = _ceil_score(found.get('score', 0))
+        max_total_display = _ceil_score(found.get('max_total') or total_max)
+        back_url = '/teacher/generate' if origin == 'teacher' else url_for('student_index')
+        return render_template(
+            'grade_detail.html',
+            quiz_title=quiz_data.get('title') or quiz_data.get('metadata', {}).get('source_file') or "Submitted Grade",
+            score=display_score,
+            total=total_max,
+            max_total=max_total_display,
+            submission_id=submission_id,
+            submitted_at=_humanize_datetime(found.get('submitted_at') or ''),
+            student_email=found.get('student_email') or found.get('email') or '',
+            student_name=found.get('student_name') or found.get('name') or '',
+            back_url=back_url,
+            rows=rows,
+        )
+    except Exception as e:
+        print(f"[student/grade] failed: {e}")
+        return redirect(url_for('student_index'))
+# ===============================
 # TEACHER ROUTES (no auth)
 # ===============================
 
@@ -469,7 +802,48 @@ def teacher_submissions(quiz_id):
     except Exception as e:
         print(f"❌ Error fetching submissions: {e}")
         return ("Failed to load submissions.", 500)
-    
+ # Add this new route to your app.py file (around line 470, after teacher_submissions route)
+
+@app.route('/api/quizzes/<quiz_id>/submissions', methods=['GET'])
+def api_get_quiz_submissions(quiz_id):
+    """API endpoint to fetch all submissions for a specific quiz"""
+    try:
+        from services.db import get_submissions_for_quiz
+        
+        submissions = get_submissions_for_quiz(quiz_id)
+        
+        if submissions is None:
+            return jsonify({
+                "success": False,
+                "error": "Could not fetch submissions. Firestore may not be available."
+            }), 500
+        
+        # Format submissions for frontend
+        formatted_submissions = []
+        for sub in submissions:
+            formatted_submissions.append({
+                "id": sub.get("id"),
+                "student_name": sub.get("student_name", "Unknown"),
+                "student_email": sub.get("student_email", "N/A"),
+                "score": sub.get("score", 0),
+                "total_questions": sub.get("total_questions", 0),
+                "submitted_at": sub.get("submitted_at", ""),
+                "time_taken_sec": sub.get("time_taken_sec", 0),
+                "status": sub.get("status", "completed")
+            })
+        
+        return jsonify({
+            "success": True,
+            "submissions": formatted_submissions,
+            "total": len(formatted_submissions)
+        }), 200
+        
+    except Exception as e:
+        print(f"âŒ Error in api_get_quiz_submissions: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500   
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 @app.route("/api/quizzes/<quiz_id>", methods=["GET"])
@@ -597,13 +971,21 @@ def quiz_from_pdf():
             mix_counts=mix_counts,
             num_questions=num_questions,
         )
-
+        for i, q in enumerate(questions):
+            if not q.get('id'):
+                q['id'] = f"q{i+1}"
+            # Ensure prompt field exists (some questions might have 'question_text' instead)
+            if not q.get('prompt'):
+                q['prompt'] = q.get('question_text', q.get('question', ''))
+            # Ensure answer field exists for compatibility
+            if not q.get('answer') and q.get('correct_answer'):
+                q['answer'] = q.get('correct_answer')
         source_file = file.filename if file and file.filename else "PDF Upload"
 
         # Enhanced metadata with chunking information
         result = {
             "title": source_file,
-            "questions": questions,
+            "questions": questions,  # Now has properly formatted questions
             "metadata": {
                 "model": "llama-3.3-70b-versatile",
                 "difficulty_mode": diff_mode,
@@ -617,6 +999,7 @@ def quiz_from_pdf():
                 },
                 "source_note": llm_json.get("source_note", ""),
                 "source_file": source_file,
+                "kind": "quiz",  # ✅ ADD THIS: Explicitly set kind
                 # Enhanced chunking metadata for FYP analysis
                 "chunking_analysis": {
                     "structure_score": round(structure_score, 2),
@@ -630,14 +1013,14 @@ def quiz_from_pdf():
         }
 
         quiz_id = save_quiz_to_store(result)
+        result["id"] = quiz_id  # ✅ ADD THIS
         result["metadata"]["quiz_id"] = quiz_id
 
-        # FYP Performance logging
+        # ✅ ADD THIS: Debug logging
         print(f"✅ Quiz Generation Complete:")
         print(f"   - Quiz ID: {quiz_id}")
         print(f"   - Questions Generated: {len(questions)}")
-        print(f"   - Chunking Strategy: {chunking_strategy}")
-        print(f"   - Structure Score: {structure_score:.2f}")
+        print(f"   - Sample Question IDs: {[q.get('id') for q in questions[:3]]}")
 
         return jsonify(result), 200
 
@@ -646,6 +1029,8 @@ def quiz_from_pdf():
         return ("Model returned invalid JSON. Try reducing PDF length or rephrasing.", 502)
     except Exception as e:
         print(f"❌ Server Error in quiz_from_pdf: {e}")
+        import traceback
+        traceback.print_exc()  # ✅ ADD THIS for better debugging
         return (f"Server error: {str(e)}", 500)
 
 @app.route("/api/custom/extract-subtopics", methods=["POST"])
@@ -819,6 +1204,13 @@ def quiz_from_subtopics():
         if not questions:
             error_message = out.get('error', "LLM generated an empty or invalid quiz structure.")
             return jsonify({"error": f"Quiz generation failed: {error_message}"}), 500
+        for i, q in enumerate(questions):
+            if not q.get('id'):
+                q['id'] = f"q{i+1}"
+            if not q.get('prompt'):
+                q['prompt'] = q.get('question_text', q.get('question', ''))
+            if not q.get('answer') and q.get('correct_answer'):
+                q['answer'] = q.get('correct_answer')
 
         quiz_data = {
             "title": source_file,
@@ -837,10 +1229,11 @@ def quiz_from_subtopics():
 
         quiz_id = save_quiz_to_store(quiz_data)
 
-        # FIX: Return the proper structure that frontend expects
+        # ✅ FIX THIS: Return proper structure
         resp = {
             "success": True,
             "quiz_id": quiz_id,
+            "id": quiz_id,  # ✅ ADD THIS
             "title": source_file,
             "questions": questions,
             "metadata": quiz_data["metadata"],
@@ -851,10 +1244,13 @@ def quiz_from_subtopics():
         if upload_id in _SUBTOPIC_UPLOADS:
             del _SUBTOPIC_UPLOADS[upload_id]
 
+        print(f"✅ Quiz from subtopics saved: {quiz_id}, Questions: {len(questions)}")
         return jsonify(resp), 200
 
     except Exception as e:
         print(f"❌ Error in quiz_from_subtopics: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
 
 @app.route("/generate-question", methods=["POST"])
@@ -889,8 +1285,16 @@ def auto_generate_quiz():
             error_message = out.get('error', "LLM generated an empty or invalid quiz structure.")
             return jsonify({"error": f"AI-Powered Quiz generation failed: {error_message}"}), 500
 
+        for i, q in enumerate(questions):
+            if not q.get('id'):
+                q['id'] = f"q{i+1}"
+            if not q.get('prompt'):
+                q['prompt'] = q.get('question_text', q.get('question', ''))
+            if not q.get('answer') and q.get('correct_answer'):
+                q['answer'] = q.get('correct_answer')
+
         quiz_data = {
-            "title": topic_text,  # name quiz with the topic text
+            "title": topic_text,
             "questions": questions,
             "metadata": {
                 "source": "auto-topic",
@@ -903,16 +1307,23 @@ def auto_generate_quiz():
         }
 
         quiz_id = save_quiz_to_store(quiz_data)
+        
+        # ✅ FIX THIS: Return proper structure
         return jsonify({
-        "success": True,
-        "quiz_id": quiz_id,
-        "questions_count": len(questions),
-        "questions": questions,      # <-- this is what assignments.js needs
-        "quiz": quiz_data,           # optional, but nice to have
-    }), 200
+            "success": True,
+            "quiz_id": quiz_id,
+            "id": quiz_id,  # ✅ ADD THIS
+            "questions_count": len(questions),
+            "questions": questions,
+            "quiz": quiz_data,
+            "title": topic_text,  # ✅ ADD THIS
+            "metadata": quiz_data["metadata"]  # ✅ ADD THIS
+        }), 200
 
     except Exception as e:
         print(f"❌ Error in auto_generate_quiz: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
 # ===============================
 # ADVANCED ASSIGNMENT GENERATION
@@ -1154,13 +1565,29 @@ def api_list_quizzes():
     # ?kind=quiz or ?kind=assignment or no param
     kind = request.args.get("kind")  # may be None
 
-    quizzes = list_quizzes(kind=kind)
+    try:
+        quizzes = list_quizzes(kind=kind)
 
-    return jsonify({
-        "success": True,
-        "items": quizzes,
-        "kind": kind or "all",
-    })
+        # ✅ ADD THIS: Debug logging
+        print(f"📊 API /api/quizzes called with kind={kind}")
+        print(f"📊 Returning {len(quizzes)} items")
+        for q in quizzes[:3]:  # Log first 3
+            print(f"   - {q.get('title')}: {q.get('questions_count', 0)} questions")
+
+        return jsonify({
+            "success": True,
+            "items": quizzes,
+            "kind": kind or "all",
+        })
+    except Exception as e:
+        print(f"❌ Error in api_list_quizzes: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "items": []
+        }), 500
 
 @app.post("/api/quizzes/<quiz_id>/publish")
 def api_publish_quiz(quiz_id):
