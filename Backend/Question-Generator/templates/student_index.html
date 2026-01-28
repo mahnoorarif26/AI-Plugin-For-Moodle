@@ -582,170 +582,173 @@ main {
     </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const fmtScore = (n) => {
-            const num = Number(n);
-            return Number.isFinite(num) ? Math.ceil(num) : 0;
-        };
-        const fmtDate = (v) => {
-            try {
-                if (!v) return 'N/A';
-                const d = new Date(v);
-                if (Number.isNaN(d.getTime())) return 'N/A';
-                return d.toLocaleString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                    timeZone: 'UTC'
-                });
-            } catch (e) { return 'N/A'; }
-        };
-        const topnavLinks = document.querySelectorAll('.topnav .link');
-        const contentSections = document.querySelectorAll('.content-section');
-        
-        // Navigation logic - FIXED: Now using .link buttons
-        topnavLinks.forEach(item => {
-            item.addEventListener('click', function() {
-                // Remove active class from all links
-                topnavLinks.forEach(i => i.classList.remove('active'));
-                
-                // Add active class to clicked link
-                this.classList.add('active');
-                
-                // Hide all content sections
-                contentSections.forEach(section => section.classList.add('hidden'));
-                
-                // Show the target section
-                const targetId = this.getAttribute('data-route');
-                document.getElementById(targetId).classList.remove('hidden');
-                
-                // Load data for the section
-                if (targetId === 'assignments') {
-                    loadAssignments();
-                } else if (targetId === 'quizzes') {
-                    loadQuizzes();
-                } else if (targetId === 'grades') {
-                    loadGrades();
-                }
+document.addEventListener('DOMContentLoaded', function() {
+    // Formatting helper functions
+    const fmtScore = (n) => {
+        const num = Number(n);
+        return Number.isFinite(num) ? Math.ceil(num) : 0;
+    };
+    
+    const fmtDate = (v) => {
+        try {
+            if (!v) return 'N/A';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return 'N/A';
+            return d.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'UTC'
             });
+        } catch (e) { 
+            return 'N/A'; 
+        }
+    };
+
+    // Navigation setup
+    const topnavLinks = document.querySelectorAll('.topnav .link');
+    const contentSections = document.querySelectorAll('.content-section');
+    
+    // Navigation logic
+    topnavLinks.forEach(item => {
+        item.addEventListener('click', function() {
+            // Remove active class from all links
+            topnavLinks.forEach(i => i.classList.remove('active'));
+            
+            // Add active class to clicked link
+            this.classList.add('active');
+            
+            // Hide all content sections
+            contentSections.forEach(section => section.classList.add('hidden'));
+            
+            // Show the target section
+            const targetId = this.getAttribute('data-route');
+            document.getElementById(targetId).classList.remove('hidden');
+            
+            // Load data for the section
+            if (targetId === 'assignments') {
+                loadAssignments();
+            } else if (targetId === 'quizzes') {
+                loadQuizzes();
+            } else if (targetId === 'grades') {
+                loadGrades();
+            }
         });
-        
-        // Load assignments from backend
-        async function loadAssignments() {
-            const assignmentsList = document.getElementById('assignments-list');
-            assignmentsList.innerHTML = '<div class="loading">Loading assignments...</div>';
-            
-            try {
-                const response = await fetch('/api/quizzes?kind=assignment');
-                const data = await response.json();
-                console.log('Assignments API response:', data);
-                
-                if (data.success && data.items && data.items.length > 0) {
-                    renderItems(assignmentsList, data.items, 'assignment');
-                } else {
-                    assignmentsList.innerHTML = '<div class="empty-state">No assignments available at the moment.</div>';
-                }
-            } catch (error) {
-                console.error('Error loading assignments:', error);
-                assignmentsList.innerHTML = `
-                    <div class="error">
-                        Failed to load assignments. (Check API endpoint)
-                        <button onclick="loadAssignments()" class="btn btn-secondary" style="margin-top: 10px;">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
+    });
+    
+    // Initialize the first active section
+    const activeLink = document.querySelector('.topnav .link.active');
+    if (activeLink) {
+        // Trigger click on the active link to load initial data
+        activeLink.click();
+    }
+});
+
+// ---------- Loaders ----------
+async function loadAssignments() {
+    const el = document.getElementById('assignments-list');
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Loading assignments...</div>';
+
+    try {
+        const res = await fetch('/api/quizzes?kind=assignment');
+        const data = await res.json();
+
+        if (data?.success && Array.isArray(data.items) && data.items.length) {
+            renderItems(el, data.items, 'assignment');
+        } else {
+            el.innerHTML = '<div class="empty-state">No assignments available at the moment.</div>';
+        }
+    } catch (err) {
+        console.error('Error loading assignments:', err);
+        el.innerHTML = `
+            <div class="error">
+                Failed to load assignments. (Check API endpoint)
+                <button onclick="loadAssignments()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
+            </div>`;
+    }
+}
+
+async function loadQuizzes() {
+    const el = document.getElementById('quizzes-list');
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Loading quizzes...</div>';
+
+    try {
+        const res = await fetch('/api/quizzes?kind=quiz');
+        const data = await res.json();
+
+        if (data?.success && Array.isArray(data.items) && data.items.length) {
+            renderItems(el, data.items, 'quiz');
+        } else {
+            el.innerHTML = '<div class="empty-state">No quizzes available at the moment.</div>';
+        }
+    } catch (err) {
+        console.error('Error loading quizzes:', err);
+        el.innerHTML = `
+            <div class="error">
+                Failed to load quizzes. (Check API endpoint)
+                <button onclick="loadQuizzes()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
+            </div>`;
+    }
+}
+
+async function loadGrades() {
+    const gradesList = document.getElementById('grades-list');
+    if (!gradesList) return;
+    gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
+
+    try {
+        const res = await fetch('/api/grades');
+        const data = await res.json();
+        console.log('Grades API response:', data);
+
+        const items = (data.success && data.items) ? data.items : [];
+        if (!items.length) {
+            gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
+            return;
         }
         
-        // Load quizzes from backend
-        async function loadQuizzes() {
-            const quizzesList = document.getElementById('quizzes-list');
-            quizzesList.innerHTML = '<div class="loading">Loading quizzes...</div>';
-            
-            try {
-                const response = await fetch('/api/quizzes?kind=quiz');
-                const data = await response.json();
-                console.log('Quizzes API response:', data);
-                
-                if (data.success && data.items && data.items.length > 0) {
-                    renderItems(quizzesList, data.items, 'quiz');
-                } else {
-                    quizzesList.innerHTML = '<div class="empty-state">No quizzes available at the moment.</div>';
-                }
-            } catch (error) {
-                console.error('Error loading quizzes:', error);
-                quizzesList.innerHTML = `
-                    <div class="error">
-                        Failed to load quizzes. (Check API endpoint)
-                        <button onclick="loadQuizzes()" class="btn btn-secondary" style="margin-top: 10px;">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
+        const grouped = { quiz: [], assignment: [] };
+        items.forEach(it => {
+            const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
+            grouped[k].push(it);
+        });
 
-        // Load grades from backend and separate quizzes vs assignments
-        async function loadGrades() {
-            const gradesList = document.getElementById('grades-list');
-            gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
+        gradesList.innerHTML = `
+            ${renderGradeGroup('Quizzes', grouped.quiz)}
+            ${renderGradeGroup('Assignments', grouped.assignment)}
+        `;
+    } catch (err) {
+        console.error('Error loading grades:', err);
+        gradesList.innerHTML = `
+            <div class="error">
+                Failed to load grades. (Check API endpoint)
+                <button onclick="loadGrades()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
+            </div>`;
+    }
+}
 
-            try {
-                const response = await fetch('/api/grades');
-                const data = await response.json();
-                console.log('Grades API response:', data);
+function renderGradeGroup(title, arr) {
+    if (!arr || !arr.length) return '';
+    return `
+        <div class="grade-group">
+            <h3 class="grade-group-title">${title}</h3>
+            <div class="grade-divider"></div>
+            ${arr.map(renderGradeCard).join('')}
+        </div>
+    `;
+}
 
-                const items = (data.success && data.items) ? data.items : [];
-                if (!items.length) {
-                    gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
-                    return;
-                }
-                const grouped = { quiz: [], assignment: [] };
-                items.forEach(it => {
-                    const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
-                    grouped[k].push(it);
-                });
-
-                gradesList.innerHTML = `
-                    ${renderGradeGroup('Quizzes', grouped.quiz)}
-                    ${renderGradeGroup('Assignments', grouped.assignment)}
-                `;
-            } catch (error) {
-                console.error('Error loading grades:', error);
-                gradesList.innerHTML = `
-                    <div class="error">
-                        Failed to load grades. (Check API endpoint)
-                        <button onclick="loadGrades()" class="btn btn-secondary" style="margin-top: 10px;">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        function renderGradeGroup(title, arr){
-            if(!arr || !arr.length) return '';
-            return `
-                <div class="grade-group">
-                    <h3 class="grade-group-title">${title}</h3>
-                    <div class="grade-divider"></div>
-                    ${arr.map(renderGradeCard).join('')}
-                </div>
-            `;
-        }
-        
 function renderItems(container, items, type) {
     container.innerHTML = '';
     
     items.forEach(item => {
         const card = document.createElement('div');
         
-        let innerHTML = '';
-
         if (type === 'grade') {
             card.innerHTML = renderGradeCard(item);
             card.className = 'grade-card';
@@ -754,7 +757,7 @@ function renderItems(container, items, type) {
             const questionsCount = item.questions_count || 
                 (item.questions ? item.questions.length : 0);
             
-            innerHTML = `
+            const innerHTML = `
                 <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
                 <div class="${type}-details">
                     <span>Questions: ${questionsCount}</span>
@@ -772,10 +775,35 @@ function renderItems(container, items, type) {
     });
 }
 
-function renderGradeCard(item){
+function renderGradeCard(item) {
+    const fmtScore = (n) => {
+        const num = Number(n);
+        return Number.isFinite(num) ? Math.ceil(num) : 0;
+    };
+    
+    const fmtDate = (v) => {
+        try {
+            if (!v) return 'N/A';
+            const d = new Date(v);
+            if (Number.isNaN(d.getTime())) return 'N/A';
+            return d.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'UTC'
+            });
+        } catch (e) { 
+            return 'N/A'; 
+        }
+    };
+    
     const s = fmtScore(item.score);
     const m = fmtScore(item.max_score);
     const scoreDisplay = `${s}/${m || 'N/A'}`;
+    
     return `
         <div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
         <div class="grade-details">
@@ -790,14 +818,11 @@ function renderGradeCard(item){
         <div class="grade-divider"></div>
     `;
 }
-            
-        // Initialize the first active section
-        const activeLink = document.querySelector('.topnav .link.active');
-        if (activeLink) {
-            // Trigger click on the active link to load initial data
-            activeLink.click();
-        }
-    });
+
+// Make retry buttons work (onclick="loadQuizzes()")
+window.loadAssignments = loadAssignments;
+window.loadQuizzes = loadQuizzes;
+window.loadGrades = loadGrades;
 </script>
 </body>
 </html>
