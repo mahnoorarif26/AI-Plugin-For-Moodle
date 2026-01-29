@@ -1342,19 +1342,22 @@ def generate_advanced_assignment():
         task_distribution = payload.get("task_distribution", {})
         difficulty = payload.get("difficulty", "auto")
 
+        # ✅ FIX: read scenario_style from payload
+        scenario_style = payload.get("scenario_style", "auto")
+
         if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
             return jsonify({"error": "Invalid or expired upload_id"}), 400
-        
+
         if not chosen:
             return jsonify({"error": "No subtopics selected"}), 400
-        
+
         total_tasks = sum(task_distribution.values())
         if total_tasks <= 0:
             return jsonify({"error": "Task distribution must have at least 1 task"}), 400
 
         uploaded_data = _SUBTOPIC_UPLOADS[upload_id]
-        full_text = uploaded_data['text']
-        source_file = uploaded_data['file_name']
+        full_text = uploaded_data["text"]
+        source_file = uploaded_data["file_name"]
 
         # Generate using enhanced function
         result = generate_advanced_assignments_llm(
@@ -1362,24 +1365,22 @@ def generate_advanced_assignment():
             chosen_subtopics=chosen,
             task_distribution=task_distribution,
             api_key=GROQ_API_KEY,
-            difficulty=difficulty
+            difficulty=difficulty,
+            # ✅ FIX: pass scenario_style into generator
+            scenario_style=scenario_style,
         )
 
         if not result.get("success"):
             error_detail = result.get("error", "Unknown error")
             raw_response = result.get("raw_response", "")
-            
-            # Provide more detailed error message
+
             error_msg = f"Assignment generation failed: {error_detail}"
             if raw_response:
                 error_msg += f"\n\nRaw LLM response snippet: {raw_response[:500]}..."
-            
-            return jsonify({
-                "error": error_msg,
-                "details": error_detail
-            }), 500
 
-        questions = result["questions"]
+            return jsonify({"error": error_msg, "details": error_detail}), 500
+
+        questions = result.get("questions", [])
         if not questions:
             return jsonify({
                 "error": "LLM generated an empty assignment",
@@ -1396,9 +1397,11 @@ def generate_advanced_assignment():
                 "selected_subtopics": chosen,
                 "task_distribution": task_distribution,
                 "difficulty": difficulty,
+                # ✅ include scenario_style in metadata
+                "scenario_style": scenario_style,
                 "kind": "assignment",
-                "total_tasks": len(questions)
-            }
+                "total_tasks": len(questions),
+            },
         }
 
         assignment_id = save_quiz_to_store(assignment_data)
@@ -1412,16 +1415,18 @@ def generate_advanced_assignment():
             "assignment_id": assignment_id,
             "title": assignment_data["title"],
             "questions": questions,
-            "metadata": assignment_data["metadata"]
+            "metadata": assignment_data["metadata"],
         }), 200
 
     except Exception as e:
         print(f"❌ Error in generate_advanced_assignment: {e}")
+        # ✅ FIX: return only ONE response tuple
         return jsonify({
             "error": str(e),
             "message": "Internal server error during assignment generation"
-        }),  jsonify({"error": str(e)}), 500
-    
+        }), 500
+
+
 @app.route("/api/custom/advanced-assignment-topics", methods=["POST"])
 def generate_advanced_assignment_from_topics():
     """
@@ -1433,31 +1438,32 @@ def generate_advanced_assignment_from_topics():
         task_distribution = payload.get("task_distribution", {})
         difficulty = payload.get("difficulty", "auto")
 
+        # ✅ FIX: read scenario_style from payload
+        scenario_style = payload.get("scenario_style", "auto")
+
         if not topic_text:
             return jsonify({"error": "Please enter at least one topic"}), 400
-        
+
         total_tasks = sum(task_distribution.values())
         if total_tasks <= 0:
             return jsonify({"error": "Task distribution must have at least 1 task"}), 400
 
-        # Split topics into a list
-        topics_list = [t.strip() for t in topic_text.split('\n') if t.strip()]
+        topics_list = [t.strip() for t in topic_text.split("\n") if t.strip()]
         if not topics_list:
             return jsonify({"error": "No valid topics found"}), 400
 
-        # Generate using enhanced function
         result = generate_advanced_assignments_llm(
             full_text=topic_text,  # Use topics as context
             chosen_subtopics=topics_list,
             task_distribution=task_distribution,
             api_key=GROQ_API_KEY,
-            difficulty=difficulty
+            difficulty=difficulty,
+            # ✅ FIX: pass scenario_style into generator
+            scenario_style=scenario_style,
         )
 
         if not result.get("success") or not result.get("questions"):
-            return jsonify({
-                "error": result.get("error", "Failed to generate assignment")
-            }), 500
+            return jsonify({"error": result.get("error", "Failed to generate assignment")}), 500
 
         questions = result["questions"]
 
@@ -1469,9 +1475,11 @@ def generate_advanced_assignment_from_topics():
                 "topics": topics_list,
                 "task_distribution": task_distribution,
                 "difficulty": difficulty,
+                # ✅ include scenario_style in metadata
+                "scenario_style": scenario_style,
                 "kind": "assignment",
-                "total_tasks": len(questions)
-            }
+                "total_tasks": len(questions),
+            },
         }
 
         assignment_id = save_quiz_to_store(assignment_data)
@@ -1481,39 +1489,13 @@ def generate_advanced_assignment_from_topics():
             "assignment_id": assignment_id,
             "title": assignment_data["title"],
             "questions": questions,
-            "metadata": assignment_data["metadata"]
+            "metadata": assignment_data["metadata"],
         }), 200
 
     except Exception as e:
         print(f"❌ Error in generate_advanced_assignment_from_topics: {e}")
         return jsonify({"error": str(e)}), 500
-# ===============================
-# PUBLISH / VIEW API (for UI flow)
-# ===============================
-@app.route("/api/quizzes/<quiz_id>/publish", methods=["POST"])
-def publish_quiz(quiz_id):
-    quiz = get_quiz_by_id(quiz_id)
-    if not quiz:
-        # If you're storing numeric IDs, you might be passing a string UUID from the client.
-        # Make sure both sides use the same ID type.
-        return jsonify({"ok": False, "error": "Quiz not found"}), 404
 
-    # Mark as published in your datastore
-    quiz["published"] = True
-    quiz["published_at"] = datetime.utcnow().isoformat() + "Z"
-
-    # Optionally generate a stable public URL (adjust route if you serve a public page)
-    quiz["publish_url"] = f"/quiz/{quiz_id}"
-
-    # persist
-    save_quiz_to_store(quiz)  # make sure this updates by id if it already exists
-
-    return jsonify({
-        "ok": True,
-        "quiz_id": quiz_id,
-        "publish_url": quiz["publish_url"],
-        "published_at": quiz["published_at"]
-    }), 200
 
 
 @app.post("/api/quizzes")

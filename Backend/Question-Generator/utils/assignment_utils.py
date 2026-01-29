@@ -1,15 +1,16 @@
 # utils/assignment_utils.py
 import json
+import re
 from groq import Groq
 
 ASSIGNMENT_SYSTEM_PROMPT = """You are an expert educational assessment designer specializing in creating diverse, challenging assignment questions.
 
 Generate assignment questions that test different cognitive levels:
 - Conceptual: Deep understanding of theories and principles
-- Scenario-based: Real-world application and problem-solving (include code-based solutions when applicable)
+- Scenario-based: Real-world application and problem-solving (can be code-based OR decision-based)
 - Research-based: Investigation, analysis, and critical thinking
 - Project-based: Practical implementation and creative solutions
-- Case Study: Analysis of complex situations (include technical/code problems when applicable)
+- Case Study: Analysis of complex situations (can be technical OR business/strategic)
 - Comparative Analysis: Comparing and contrasting concepts
 
 Each question should:
@@ -18,19 +19,21 @@ Each question should:
 3. Include grading criteria that guide assessment
 4. Specify expected word count/scope
 5. Encourage critical thinking and application
-6. For technical topics: Include code snippets, algorithms, or system design problems where relevant
+6. Match the requested scenario style (code-based vs decision-based)
 
-IMPORTANT FOR SCENARIO-BASED & CASE STUDY QUESTIONS:
-- When the topic is technical (programming, algorithms, data structures, software engineering, etc.):
-  * Include actual code snippets or pseudocode in the problem statement
-  * Present realistic debugging scenarios or optimization challenges
-  * Include system design problems with architectural considerations
-  * Provide specific technical constraints (time/space complexity, scalability, etc.)
-  
-- When the topic is non-technical (business, humanities, social sciences, etc.):
-  * Focus on real-world decision-making scenarios
-  * Include stakeholder perspectives and constraints
-  * Present ethical dilemmas or strategic challenges
+IMPORTANT - SCENARIO STYLES:
+When scenario_style is "code_based":
+  * Include actual code snippets or pseudocode
+  * Present debugging scenarios or optimization challenges
+  * Include system design problems
+  * Provide technical constraints
+
+When scenario_style is "decision_based":
+  * Focus on strategic decision-making
+  * Include stakeholder perspectives
+  * Present ethical dilemmas or business challenges
+  * ABSOLUTELY NO code anywhere (no code, no pseudocode, no syntax, no function names)
+  * Do not include backticks, code formatting, or code-like blocks in ANY field (prompt/context/requirements/deliverables/grading_criteria)
 
 Return JSON with this exact structure:
 {
@@ -40,18 +43,56 @@ Return JSON with this exact structure:
       "type": "assignment_task",
       "assignment_type": "conceptual|scenario|research|project|case_study|comparative",
       "prompt": "The detailed question/task",
-      "context": "Background information if needed (include code snippets here for technical topics)",
-      "code_snippet": "Optional: actual code that needs to be analyzed/debugged/optimized",
+      "context": "Background information if needed",
+      "code_snippet": "Optional: actual code (only for code-based scenarios/cases)",
       "requirements": ["requirement 1", "requirement 2"],
       "grading_criteria": "How to evaluate the response",
       "marks": 10,
       "word_count": "500-750 words",
       "difficulty": "medium",
       "learning_objectives": ["objective 1", "objective 2"],
-      "deliverables": ["Optional: specific outputs expected like 'corrected code', 'UML diagram', etc."]
+      "deliverables": ["Optional: specific outputs expected"]
     }
   ]
 }"""
+
+
+def strip_code_like_text(s: str) -> str:
+    """
+    Best-effort sanitizer to remove code-like content from text fields
+    when scenario_style is decision_based.
+    """
+    if not s:
+        return s
+
+    # Remove fenced blocks ```...```
+    s = re.sub(r"```.*?```", "", s, flags=re.DOTALL)
+
+    # Remove inline code `...`
+    s = re.sub(r"`[^`]*`", "", s)
+
+    # Remove obvious code/pseudocode lines (heuristics)
+    code_line = re.compile(
+        r"^\s*(?:"
+        r"(def |class |import |from |return |for |while |if |else:|elif |try:|except |finally:)"
+        r"|(#include|public |private |protected |static |void |int |string |bool |var |let |const |function )"
+        r"|(\{|\}|\;\s*$)"
+        r"|(\w+\s*\(.*\)\s*\{?)"
+        r")",
+        flags=re.IGNORECASE,
+    )
+
+    kept = []
+    for line in s.splitlines():
+        if code_line.search(line.strip()):
+            continue
+        kept.append(line)
+
+    out = "\n".join(kept)
+
+    # Clean extra blank lines
+    out = re.sub(r"\n{3,}", "\n\n", out).strip()
+    return out
 
 
 def generate_advanced_assignments_llm(
@@ -59,11 +100,12 @@ def generate_advanced_assignments_llm(
     chosen_subtopics: list,
     task_distribution: dict,
     api_key: str,
-    difficulty: str = "auto"
+    difficulty: str = "auto",
+    scenario_style: str = "auto",
 ):
     """
     Generate diverse assignment tasks based on subtopics.
-    
+
     Args:
         full_text: Source material text
         chosen_subtopics: List of selected subtopics
@@ -77,128 +119,161 @@ def generate_advanced_assignments_llm(
         }
         api_key: Groq API key
         difficulty: "auto", "easy", "medium", "hard"
+        scenario_style: "auto", "code_based", "decision_based"
     """
-    
+
     client = Groq(api_key=api_key)
-    
-    # Build detailed prompt
+
     total_tasks = sum(task_distribution.values())
-    
-    # Detect if topics are technical
+
+    # Detect if topics are technical (only if scenario_style is "auto")
     technical_keywords = [
-        'programming', 'code', 'algorithm', 'data structure', 'software', 
-        'python', 'java', 'javascript', 'c++', 'database', 'sql', 'api',
-        'framework', 'library', 'function', 'class', 'object', 'array',
-        'sorting', 'searching', 'tree', 'graph', 'network', 'system design',
-        'optimization', 'complexity', 'debugging', 'testing', 'web development',
-        'machine learning', 'artificial intelligence', 'neural network'
+        "programming",
+        "code",
+        "algorithm",
+        "data structure",
+        "software",
+        "python",
+        "java",
+        "javascript",
+        "c++",
+        "database",
+        "sql",
+        "api",
+        "framework",
+        "library",
+        "function",
+        "class",
+        "object",
+        "array",
+        "sorting",
+        "searching",
+        "tree",
+        "graph",
+        "network",
+        "system design",
+        "optimization",
+        "complexity",
+        "debugging",
+        "testing",
+        "web development",
+        "machine learning",
+        "artificial intelligence",
+        "neural network",
     ]
-    
-    content_lower = full_text.lower()
-    topics_lower = ' '.join(chosen_subtopics).lower()
-    is_technical = any(keyword in content_lower or keyword in topics_lower for keyword in technical_keywords)
-    
+
+    content_lower = (full_text or "").lower()
+    topics_lower = " ".join(chosen_subtopics or []).lower()
+
+    # Determine actual scenario style to use
+    if scenario_style == "auto":
+        is_technical = any(
+            (keyword in content_lower) or (keyword in topics_lower)
+            for keyword in technical_keywords
+        )
+        effective_style = "code_based" if is_technical else "decision_based"
+    else:
+        effective_style = scenario_style
+        is_technical = scenario_style == "code_based"
+
     user_prompt = f"""Based on the following educational content, generate {total_tasks} assignment tasks.
 
 CONTENT:
-{full_text[:15000]}
+{(full_text or "")[:15000]}
 
 SELECTED TOPICS:
-{', '.join(chosen_subtopics)}
+{", ".join(chosen_subtopics or [])}
 
-CONTENT TYPE: {'TECHNICAL/PROGRAMMING' if is_technical else 'GENERAL/NON-TECHNICAL'}
+SCENARIO STYLE: {effective_style.upper()}
+{"IMPORTANT: Generate CODE-BASED scenarios with actual code snippets." if effective_style == "code_based" else "IMPORTANT: Generate DECISION-BASED scenarios focusing on strategy/analysis. ABSOLUTELY NO CODE ANYWHERE."}
 
 TASK DISTRIBUTION:
 """
-    
-    for task_type, count in task_distribution.items():
+
+    for task_type, count in (task_distribution or {}).items():
         if count > 0:
             user_prompt += f"- {count} {task_type.replace('_', ' ').title()} question(s)\n"
-    
-    # Build the technical-specific instructions
-    tech_scenario_example = 'Example: "You are reviewing a colleague\'s code for a user authentication system. The code below has a critical security flaw. Identify the vulnerability, explain why it\'s dangerous, and provide a corrected implementation."'
-    general_scenario_example = 'Example: "You are a consultant hired by Company X facing declining market share. Analyze the situation and propose a comprehensive turnaround strategy."'
-    
-    tech_project_example = 'Example: "Design and implement a RESTful API for a library management system. Include: (1) API endpoint documentation, (2) Database schema, (3) Sample code for at least 3 endpoints, (4) Error handling strategy."'
-    general_project_example = 'Example: "Develop a comprehensive marketing campaign for a new sustainable product line. Include market research, target audience analysis, and budget allocation."'
-    
-    tech_case_example = 'Example: "A startup\'s e-commerce platform is experiencing severe performance degradation during peak hours. Analyze the system architecture below, identify bottlenecks, and propose specific optimizations with code examples."'
-    general_case_example = 'Example: "Analyze Amazon\'s decision to enter the grocery market with Amazon Fresh. Evaluate the strategic rationale, competitive positioning, and outcomes."'
-    
-    # Build the examples section separately
-    examples_section = f"""
-DIFFICULTY LEVEL: {difficulty}
 
+    user_prompt += f"\nDIFFICULTY LEVEL: {difficulty}\n\n"
+
+    # Add style-specific examples
+    if effective_style == "code_based":
+        user_prompt += """
+SCENARIO-BASED EXAMPLE (Code-Based):
+"You are reviewing a colleague's code for a user authentication system. The code below has a critical security flaw. Identify the vulnerability, explain why it's dangerous, and provide a corrected implementation."
+
+PROJECT EXAMPLE (Code-Based):
+"Design and implement a RESTful API for a library management system. Include: (1) API endpoint documentation, (2) Database schema, (3) Sample code for at least 3 endpoints, (4) Error handling strategy."
+
+CASE STUDY EXAMPLE (Code-Based):
+"A startup's e-commerce platform is experiencing severe performance degradation during peak hours. Analyze the system architecture below, identify bottlenecks, and propose specific optimizations with code examples."
+"""
+    else:
+        user_prompt += """
+SCENARIO-BASED EXAMPLE (Decision-Based):
+"You are a consultant hired by Company X facing declining market share. The company has three strategic options: (1) Expand to new markets, (2) Invest heavily in R&D for product innovation, (3) Focus on cost reduction and operational efficiency. Analyze each option considering market conditions, competitive landscape, and organizational capabilities. What would you recommend and why?"
+
+PROJECT EXAMPLE (Decision-Based):
+"Develop a comprehensive digital transformation strategy for a traditional retail company. Include: (1) Assessment of current capabilities, (2) Technology roadmap, (3) Change management plan, (4) Risk mitigation strategies, (5) Success metrics."
+
+CASE STUDY EXAMPLE (Decision-Based):
+"Netflix decided to transition from DVD rentals to streaming, then to original content production. Analyze this strategic evolution: What were the key decision points? What risks did they take? How did they manage organizational change? What lessons can other companies learn?"
+"""
+
+    user_prompt += """
 TASK TYPE DEFINITIONS:
 
 1. CONCEPTUAL: Questions that test deep understanding of theories, principles, and fundamental concepts.
-   Example: "Explain the underlying principles of binary search trees and discuss how they maintain O(log n) search complexity."
 
 2. SCENARIO-BASED: Real-world situations requiring application of knowledge.
-   
-   {'FOR TECHNICAL TOPICS - Include code-based problems:' if is_technical else 'FOR NON-TECHNICAL TOPICS:'}
-   {tech_scenario_example if is_technical else general_scenario_example}
-   
-   {'MUST include actual code snippets that need debugging, optimization, or refactoring.' if is_technical else 'Focus on strategic decision-making with multiple stakeholders.'}
+   - Must match the SCENARIO STYLE specified above
 
 3. RESEARCH-BASED: Tasks requiring investigation, literature review, or data analysis.
-   Example: "Conduct a comparative analysis of sorting algorithms (QuickSort, MergeSort, HeapSort) using at least 5 peer-reviewed sources. Include time/space complexity analysis and practical use cases."
 
 4. PROJECT-BASED: Practical implementation tasks with deliverables.
-   {tech_project_example if is_technical else general_project_example}
+   - Must match the SCENARIO STYLE for technical vs strategic projects
 
 5. CASE STUDY: Analysis of complex real or hypothetical situations.
-   
-   {'FOR TECHNICAL TOPICS - Include problematic code or system designs:' if is_technical else 'FOR NON-TECHNICAL TOPICS:'}
-   {tech_case_example if is_technical else general_case_example}
+   - Must match the SCENARIO STYLE specified above
 
 6. COMPARATIVE ANALYSIS: Comparing multiple concepts, approaches, or solutions.
-   Example: "Compare and contrast SQL vs NoSQL databases. Discuss use cases, performance characteristics, scalability, and provide code examples demonstrating when to use each."
-
 """
-    
-    user_prompt += examples_section
-    
-    # Add technical-specific requirements if applicable
-    if is_technical:
-        user_prompt += """
-CRITICAL FOR SCENARIO & CASE STUDY QUESTIONS IN TECHNICAL CONTENT:
-- Include actual code snippets (buggy code, inefficient algorithms, poorly designed classes)
-- Specify technical constraints (memory limits, API rate limits, database query optimization)
-- Request specific deliverables (corrected code, UML diagrams, performance benchmarks)
-- Use realistic technical scenarios (authentication bugs, race conditions, API design flaws)
 
-"""
-    
-    # Add JSON formatting instructions (without backslashes in f-string)
     json_instructions = """
 CRITICAL JSON FORMATTING REQUIREMENTS:
 
 1. The code_snippet field MUST be a plain string. Do NOT include markdown code blocks (```).
-2. Escape special JSON characters properly in code_snippet:
+2. ONLY include code_snippet for CODE-BASED scenarios/cases when style is code_based
+3. For DECISION-BASED style:
+   - NEVER include code_snippet
+   - ALSO: do NOT include code/pseudocode/code-like text in prompt/context/requirements/deliverables/grading_criteria
+   - No backticks, no programming syntax, no code blocks
+4. Escape special JSON characters properly in code_snippet:
    - Use \\" for double quotes inside strings
    - Use \\n for new lines
    - Use \\\\ for backslashes
-3. Example of proper code_snippet formatting:
-   "code_snippet": "import numpy as np\\n\\nclass NeuralNetwork:\\n    def __init__(self):\\n        self.training_data = []\\n\\n    def add_training_data(self, data):\\n        self.training_data.append(data)\\n\\n    def train(self):\\n        for data in self.training_data:\\n            # training logic\\n            pass"
-4. Do NOT include any markdown formatting in JSON fields.
-5. Ensure all string fields are properly escaped for JSON.
+5. Do NOT include any markdown formatting in JSON fields.
+6. Ensure all string fields are properly escaped for JSON.
 
 Generate questions that:
 - Are specific and well-defined
 - Include clear grading criteria
-- Specify scope and expectations  
+- Specify scope and expectations
 - Encourage critical thinking
 - Are appropriate for the difficulty level
 """
-    
     user_prompt += json_instructions
-    
-    if is_technical:
+
+    if effective_style == "code_based":
         user_prompt += """- Include code snippets in "code_snippet" field when presenting technical problems
-- Specify concrete deliverables in the "deliverables" field
+- Specify concrete technical deliverables in the "deliverables" field
 """
-    
+    else:
+        user_prompt += """- Focus on strategic analysis and decision-making
+- Specify analytical deliverables (reports, frameworks, recommendations)
+- NO code snippets and NO code-like text anywhere
+"""
+
     user_prompt += "\nReturn ONLY valid JSON, no other text."
 
     try:
@@ -206,63 +281,58 @@ Generate questions that:
             model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": ASSIGNMENT_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
+                {"role": "user", "content": user_prompt},
             ],
             temperature=0.7,
             max_tokens=4000,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
-        
+
         response_text = completion.choices[0].message.content
         print(f"DEBUG - Raw LLM response length: {len(response_text)} chars")
-        
-        # Try to clean the response before parsing
-        cleaned_response = response_text.strip()
-        
-        # Remove markdown code blocks if present
-        if cleaned_response.startswith('```json'):
-            cleaned_response = cleaned_response[7:]  # Remove '```json'
-        if cleaned_response.startswith('```'):
-            cleaned_response = cleaned_response[3:]  # Remove '```'
-        if cleaned_response.endswith('```'):
-            cleaned_response = cleaned_response[:-3]  # Remove trailing '```'
-        
-        # Try to parse JSON
+        print(f"DEBUG - Effective scenario style: {effective_style}")
+
+        cleaned_response = (response_text or "").strip()
+
+        # Remove markdown code blocks if present (extra safety)
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+
+        # Parse JSON
         try:
             data = json.loads(cleaned_response)
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
             print(f"Cleaned response sample: {cleaned_response[:500]}")
-            
+
             # Try one more cleanup - look for JSON object
-            import re
-            json_match = re.search(r'\{.*\}', cleaned_response, re.DOTALL)
+            json_match = re.search(r"\{.*\}", cleaned_response, re.DOTALL)
             if json_match:
                 cleaned_response = json_match.group(0)
                 data = json.loads(cleaned_response)
             else:
                 raise e
-        
-        # Validate and enhance questions
+
         questions = data.get("questions", [])
-        
         if not questions:
-            return {
-                "success": False,
-                "error": "No questions generated by LLM",
-                "questions": []
-            }
-        
-        # Clean and validate each question
+            return {"success": False, "error": "No questions generated by LLM", "questions": []}
+
         cleaned_questions = []
         for i, q in enumerate(questions):
-            # Ensure all required fields exist
+            if not isinstance(q, dict):
+                continue
+
+            # Ensure required fields
             if "id" not in q:
                 q["id"] = f"assign_{i+1}"
             if "type" not in q:
                 q["type"] = "assignment_task"
             if "assignment_type" not in q:
-                q["assignment_type"] = "conceptual"  # Default
+                q["assignment_type"] = "conceptual"
             if "marks" not in q:
                 q["marks"] = 10
             if "difficulty" not in q:
@@ -275,32 +345,55 @@ Generate questions that:
                 q["deliverables"] = []
             if "word_count" not in q:
                 q["word_count"] = "500-750 words"
-            
-            # Clean the code_snippet field if it exists
-            if "code_snippet" in q and q["code_snippet"]:
-                code = str(q["code_snippet"])
-                # Remove markdown code blocks
-                if code.startswith('```'):
-                    lines = code.split('\n')
-                    if len(lines) > 1:
-                        # Remove first line (```python or similar) and last line (```)
-                        code = '\n'.join(lines[1:-1])
-                    else:
-                        code = code.replace('```', '')
-                
-                # Clean up
-                code = code.strip()
-                # Replace escaped newlines with actual newlines for storage
-                code = code.replace('\\n', '\n')
-                q["code_snippet"] = code
-            
-            # Clean other string fields
-            for field in ["prompt", "context", "grading_criteria"]:
-                if field in q and q[field]:
-                    q[field] = str(q[field]).strip()
-            
+
+            # ✅ DECISION-BASED: remove code_snippet and sanitize ALL text fields
+            if effective_style == "decision_based":
+                if "code_snippet" in q:
+                    del q["code_snippet"]
+
+                for field in ["prompt", "context", "grading_criteria"]:
+                    if field in q and q[field]:
+                        q[field] = strip_code_like_text(str(q[field]).strip())
+
+                if "requirements" in q and isinstance(q["requirements"], list):
+                    new_reqs = []
+                    for r in q["requirements"]:
+                        rr = strip_code_like_text(str(r)).strip()
+                        if rr:
+                            new_reqs.append(rr)
+                    q["requirements"] = new_reqs
+
+                if "deliverables" in q and isinstance(q["deliverables"], list):
+                    new_del = []
+                    for d in q["deliverables"]:
+                        dd = strip_code_like_text(str(d)).strip()
+                        if dd:
+                            new_del.append(dd)
+                    q["deliverables"] = new_del
+
+            else:
+                # ✅ CODE-BASED: clean the code_snippet formatting if present
+                if "code_snippet" in q and q["code_snippet"]:
+                    code = str(q["code_snippet"])
+
+                    # Remove markdown fences if LLM accidentally added them
+                    if code.startswith("```"):
+                        lines = code.split("\n")
+                        if len(lines) > 1:
+                            code = "\n".join(lines[1:-1])
+                        else:
+                            code = code.replace("```", "")
+
+                    code = code.strip().replace("\\n", "\n")
+                    q["code_snippet"] = code
+
+                # Clean common string fields
+                for field in ["prompt", "context", "grading_criteria"]:
+                    if field in q and q[field]:
+                        q[field] = str(q[field]).strip()
+
             cleaned_questions.append(q)
-        
+
         return {
             "success": True,
             "questions": cleaned_questions,
@@ -308,25 +401,25 @@ Generate questions that:
                 "total_tasks": len(cleaned_questions),
                 "task_distribution": task_distribution,
                 "difficulty": difficulty,
-                "is_technical": is_technical
-            }
+                "scenario_style": effective_style,
+                "is_technical": is_technical,
+            },
         }
-        
+
     except json.JSONDecodeError as e:
         print(f"JSON decode error: {e}")
-        print(f"Problematic response (first 1000 chars): {response_text[:1000] if 'response_text' in locals() else 'No response'}")
+        print(
+            f"Problematic response (first 1000 chars): {response_text[:1000] if 'response_text' in locals() else 'No response'}"
+        )
         return {
             "success": False,
             "error": f"Failed to parse LLM response as JSON: {str(e)}",
-            "raw_response": response_text[:1000] if 'response_text' in locals() else None,
-            "questions": []
+            "raw_response": response_text[:1000] if "response_text" in locals() else None,
+            "questions": [],
         }
     except Exception as e:
         print(f"Error generating assignments: {e}")
         import traceback
+
         traceback.print_exc()
-        return {
-            "success": False,
-            "error": str(e),
-            "questions": []
-        }
+        return {"success": False, "error": str(e), "questions": []}
