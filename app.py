@@ -2,12 +2,20 @@ import os
 import re
 import json
 import uuid
+import sys
 from datetime import datetime
 from typing import Dict, List, Any
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for,session 
 from flask_cors import CORS
+
+# Ensure Backend/Question-Generator is on sys.path so that
+# `utils` and `services` can be imported when running this app
+BASE_DIR = os.path.dirname(__file__)
+QG_DIR = os.path.join(BASE_DIR, "Backend", "Question-Generator")
+if QG_DIR not in sys.path:
+    sys.path.insert(0, QG_DIR)
 
 from utils.pdf_utils import SmartPDFProcessor
 import jwt
