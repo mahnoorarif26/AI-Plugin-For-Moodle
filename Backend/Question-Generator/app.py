@@ -194,13 +194,26 @@ def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
         qq = dict(q)
         # Normalize answer field
         if qq.get("answer") is None:
-            for key in ["correct_answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
+            for key in [
+                "correct_answer",
+                "reference_answer",
+                "expected_answer",
+                "ideal_answer",
+                "solution",
+                "model_answer",
+            ]:
                 if qq.get(key) is not None:
                     qq["answer"] = qq.get(key)
                     break
-        # Default max_score when missing
+        # Default max_score when missing – prefer explicit marks if present
         if qq.get("max_score") is None:
-            qq["max_score"] = _default_max_score(qq.get("type"))
+            if qq.get("marks") is not None:
+                try:
+                    qq["max_score"] = float(qq.get("marks"))
+                except Exception:
+                    qq["max_score"] = _default_max_score(qq.get("type"))
+            else:
+                qq["max_score"] = _default_max_score(qq.get("type"))
         normalized_questions.append(qq)
     quiz_for_grader["questions"] = normalized_questions
     return quiz_for_grader
@@ -635,7 +648,10 @@ def student_submit_assignment():
                         d["answer"] = d.get(key)
                         break
             if d.get("max_score") is None:
-                d["max_score"] = _default_max(d.get("type"))
+                if d.get("marks") is not None:
+                    d["max_score"] = float(d["marks"])
+                else:
+                    d["max_score"] = _default_max(d.get("type"))
             qlist.append(d)
         quiz_for_grader["questions"] = qlist
 
@@ -882,8 +898,15 @@ def student_grade_detail(submission_id: str):
         if not found or not quiz_data:
             return redirect(url_for('student_index'))
 
-        # Auto-grade if missing
-        if grader is not None and not (found.get('grading_items') or []):
+        # Auto-grade / re-grade if needed
+        questions = quiz_data.get('questions') or []
+        num_questions = len(questions)
+        existing_max_total = float(found.get('max_total') or 0)
+        needs_regrade = (
+            not (found.get('grading_items') or [])
+            or existing_max_total <= float(num_questions or 0)
+        )
+        if grader is not None and needs_regrade:
             try:
                 quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
                 result = grader.grade_quiz(
@@ -906,7 +929,10 @@ def student_grade_detail(submission_id: str):
         total_max = 0.0
         by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
         for q in quiz_data.get('questions', []) or []:
-            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
+            max_val = q.get('max_score')
+            if max_val is None and q.get('marks') is not None:
+                max_val = q.get('marks')
+            total_max += float(max_val or _default_max_score(q.get('type')))
         total_max = _ceil_score(total_max)
         for item in found.get('grading_items') or []:
             qq = by_id.get(item.get('question_id')) or {}
