@@ -18,7 +18,7 @@ except Exception:
 
 load_dotenv()
 
-FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccountKey.json")
+FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
 
 # ---------- Local JSON fallback paths ----------
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # .../Question-Generator
