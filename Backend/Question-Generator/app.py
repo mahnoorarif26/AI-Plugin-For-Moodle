@@ -11,6 +11,7 @@ import importlib.util
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for,session 
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from utils.pdf_utils import SmartPDFProcessor
 from utils.assignment_utils import generate_advanced_assignments_llm
@@ -87,6 +88,11 @@ else:
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_only_secret_change_me")
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Optional upload folder for assignment file uploads
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "student_uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # ===============================
 # GLOBAL MEMORY STORE
@@ -188,13 +194,26 @@ def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
         qq = dict(q)
         # Normalize answer field
         if qq.get("answer") is None:
-            for key in ["correct_answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
+            for key in [
+                "correct_answer",
+                "reference_answer",
+                "expected_answer",
+                "ideal_answer",
+                "solution",
+                "model_answer",
+            ]:
                 if qq.get(key) is not None:
                     qq["answer"] = qq.get(key)
                     break
-        # Default max_score when missing
+        # Default max_score when missing – prefer explicit marks if present
         if qq.get("max_score") is None:
-            qq["max_score"] = _default_max_score(qq.get("type"))
+            if qq.get("marks") is not None:
+                try:
+                    qq["max_score"] = float(qq.get("marks"))
+                except Exception:
+                    qq["max_score"] = _default_max_score(qq.get("type"))
+            else:
+                qq["max_score"] = _default_max_score(qq.get("type"))
         normalized_questions.append(qq)
     quiz_for_grader["questions"] = normalized_questions
     return quiz_for_grader
@@ -519,6 +538,183 @@ def submission_confirmation(quiz_id):
         student_name="Student"
     )
 
+
+@app.route('/student/assignment/<string:assignment_id>', methods=['GET'])
+@app.route('/student/assignment/<string:quiz_id>', methods=['GET'])
+def student_assignment(**kwargs):
+    """
+    Display assignment for student (open-ended response/file upload).
+    Accepts either /student/assignment/<assignment_id> (preferred)
+    or legacy /student/assignment/<quiz_id>.
+    """
+    assignment_id = kwargs.get("assignment_id") or kwargs.get("quiz_id")
+    if not assignment_id:
+        return ("Assignment not found", 404)
+
+    assignment_data = get_quiz_by_id(assignment_id)
+    if not assignment_data:
+        return ("Assignment not found", 404)
+
+    questions_for_student = [{
+        "id": q.get("id"),
+        "prompt": q.get("prompt") or q.get("question_text"),
+        "type": q.get("type"),
+    } for q in assignment_data.get("questions", [])]
+
+    title = assignment_data.get("title") or f"Assignment #{assignment_id}"
+
+    return render_template(
+        "student_assignment.html",
+        quiz_id=assignment_id,
+        assignment_id=assignment_id,
+        title=title,
+        questions=questions_for_student,
+        student_email="student@example.com",
+        student_name="Student",
+    )
+
+
+@app.route('/student/submit_assignment', methods=['POST'])
+def student_submit_assignment():
+    """Handle student assignment submission (text + optional file)."""
+    assignment_id = request.form.get("assignment_id") or request.form.get("quiz_id")
+    student_email = "student@example.com"
+    student_name = "Student"
+
+    if not assignment_id:
+        return jsonify({"error": "Missing assignment ID"}), 400
+
+    assignment_data = get_quiz_by_id(assignment_id)
+    if not assignment_data:
+        return jsonify({"error": "Assignment not found"}), 404
+
+    student_answers: Dict[str, str] = {}
+    uploaded_files_map = {}
+    total_questions = len(assignment_data.get("questions", []))
+
+    for q in assignment_data.get("questions", []):
+        q_id = q.get("id")
+        if q_id:
+            student_response = (request.form.get(q_id) or "").strip()
+            student_answers[q_id] = student_response
+
+    uploaded_file = request.files.get("assignment_file_final")
+    if uploaded_file and uploaded_file.filename != "":
+        filename = secure_filename(uploaded_file.filename)
+        file_uuid = str(uuid.uuid4())[:8]
+        safe_filename = f"{assignment_id}_{student_email.split('@')[0]}_{file_uuid}_{filename}"
+
+        if "UPLOAD_FOLDER" not in app.config:
+            print("⚠️ UPLOAD_FOLDER is not configured. File will not be saved.")
+            uploaded_files_map["assignment_file_final"] = "Error: UPLOAD_FOLDER not set"
+        else:
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], safe_filename)
+            try:
+                uploaded_file.save(file_path)
+                uploaded_files_map["assignment_file_final"] = safe_filename
+            except Exception as e:
+                print(f"File upload failed for {filename}: {e}")
+                uploaded_files_map["assignment_file_final"] = f"Error: {e}"
+
+    grading_items = []
+    max_total_calc = None
+    score_total = 0
+    if grader is not None:
+        def _default_max(t):
+            t = (t or "").lower()
+            if t in ("mcq", "true_false"):
+                return 1
+            if t == "short":
+                return 3
+            if t == "long":
+                return 5
+            return 1
+
+        quiz_for_grader = dict(assignment_data)
+        qlist = []
+        for q in (assignment_data.get("questions") or []):
+            d = dict(q)
+            if "answer" not in d:
+                for key in [
+                    "answer",
+                    "correct_answer",
+                    "reference_answer",
+                    "expected_answer",
+                    "ideal_answer",
+                    "solution",
+                    "model_answer",
+                ]:
+                    if d.get(key) is not None:
+                        d["answer"] = d.get(key)
+                        break
+            if d.get("max_score") is None:
+                if d.get("marks") is not None:
+                    d["max_score"] = float(d["marks"])
+                else:
+                    d["max_score"] = _default_max(d.get("type"))
+            qlist.append(d)
+        quiz_for_grader["questions"] = qlist
+
+        try:
+            result = grader.grade_quiz(
+                quiz=quiz_for_grader,
+                responses=student_answers,
+                policy=os.getenv("GRADING_POLICY", "balanced"),
+            )
+            score_total = result.get("total_score", 0) or sum(
+                float(x.get("score") or 0) for x in (result.get("items") or [])
+            )
+            grading_items = result.get("items") or []
+            max_total_calc = result.get("max_total")
+        except Exception as e:
+            print(f"[assignment_grading] grading failed: {e}")
+
+    submission_data = {
+        "email": student_email,
+        "name": student_name,
+        "answers": student_answers,
+        "files": uploaded_files_map,
+        "score": score_total,
+        "total_questions": total_questions,
+        "kind": "assignment_submission",
+        "submitted_at": datetime.utcnow().isoformat(),
+        "grading_items": grading_items,
+        "max_total": max_total_calc,
+    }
+
+    submission_id = save_submission_to_store(assignment_id, submission_data)
+
+    if not max_total_calc:
+        def _default_max(t):
+            t = (t or "").lower()
+            if t in ("mcq", "true_false"):
+                return 1
+            if t == "short":
+                return 3
+            if t == "long":
+                return 5
+            return 1
+
+        max_total_calc = sum(
+            float(
+                q.get("max_score")
+                if q.get("max_score") is not None
+                else _default_max(q.get("type"))
+            )
+            for q in (assignment_data.get("questions") or [])
+        )
+
+    return redirect(
+        url_for(
+            "submission_confirmation",
+            quiz_id=assignment_id,
+            score=score_total,
+            total=max_total_calc,
+            submission_id=submission_id,
+            is_assignment=True,
+        )
+    )
+
 # ===============================
 # GRADES + SUBMISSION APIs
 # ===============================
@@ -702,8 +898,15 @@ def student_grade_detail(submission_id: str):
         if not found or not quiz_data:
             return redirect(url_for('student_index'))
 
-        # Auto-grade if missing
-        if grader is not None and not (found.get('grading_items') or []):
+        # Auto-grade / re-grade if needed
+        questions = quiz_data.get('questions') or []
+        num_questions = len(questions)
+        existing_max_total = float(found.get('max_total') or 0)
+        needs_regrade = (
+            not (found.get('grading_items') or [])
+            or existing_max_total <= float(num_questions or 0)
+        )
+        if grader is not None and needs_regrade:
             try:
                 quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
                 result = grader.grade_quiz(
@@ -726,7 +929,10 @@ def student_grade_detail(submission_id: str):
         total_max = 0.0
         by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
         for q in quiz_data.get('questions', []) or []:
-            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
+            max_val = q.get('max_score')
+            if max_val is None and q.get('marks') is not None:
+                max_val = q.get('marks')
+            total_max += float(max_val or _default_max_score(q.get('type')))
         total_max = _ceil_score(total_max)
         for item in found.get('grading_items') or []:
             qq = by_id.get(item.get('question_id')) or {}
