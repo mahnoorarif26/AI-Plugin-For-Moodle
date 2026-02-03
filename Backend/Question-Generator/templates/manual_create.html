@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Manual Quiz Builder</title>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+
+  <!-- Unified theme + manual builder styles (no API/JS changes) -->
+  <style>
+    /* ===== ROOT VARIABLES (safe defaults if main app vars aren't loaded) ===== */
+    :root{
+      --banner-height: 72px; 
+      --pad: 12px;
+      --glass-bg: white; 
+      --glass-border: rgba(255,255,255,.45);
+
+      /* Orange brand */
+      --orange-1: #ff9f1c;
+      --orange-2: #ff7a1a;
+      --orange-3: #ff6b35;
+      --orange-soft: #ffd9b8;
+
+      /* Card */
+      --card-radius: 12px;
+      --card-border: #e5e7eb;
+      --text: #0f172a;
+      --muted: #475569;
+    }
+
+    /* ===== BASE ===== */
+    * { box-sizing: border-box; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: linear-gradient(180deg,#eef1f6, #f8fafc);
+      color: var(--text);
+      margin:0;
+      min-height:100vh;
+    }
+
+    /* ===== CONTAINER & TOOLBAR ===== */
+    .wrap{ max-width:1080px; margin:28px auto; padding:16px; }
+    .toolbar{
+      display:flex; gap:10px; align-items:center; margin-bottom:16px;
+      padding:12px; border:1px solid #eef2f7; border-radius:12px; background:#fff;
+      box-shadow:0 6px 14px rgba(0,0,0,.05);
+    }
+    .pill{
+      padding:8px 12px; border-radius:999px; background:#f8fafc; font-size:13px;
+      color:#0f172a; border:1px solid #e2e8f0; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+    }
+    .pill:hover{ border-color:#fb923c; box-shadow:0 4px 10px rgba(251,147,60,.15); }
+    .muted{ color:#64748b; }
+
+    /* ===== CARD ===== */
+    .card{
+      background:#fff; border:1px solid var(--card-border); border-radius: var(--card-radius);
+      box-shadow:0 6px 18px rgba(0,0,0,.06); padding:18px; margin-bottom:14px;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .card:hover{ transform: translateY(-1px); box-shadow:0 10px 24px rgba(0,0,0,.1); }
+
+    /* ===== ROW LAYOUT ===== */
+    .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+
+    /* ===== INPUTS (unified focus/hover) ===== */
+    input, textarea, select, button{ font: inherit; }
+    input[type="text"], input[type="number"], textarea, select{
+      width:100%; padding:10px 12px; font-size:14px; color:#0f172a;
+      border:1px solid #e5e7eb; border-radius:10px; background:#fff; outline:none;
+      transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+    textarea{ min-height:100px; resize: vertical; }
+    input:focus, textarea:focus, select:focus{
+      border-color:#fb923c;
+      box-shadow: 0 0 0 3px rgba(251,146,60,0.20);
+      background:#fff;
+    }
+
+    /* ===== BUTTONS (keep your existing class names) ===== */
+    .btn-primary, .btn-outline, .danger, button{
+      padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600;
+      transition:transform .15s ease, box-shadow .2s ease, background .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .btn-primary{
+      background: linear-gradient(90deg, #ffb366, #fb9026);
+      color:#fff; border:none; box-shadow:0 4px 12px rgba(251,144,38,0.25);
+    }
+    .btn-primary:hover{ box-shadow:0 6px 16px rgba(251,144,38,0.35); transform: translateY(-1px); }
+
+    .btn-outline{
+      background:#fff; border:1px solid #e2e8f0; color:#0f172a;
+    }
+    .btn-outline:hover{
+      border-color:#fb923c; box-shadow:0 4px 12px rgba(251,147,60,0.12); transform: translateY(-1px);
+    }
+
+    .danger{
+      background:#f44336; color:#fff; border:none;
+      box-shadow:0 4px 12px rgba(244,67,54,0.25);
+    }
+    .danger:hover{ background:#d32f2f; transform: translateY(-1px); }
+
+    /* ===== ACTIONS BAR ===== */
+    .actions{ display:flex; gap:10px; justify-content:flex-end; margin:18px 0; flex-wrap:wrap; }
+
+    /* ===== OPTION ROWS (for MCQs) ===== */
+    .opt{
+      display:flex; gap:10px; align-items:flex-start; margin:8px 0; padding:12px;
+      background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+      transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+    .opt:hover{ border-color:#fb923c; background:#fff7ed; box-shadow:0 2px 8px rgba(251,147,60,0.10); }
+    .opt input[type="checkbox"]{ transform: scale(1.15); margin-top:4px; accent-color:#fb9026; }
+
+    /* ===== SMALL UTIL ===== */
+    .qhead{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+    .qhead .title-badge{
+      padding:6px 10px; border-radius:999px; background:linear-gradient(135deg,#fff7ed,#ffedd5);
+      color:#b45309; border:1px solid #fde68a; font-size:12px; font-weight:700;
+    }
+
+    /* Responsive tweak */
+    @media (max-width: 720px){
+      .actions{ justify-content:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="toolbar">
+      <a href="{{ url_for('teacher_generate') }}" class="pill">
+        <i class='bx bx-arrow-back'></i> Back
+      </a>
+      <div style="flex:1"></div>
+      <span class="muted"><i class='bx bx-edit-alt'></i> Manual Builder</span>
+    </div>
+
+    <div class="card" aria-labelledby="quizMeta">
+      <div class="row">
+        <input id="title" type="text" placeholder="Quiz title" aria-label="Quiz title"/>
+        <input id="timeLimit" type="number" placeholder="Time (secs, optional)" min="0" aria-label="Time limit in seconds (optional)"/>
+      </div>
+      <textarea id="desc" rows="2" placeholder="Description (optional)" aria-label="Quiz description (optional)"></textarea>
+    </div>
+
+    <!-- Questions will be injected here by manual.js (do not rename) -->
+    <div id="questions" aria-live="polite" aria-relevant="additions removals"></div>
+
+    <div class="actions">
+      <!-- Keep IDs exactly for manual.js bindings -->
+      <button id="addMCQ" class="btn-outline" type="button"><i class='bx bx-list-check'></i> Add MCQ</button>
+      <button id="addTF"  class="btn-outline" type="button"><i class='bx bx-toggle-left'></i> Add True/False</button>
+      <button id="addSA"  class="btn-outline" type="button"><i class='bx bx-text'></i> Add Question</button>
+      <div style="flex:1"></div>
+      <button id="save" class="btn-primary" type="button"><i class='bx bx-save'></i> Save</button>
+    </div>
+  </div>
+
+  <!-- Do not change API names or function names used in this script -->
+  <script src="{{ url_for('static', filename='manual.js') }}"></script>
+</body>
+</html>

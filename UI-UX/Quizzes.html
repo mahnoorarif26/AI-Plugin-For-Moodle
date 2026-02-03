@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizzes - Student Portal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #FF7F27;
+            --primary-dark: #E56A17;
+            --primary-light: #FFE0B2;
+            --primary-extra-light: #FFF3E0;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --dark: #333333;
+            --text-light: #666666;
+            --success: #48BB78;
+            --warning: #F59E0B;
+            --danger: #F56565;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: var(--light-gray);
+            color: var(--dark);
+        }
+        
+        /* Orange Sidebar - Exact match with courses page */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+            color: var(--white);
+            padding: 30px 0;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            padding: 0 25px 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .sidebar-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+        
+        .sidebar-header p {
+            font-weight: 500;
+        }
+        
+        .sidebar-nav {
+            list-style: none;
+        }
+        
+        .sidebar-nav li a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: var(--white);
+            text-decoration: none;
+            transition: all 0.3s;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+        }
+        
+        .sidebar-nav li a:hover {
+            background-color: rgba(255,255,255,0.1);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav li a.active {
+            background-color: var(--primary-light);
+            color: var(--primary-dark);
+            border-left: 4px solid var(--white);
+        }
+        
+        .sidebar-nav i {
+            width: 24px;
+            text-align: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+        
+        /* Main Content - Exact match with courses page */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .page-header h1 {
+            color: var(--primary-dark);
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .search-bar {
+            display: flex;
+            width: 300px;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+            font-size: 1rem;
+        }
+        
+        .search-bar button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 15px;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .search-bar button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        /* Quiz Grid - Matching courses grid */
+        .quiz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        /* Quiz Card - Matching course card style */
+        .quiz-card {
+            background-color: var(--white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .quiz-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        
+        .quiz-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .quiz-header h3 {
+            font-size: 1.4rem;
+            margin-bottom: 5px;
+        }
+        
+        .quiz-header p {
+            opacity: 0.9;
+            font-size: 0.9rem;
+        }
+        
+        .quiz-icon {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 2.5rem;
+            opacity: 0.2;
+        }
+        
+        .quiz-body {
+            padding: 20px;
+        }
+        
+        .quiz-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .quiz-meta {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .quiz-meta span {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .quiz-meta i {
+            margin-right: 5px;
+        }
+        
+        .quiz-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+        
+        .status-upcoming {
+            background-color: rgba(245,158,11,0.1);
+            color: var(--warning);
+        }
+        
+        .status-completed {
+            background-color: rgba(72,187,120,0.1);
+            color: var(--success);
+        }
+        
+        .status-missed {
+            background-color: rgba(245,101,101,0.1);
+            color: var(--danger);
+        }
+        
+        .quiz-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background-color: var(--primary-extra-light);
+        }
+        
+        /* Submit Quiz Section - Matching courses form style */
+        .submit-quiz {
+            background-color: var(--white);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        
+        .submit-quiz h3 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .file-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .file-label:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .file-label i {
+            margin-right: 8px;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .file-name {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        /* Responsive - Same as courses page */
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .search-bar {
+                width: 100%;
+            }
+            
+            .quiz-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Orange Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-graduation-cap"></i> Student Portal</h2>
+            <p><b>Data Science - Spring 2025</b></p>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="profile.html"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="assignments.html"><i class="fas fa-tasks"></i> Assignments</a></li>
+            <li><a href="quizzes.html" class="active"><i class="fas fa-question-circle"></i> Quizzes</a></li>
+            <li><a href="grades.html"><i class="fas fa-chart-bar"></i> Grades</a></li>
+            <li><a href="announcements.html"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="messages.html"><i class="fas fa-envelope"></i> Messages</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <h1><i class="fas fa-question-circle"></i> My Quizzes</h1>
+            <div class="search-bar">
+                <input type="text" placeholder="Search quizzes...">
+                <button type="submit"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+        
+        <!-- Submit Quiz Section -->
+        <div class="submit-quiz">
+            <h3><i class="fas fa-file-upload"></i> Submit Quiz Answers</h3>
+            <form id="quizForm">
+                <label class="file-label" for="quizFile">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Choose Quiz File
+                </label>
+                <span class="file-name" id="quizFileName">No file selected</span>
+                <input type="file" id="quizFile" accept=".pdf,.doc,.docx,.txt">
+                <button type="submit" class="btn btn-primary">Submit Quiz</button>
+            </form>
+        </div>
+        
+        <div class="quiz-grid">
+            <!-- Quiz 1 -->
+            <div class="quiz-card">
+                <div class="quiz-header">
+                    <i class="fas fa-laptop-code quiz-icon"></i>
+                    <h3>Web Development Quiz</h3>
+                    <p>CS 401 - Prof. Fasil Bukhari</p>
+                </div>
+                <div class="quiz-body">
+                    <div class="quiz-info">
+                        <span><i class="far fa-calendar-alt"></i> Due: Sep 20, 2025</span>
+                        <span><i class="fas fa-clock"></i> 30 mins</span>
+                    </div>
+                    <div class="quiz-meta">
+                        <span><i class="fas fa-question-circle"></i> 20 Questions</span>
+                        <span><i class="fas fa-percentage"></i> Worth 15%</span>
+                    </div>
+                    <span class="quiz-status status-upcoming">Upcoming</span>
+                    <div class="quiz-actions">
+                        <button class="btn btn-primary">Start Quiz</button>
+                        <button class="btn btn-outline">Study Guide</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quiz 2 -->
+            <div class="quiz-card">
+                <div class="quiz-header">
+                    <i class="fas fa-database quiz-icon"></i>
+                    <h3>Database Systems Quiz</h3>
+                    <p>CS 305 - Prof. Farhan ch.</p>
+                </div>
+                <div class="quiz-body">
+                    <div class="quiz-info">
+                        <span><i class="far fa-calendar-alt"></i> Due: July 28, 2025</span>
+                        <span><i class="fas fa-clock"></i> 20 mins</span>
+                    </div>
+                    <div class="quiz-meta">
+                        <span><i class="fas fa-question-circle"></i> 15 Questions</span>
+                        <span><i class="fas fa-percentage"></i> Worth 10%</span>
+                    </div>
+                    <span class="quiz-status status-completed">Completed</span>
+                    <div class="quiz-actions">
+                        <button class="btn btn-primary">View Results</button>
+                        <button class="btn btn-outline">Feedback</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quiz 3 -->
+            <div class="quiz-card">
+                <div class="quiz-header">
+                    <i class="fas fa-robot quiz-icon"></i>
+                    <h3>AI Fundamentals Quiz</h3>
+                    <p>CS 410 - Prof. Ali</p>
+                </div>
+                <div class="quiz-body">
+                    <div class="quiz-info">
+                        <span><i class="far fa-calendar-alt"></i> Due: Oct 15, 2025</span>
+                        <span><i class="fas fa-clock"></i> 45 mins</span>
+                    </div>
+                    <div class="quiz-meta">
+                        <span><i class="fas fa-question-circle"></i> 25 Questions</span>
+                        <span><i class="fas fa-percentage"></i> Worth 20%</span>
+                    </div>
+                    <span class="quiz-status status-upcoming">Upcoming</span>
+                    <div class="quiz-actions">
+                        <button class="btn btn-primary">Start Quiz</button>
+                        <button class="btn btn-outline">Study Guide</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quiz 4 -->
+            <div class="quiz-card">
+                <div class="quiz-header">
+                    <i class="fas fa-project-diagram quiz-icon"></i>
+                    <h3>Data Structures Quiz</h3>
+                    <p>CS 201 - Prof. Waheed</p>
+                </div>
+                <div class="quiz-body">
+                    <div class="quiz-info">
+                        <span><i class="far fa-calendar-alt"></i> Due: May 15, 2025</span>
+                        <span><i class="fas fa-clock"></i> 25 mins</span>
+                    </div>
+                    <div class="quiz-meta">
+                        <span><i class="fas fa-question-circle"></i> 18 Questions</span>
+                        <span><i class="fas fa-percentage"></i> Worth 12%</span>
+                    </div>
+                    <span class="quiz-status status-missed">Missed</span>
+                    <div class="quiz-actions">
+                        <button class="btn btn-outline">View Details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Display selected file name
+        document.getElementById('quizFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+            document.getElementById('quizFileName').textContent = fileName;
+        });
+        
+        // Form submission handling
+        document.getElementById('quizForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Quiz submitted successfully!');
+            this.reset();
+            document.getElementById('quizFileName').textContent = 'No file selected';
+        });
+    </script>
+</body>
+</html>

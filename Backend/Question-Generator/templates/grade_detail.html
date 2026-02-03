@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grade Details</title>
+  <style>
+    body{font-family:Segoe UI,Arial,sans-serif;background:#f5f6f8;margin:0;padding:20px;color:#333}
+    .container{max-width:1000px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.08);padding:24px}
+    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .title{font-size:22px;font-weight:700}
+    .score{background:#fff7e6;border:1px solid #ffd591;padding:10px 14px;border-radius:8px;font-weight:600}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th,td{padding:10px 12px;border-bottom:1px solid #eee;vertical-align:top}
+    th{background:#fafafa;text-align:left}
+    .pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px}
+    .ok{background:#e8f5e8;color:#2e7d32;border:1px solid #a5d6a7}
+    .warn{background:#fff3cd;color:#8a6d3b;border:1px solid #ffeeba}
+    .bad{background:#fdecea;color:#a94442;border:1px solid #f5c6cb}
+    .muted{color:#777}
+    .back{margin-top:18px;display:inline-block;padding:10px 16px;background:#ff9f1c;color:#fff;text-decoration:none;border-radius:8px}
+    .mono{font-family:Consolas,monospace}
+    /* Clamp long text to 2 lines with optional expand */
+    .clamp-container{position:relative;}
+    .text-block{white-space:pre-wrap;word-break:break-word}
+    .clamp-2{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;-webkit-line-clamp:2;line-clamp:2}
+    .expanded{-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
+    .expand-toggle{color:#e67e22;cursor:pointer;font-weight:400;font-size:12px;display:inline-block;margin-top:6px;text-decoration:none}
+    /* When clamped (not expanded), position the toggle at end of 2nd line */
+    .clamp-container:not(.is-expanded) .expand-toggle{
+      position:absolute;right:0;bottom:0;background:#fff;padding-left:4px;
+    }
+    .clamp-container.is-expanded .expand-toggle{position:static}
+    .expand-toggle:hover{text-decoration:underline}
+  </style>
+  </head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">{{ quiz_title }}</div>
+      <div class="score">Score: {{ ((score or 0)|float|round(0, 'ceil')) }} / {{ ((max_total or total or 0)|float|round(0, 'ceil')) }}</div>
+    </div>
+    <div class="muted">
+      Submission ID: <span class="mono">{{ submission_id }}</span>
+      {% if student_email %} • Student: {{ student_email }}{% endif %}
+      • {{ submitted_at or '' }}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Prompt</th>
+          <th>Your Answer</th>
+          <th>Expected</th>
+          <th>Verdict</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ row.prompt }}</td>
+          <td>
+            <div class="clamp-container">
+              <div class="text-block clamp-2" data-lines="2">{{ row.student_answer }}</div>
+              <a class="expand-toggle" onclick="toggleExpand(this)" style="display:none">Show more…</a>
+            </div>
+          </td>
+          <td>
+            <div class="clamp-container">
+              <div class="text-block clamp-2" data-lines="2">{{ row.expected }}</div>
+              <a class="expand-toggle" onclick="toggleExpand(this)" style="display:none">Show more…</a>
+            </div>
+          </td>
+          <td>
+            {% if row.verdict == 'correct' or row.is_correct %}
+              <span class="pill ok">Correct</span>
+            {% elif row.verdict == 'incorrect' or row.is_correct == false %}
+              <span class="pill bad">Incorrect</span>
+            {% else %}
+              <span class="pill warn">Partial / N/A</span>
+            {% endif %}
+            {% if row.feedback %}<div class="muted">{{ row.feedback }}</div>{% endif %}
+          </td>
+          <td>{{ row.score or 0 }} / {{ row.max_score or row.max or 0 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+  </table>
+
+    <a class="back" href="{{ back_url or '/student' }}">Back to Dashboard</a>
+  </div>
+  <script>
+    function needsToggle(block){
+      if(!block) return false;
+      const prev = block.className;
+      // Ensure clamped when measuring
+      block.classList.add('clamp-2');
+      const need = block.scrollHeight > block.clientHeight + 1; // allow minor rounding
+      if(!need){ block.classList.remove('clamp-2'); block.classList.remove('expanded'); }
+      return need;
+    }
+    function toggleExpand(anchor){
+      const container = anchor.parentElement;
+      const block = anchor.previousElementSibling;
+      if(!block) return;
+      const isExpanded = block.classList.contains('expanded');
+      if(isExpanded){
+        block.classList.remove('expanded');
+        block.classList.add('clamp-2');
+        anchor.textContent = 'Show more…';
+        if(container) container.classList.remove('is-expanded');
+      }else{
+        block.classList.add('expanded');
+        block.classList.remove('clamp-2');
+        anchor.textContent = 'Show less';
+        if(container) container.classList.add('is-expanded');
+      }
+    }
+    // Initialize toggles on load
+    (function(){
+      try{
+        document.querySelectorAll('.text-block').forEach(function(block){
+          const a = block.nextElementSibling;
+          if(a && a.classList.contains('expand-toggle')){
+            if(needsToggle(block)){
+              a.style.display = 'inline-block';
+            }
+          }
+        });
+      }catch(e){}
+    })();
+  </script>
+</body>
+</html>

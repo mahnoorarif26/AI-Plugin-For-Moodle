@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignments - Student Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+    :root {
+        --primary: #FF7F27;
+        --primary-dark: #E56A17;
+        --primary-light: #FFE0B2;
+        --primary-extra-light: #FFF3E0;
+        --white: #FFFFFF;
+        --light-gray: #F5F5F5;
+        --dark: #333333;
+        --text-light: #666666;
+        --success: #48BB78;
+        --warning: #FFC107;
+        --danger: #F56565;
+    }
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+        display: flex;
+        min-height: 100vh;
+        background-color: var(--light-gray);
+    }
+
+    /* Sidebar same as Announcements page */
+    .sidebar {
+        width: 280px;
+        background: linear-gradient(to bottom, var(--primary-dark), var(--primary));
+        color: var(--white);
+        padding: 30px 0;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+    }
+    .sidebar-header {
+        padding: 0 25px 25px;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        margin-bottom: 20px;
+    }
+    .sidebar-header h2 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.5rem;
+    }
+    .sidebar-nav {
+        list-style: none;
+    }
+    .sidebar-nav li a {
+        display: flex;
+        align-items: center;
+        padding: 15px 25px;
+        color: var(--white);
+        text-decoration: none;
+        transition: all 0.3s;
+        font-weight: 500;
+        border-left: 4px solid transparent;
+    }
+    .sidebar-nav li a:hover {
+        background-color: rgba(255,255,255,0.1);
+        border-left: 4px solid var(--white);
+    }
+    .sidebar-nav li a.active {
+        background-color: var(--primary-light);
+        color: var(--primary-dark);
+        border-left: 4px solid var(--white);
+    }
+    .sidebar-nav i {
+        width: 24px;
+        text-align: center;
+        margin-right: 12px;
+        font-size: 1.1rem;
+    }
+
+    /* Main Content */
+    .main-content {
+        flex: 1;
+        padding: 30px;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Page Header styled like Announcements */
+    .page-header {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--white);
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+    .page-header h1 {
+        color: var(--primary-dark);
+        font-size: 2rem;
+        margin-bottom: 5px;
+    }
+    .page-header p {
+        color: var(--text-light);
+    }
+
+    /* Upload Section styled like announcement cards */
+    .upload-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+    .upload-card {
+        background-color: var(--white);
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .upload-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    .upload-card h3 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        color: var(--primary-dark);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .file-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 15px;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    .file-label:hover {
+        background: var(--primary-dark);
+    }
+    input[type="file"] {
+        display: none;
+    }
+    .file-name {
+        font-size: 0.9rem;
+        color: var(--text-light);
+        margin-bottom: 15px;
+    }
+    .upload-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.3s;
+    }
+    .upload-btn:hover {
+        background: var(--primary-dark);
+    }
+
+    /* Assignments List styled like announcement cards */
+    .assignments-list {
+        background-color: var(--white);
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    .assignments-list h2 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+        color: var(--primary-dark);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .assignment-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.3s;
+    }
+    .assignment-item:last-child {
+        border-bottom: none;
+    }
+    .assignment-item:hover {
+        background-color: var(--primary-extra-light);
+        border-radius: 8px;
+    }
+    .assignment-icon {
+        width: 45px;
+        height: 45px;
+        background: var(--primary-extra-light);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        color: var(--primary-dark);
+        font-size: 1.1rem;
+    }
+    .assignment-details {
+        flex: 1;
+    }
+    .assignment-title {
+        font-weight: 500;
+        margin-bottom: 3px;
+        color: var(--dark);
+    }
+    .assignment-meta {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .assignment-status {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .status-pending {
+        background: rgba(255,193,7,0.1);
+        color: var(--warning);
+    }
+    .status-submitted {
+        background: rgba(72,187,120,0.1);
+        color: var(--success);
+    }
+    .status-late {
+        background: rgba(245,101,101,0.1);
+        color: var(--danger);
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        body {
+            flex-direction: column;
+        }
+        .sidebar {
+            width: 100%;
+            height: auto;
+            position: relative;
+        }
+    }
+    @media (max-width: 768px) {
+        .upload-section {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+</head>
+<body>
+    <!-- Orange Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2><i class="fas fa-graduation-cap"></i> Student Portal</h2>
+            <p><b>Data Science - Spring 2025</b></p>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><i class="fas fa-home"></i> Dashboard</a></li>
+            <li><a href="profile.html"><i class="fas fa-user"></i> My Profile</a></li>
+            <li><a href="courses.html"><i class="fas fa-book"></i> Courses</a></li>
+            <li><a href="assignments.html" class="active"><i class="fas fa-tasks"></i> Assignments</a></li>
+            <li><a href="quizzes.html"><i class="fas fa-question-circle"></i> Quizzes</a></li>
+            <li><a href="grades.html"><i class="fas fa-chart-bar"></i> Grades</a></li>
+            <li><a href="announcements.html"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="messages.html"><i class="fas fa-envelope"></i> Messages</a></li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h1>Assignments Dashboard</h1>
+                <p>Submit and manage your assignments</p>
+            </div>
+            
+            <div class="upload-section">
+                <div class="upload-card">
+                    <h3><i class="fas fa-file-upload"></i> Upload Assignment</h3>
+                    <form class="upload-form" id="assignmentForm">
+                        <label class="file-label" for="assignmentFile">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            Choose Assignment File
+                        </label>
+                        <span class="file-name" id="assignmentFileName">No file selected</span>
+                        <input type="file" id="assignmentFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.zip">
+                        <button type="submit" class="upload-btn">Upload Assignment</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="assignments-list">
+                <h2><i class="fas fa-clipboard-list"></i> Recent Assignments</h2>
+                
+                <!-- Assignment 1 -->
+                <div class="assignment-item">
+                    <div class="assignment-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="assignment-details">
+                        <div class="assignment-title">Data Structures Project</div>
+                        <div class="assignment-meta">
+                            <span><i class="far fa-calendar-alt"></i> Due: May 15, 2023</span>
+                            <span><i class="far fa-clock"></i> 3 days left</span>
+                        </div>
+                    </div>
+                    <div class="assignment-status status-pending">Pending</div>
+                </div>
+                
+                <!-- Assignment 2 -->
+                <div class="assignment-item">
+                    <div class="assignment-icon">
+                        <i class="fas fa-file-code"></i>
+                    </div>
+                    <div class="assignment-details">
+                        <div class="assignment-title">Web Development Assignment</div>
+                        <div class="assignment-meta">
+                            <span><i class="far fa-calendar-alt"></i> Submitted: May 5, 2023</span>
+                            <span><i class="far fa-check-circle"></i> Graded</span>
+                        </div>
+                    </div>
+                    <div class="assignment-status status-submitted">Submitted</div>
+                </div>
+                
+                <!-- Assignment 3 -->
+                <div class="assignment-item">
+                    <div class="assignment-icon">
+                        <i class="fas fa-file-powerpoint"></i>
+                    </div>
+                    <div class="assignment-details">
+                        <div class="assignment-title">Database Presentation</div>
+                        <div class="assignment-meta">
+                            <span><i class="far fa-calendar-alt"></i> Due: Apr 28, 2023</span>
+                            <span><i class="far fa-clock"></i> Late</span>
+                        </div>
+                    </div>
+                    <div class="assignment-status status-late">Late</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Display selected file name
+        document.getElementById('assignmentFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : 'No file selected';
+            document.getElementById('assignmentFileName').textContent = fileName;
+        });
+        
+        // Form submission handling (prevent actual submission for demo)
+        document.getElementById('assignmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Assignment uploaded successfully!');
+            this.reset();
+            document.getElementById('assignmentFileName').textContent = 'No file selected';
+        });
+    </script>
+</body>
+</html>

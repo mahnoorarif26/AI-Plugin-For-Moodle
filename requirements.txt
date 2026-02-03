@@ -1,0 +1,8 @@
+flask
+flask-cors
+groq
+pypdf
+python-dotenv
+firebase-admin
+PyPDF2>=3.0.0
+fpdf

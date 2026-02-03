@@ -1,0 +1,162 @@
+{
+  "title": "Lec 09-10 (Arithmetic Circuits).pdf",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "mcq",
+      "prompt": "What is the primary function of a Half Adder?",
+      "options": [
+        "To add three bits",
+        "To add two integers",
+        "To accept two input bits and generate two outputs (a sum bit and a carry bit)",
+        "To convert each of its BCD inputs to corresponding Excess-3 Code"
+      ],
+      "answer": "C",
+      "explanation": "A Half Adder is a combinational circuit that accepts two input bits and generates two outputs (a sum bit and a carry bit).",
+      "difficulty": "easy",
+      "tags": [
+        "Combinational Circuits",
+        "Half Adder"
+      ]
+    },
+    {
+      "id": "q2",
+      "type": "short",
+      "prompt": "What is the difference between a Full Adder and a Half Adder?",
+      "answer": "A Full Adder is a combinational circuit that performs the arithmetic sum of three input bits (augend, addend, and carry-in) and generates two outputs (a sum and a carry-out), whereas a Half Adder only accepts two input bits.",
+      "difficulty": "medium",
+      "tags": [
+        "Combinational Circuits",
+        "Full Adder",
+        "Half Adder"
+      ]
+    },
+    {
+      "id": "q3",
+      "type": "mcq",
+      "prompt": "What is the purpose of the BCD-to-Excess-3 Converter?",
+      "options": [
+        "To convert each of its binary inputs to corresponding BCD code",
+        "To convert each of its BCD inputs to corresponding Excess-3 Code",
+        "To add two integers",
+        "To accept two input bits and generate two outputs (a sum bit and a carry bit)"
+      ],
+      "answer": "B",
+      "explanation": "The BCD-to-Excess-3 Converter is designed to convert each of its BCD inputs to corresponding Excess-3 Code.",
+      "difficulty": "easy",
+      "tags": [
+        "Combinational Circuits",
+        "BCD-to-Excess-3 Converter"
+      ]
+    },
+    {
+      "id": "q4",
+      "type": "short",
+      "prompt": "What is the function of the Incrementer (Inc16) chip?",
+      "answer": "The Incrementer (Inc16) chip is a digital circuit that inputs a 16-bit integer and adds 1 to it, ignoring the carry out from the MSb (if any).",
+      "difficulty": "medium",
+      "tags": [
+        "Combinational Circuits",
+        "Incrementer"
+      ]
+    },
+    {
+      "id": "q5",
+      "type": "mcq",
+      "prompt": "What is the primary function of a Binary Adder?",
+      "options": [
+        "To convert each of its BCD inputs to corresponding Excess-3 Code",
+        "To accept two input bits and generate two outputs (a sum bit and a carry bit)",
+        "To produce the sum of two n-bit binary numbers",
+        "To add three bits"
+      ],
+      "answer": "C",
+      "explanation": "A Binary Adder is a digital circuit that produces the sum of two n-bit binary numbers.",
+      "difficulty": "easy",
+      "tags": [
+        "Combinational Circuits",
+        "Binary Adder"
+      ]
+    },
+    {
+      "id": "q6",
+      "type": "short",
+      "prompt": "What is the purpose of the Full Subtractor chip?",
+      "answer": "The Full Subtractor chip is a combinational circuit that performs the arithmetic subtraction of three input bits (minuend, subtrahend, and borrow-in) and generates two outputs (a difference and a borrow-out).",
+      "difficulty": "medium",
+      "tags": [
+        "Combinational Circuits",
+        "Full Subtractor"
+      ]
+    },
+    {
+      "id": "q7",
+      "type": "mcq",
+      "prompt": "What is the function of the Xor gate in the Half Adder chip?",
+      "options": [
+        "To generate the carry bit",
+        "To generate the sum bit",
+        "To convert each of its BCD inputs to corresponding Excess-3 Code",
+        "To add two integers"
+      ],
+      "answer": "B",
+      "explanation": "The Xor gate in the Half Adder chip is used to generate the sum bit.",
+      "difficulty": "easy",
+      "tags": [
+        "Combinational Circuits",
+        "Half Adder",
+        "Xor gate"
+      ]
+    },
+    {
+      "id": "q8",
+      "type": "short",
+      "prompt": "What is the difference between a Combinational Circuit and a Sequential Circuit?",
+      "answer": "A Combinational Circuit is a digital circuit whose output is a function of the current input only, whereas a Sequential Circuit is a digital circuit whose output is a function of the current input and the previous output.",
+      "difficulty": "medium",
+      "tags": [
+        "Combinational Circuits",
+        "Sequential Circuits"
+      ]
+    },
+    {
+      "id": "q9",
+      "type": "mcq",
+      "prompt": "What is the purpose of the HDL (Hardware Description Language) file?",
+      "options": [
+        "To convert each of its BCD inputs to corresponding Excess-3 Code",
+        "To simulate the behavior of a digital circuit",
+        "To design a combinational circuit",
+        "To load the HDL file into the hardware simulator"
+      ],
+      "answer": "D",
+      "explanation": "The HDL file is loaded into the hardware simulator to simulate the behavior of a digital circuit.",
+      "difficulty": "easy",
+      "tags": [
+        "HDL",
+        "Hardware Simulator"
+      ]
+    }
+  ],
+  "metadata": {
+    "model": "llama-3.3-70b-versatile",
+    "difficulty_mode": "auto",
+    "counts_requested": {
+      "total": 9
+    },
+    "source_note": "",
+    "source_file": "Lec 09-10 (Arithmetic Circuits).pdf",
+    "chunking_analysis": {
+      "structure_score": 0.9,
+      "strategy_used": "section",
+      "total_chunks": 34,
+      "total_pages": 28,
+      "estimated_tokens": 2395,
+      "chunk_types_distribution": {
+        "section": 34
+      }
+    }
+  },
+  "id": "c9f699c3-f213-4ba9-8abe-ed4eacc96900",
+  "created_at": "2025-12-13T03:53:22.302326"
+}
