@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview: {{ quiz_title }}</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+        /* Define Orange Colors */
+        :root {
+            --primary-orange: #ff9f1c;
+            --dark-orange: #cc7a00;
+            --light-orange: #fff7ed;
+            --border-orange: #ffcf99;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #f9f9f9, #fff);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* Top Bar */
+        .topbar {
+            height: 72px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--primary-orange);
+        }
+
+        .brand i {
+            font-size: 24px;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(to right, #ffb366, #fb9026);
+            color: white;
+            box-shadow: 0 4px 6px rgba(251, 144, 38, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #fd9f41, #ffb366);
+            box-shadow: 0 6px 10px rgba(251, 144, 38, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary-orange);
+            border: 2px solid var(--primary-orange);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-orange);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        /* Header Section */
+        .preview-header {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .preview-header h1 {
+            color: var(--primary-orange);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .preview-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: var(--light-orange);
+            color: var(--dark-orange);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        .quiz-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .quiz-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quiz-meta-item i {
+            color: var(--primary-orange);
+        }
+
+        /* Question Card */
+        .question-card {
+            background: #f9f9f9;
+            border-left: 4px solid var(--primary-orange);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .question-card:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .question-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-orange);
+        }
+
+        .question-type-badge {
+            padding: 4px 10px;
+            background: linear-gradient(135deg, #ff9f1c, #ff6b35);
+            color: white;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .question-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .question-difficulty {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .difficulty-easy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .difficulty-medium {
+            background: #fed7aa;
+            color: #92400e;
+        }
+
+        .difficulty-hard {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        /* Options Display */
+        .options-container {
+            margin-top: 15px;
+        }
+
+        .option {
+            display: flex;
+            align-items: start;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .option:hover {
+            border-color: var(--border-orange);
+            background: var(--light-orange);
+        }
+
+        .option.correct {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+
+        .option-letter {
+            font-weight: 700;
+            color: var(--primary-orange);
+            margin-right: 12px;
+            min-width: 24px;
+        }
+
+        .option-text {
+            flex: 1;
+            color: #333;
+        }
+
+        .correct-badge {
+            background: #10b981;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        /* Answer Section */
+        .answer-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+        }
+
+        .answer-label {
+            font-weight: 700;
+            color: #065f46;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .answer-text {
+            color: #064e3b;
+            line-height: 1.5;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                height: auto;
+                padding: 15px;
+            }
+
+            .topbar-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .question-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .quiz-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar -->
+    <nav class="topbar">
+        <div class="brand">
+            <i class='bx bx-bulb'></i>
+            <span>Quiz Preview</span>
+        </div>
+        <div class="topbar-actions">
+            <a href="/teacher/generate" class="btn btn-secondary">
+                <i class='bx bx-arrow-back'></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="preview-header">
+            <span class="preview-badge">Teacher Preview</span>
+            <h1>{{ quiz_title }}</h1>
+            <div class="quiz-meta">
+                <div class="quiz-meta-item">
+                    <i class='bx bx-list-ul'></i>
+                    <span>{{ quiz.questions|length }} Questions</span>
+                </div>
+                {% if quiz.metadata and quiz.metadata.kind %}
+                <div class="quiz-meta-item">
+                    <i class='bx bx-category'></i>
+                    <span>{{ quiz.metadata.kind|title }}</span>
+                </div>
+                {% endif %}
+                {% if quiz.created_at %}
+                <div class="quiz-meta-item">
+                    <i class='bx bx-calendar'></i>
+                    <span>Created: {{ quiz.created_at }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Questions -->
+        {% if quiz.questions and quiz.questions|length > 0 %}
+            {% for question in quiz.questions %}
+            <div class="question-card">
+                <!-- Question Header -->
+                <div class="question-header">
+                    <span class="question-number">Question {{ loop.index }}</span>
+                    <span class="question-type-badge">
+                        {% if question.type == 'mcq' %}
+                            Multiple Choice
+                        {% elif question.type == 'true_false' %}
+                            True/False
+                        {% elif question.type == 'short' %}
+                            Short Answer
+                        {% elif question.type == 'long' %}
+                            Long Answer
+                        {% else %}
+                            {{ question.type|title }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <!-- Difficulty -->
+                {% if question.difficulty %}
+                <span class="question-difficulty difficulty-{{ question.difficulty|lower }}">
+                    {{ question.difficulty|capitalize }}
+                </span>
+                {% endif %}
+
+                <!-- Question Text -->
+                <div class="question-text">
+                    {{ question.prompt or question.question_text or 'No question text' }}
+                </div>
+
+                <!-- Options (for MCQ and True/False) -->
+                {% if question.type == 'mcq' and question.options %}
+                <div class="options-container">
+                    {% set letters = ['A', 'B', 'C', 'D'] %}
+                    {% for option in question.options %}
+                    <div class="option {% if question.correct_answer == option or question.answer == option %}correct{% endif %}">
+                        <span class="option-letter">{{ letters[loop.index0] }}.</span>
+                        <span class="option-text">{{ option }}</span>
+                        {% if question.correct_answer == option or question.answer == option %}
+                        <span class="correct-badge">✓ Correct</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif question.type == 'true_false' %}
+                <div class="options-container">
+                    <div class="option {% if question.correct_answer == 'True' or question.correct_answer == True or question.answer == 'True' or question.answer == True %}correct{% endif %}">
+                        <span class="option-letter">A.</span>
+                        <span class="option-text">True</span>
+                        {% if question.correct_answer == 'True' or question.correct_answer == True or question.answer == 'True' or question.answer == True %}
+                        <span class="correct-badge">✓ Correct</span>
+                        {% endif %}
+                    </div>
+                    <div class="option {% if question.correct_answer == 'False' or question.correct_answer == False or question.answer == 'False' or question.answer == False %}correct{% endif %}">
+                        <span class="option-letter">B.</span>
+                        <span class="option-text">False</span>
+                        {% if question.correct_answer == 'False' or question.correct_answer == False or question.answer == 'False' or question.answer == False %}
+                        <span class="correct-badge">✓ Correct</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Answer (for Short/Long answers) -->
+                {% if question.type in ['short', 'long'] %}
+                <div class="answer-section">
+                    <div class="answer-label">Expected Answer:</div>
+                    <div class="answer-text">
+                        {{ question.correct_answer or question.answer or 'No answer provided' }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Explanation (if available) -->
+                {% if question.explanation %}
+                <div class="answer-section" style="background: #eff6ff; border-color: #3b82f6;">
+                    <div class="answer-label" style="color: #1e40af;">Explanation:</div>
+                    <div class="answer-text" style="color: #1e3a8a;">
+                        {{ question.explanation }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class='bx bx-error-circle'></i>
+                <h2>No Questions Available</h2>
+                <p>This quiz doesn't contain any questions yet.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Add keyboard shortcut for back (Escape key)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                window.location.href = '/teacher/generate';
+            }
+        });
+    </script>
+</body>
+</html>
