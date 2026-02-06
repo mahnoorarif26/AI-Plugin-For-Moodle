@@ -309,20 +309,29 @@ def save_quiz_to_store(quiz_data):
         quiz_data[key] = val
         quiz_data['settings'][key] = val
     
-    print("Saving quiz_data to Firestore:", {
+    # Detect collection based on kind
+    metadata = quiz_data.get("metadata", {})
+    detected_kind = metadata.get("kind", "quiz")
+    
+    if detected_kind == "assignment":
+        collection_name = "assignments"
+    else:
+        collection_name = "AIquizzes"
+    
+    print(f"💾 Saving to Firestore collection '{collection_name}':", {
         "id": quiz_data.get('id'),
         "title": quiz_data.get('title'),
+        "kind": detected_kind,
         "time_limit": quiz_data.get('time_limit'),
         "due_date": quiz_data.get('due_date'),
         "note": quiz_data.get('note'),
-        "has_settings": 'settings' in quiz_data
-    }) # Debug print
+    })
     
+    # Save to the correct collection
     if fs is not None:
-        fs.collection('AIquizzes').document(quiz_data['id']).set(quiz_data)
+        fs.collection(collection_name).document(quiz_data['id']).set(quiz_data)
     
-    return quiz_data['id']
-
+    return quiz_data['id']  # ✅ Return must be outside the if block
 
 # ===============================
 # LIST QUIZZES (FILTER OUT ITEMS WITHOUT ID)
@@ -522,28 +531,51 @@ def teacher_index():
 # ===============================
 @app.route('/student')
 def student_index():
-    """Student dashboard - shows available quizzes"""
+    """Student dashboard - shows available quizzes and assignments"""
     user_id = session.get('lti_user_id', 'Student')
 
     try:
         student_email = f"{user_id}@example.com" if user_id != 'Student' else "student@example.com"
         submitted_quiz_ids = set(get_submitted_quiz_ids(student_email) or [])
         items = list_quizzes() or []
+        
         quizzes = []
+        assignments = []
+        
         for it in items:
             if it["id"] in submitted_quiz_ids:
                 continue
-            quizzes.append({
+            
+            item_data = {
                 "id": it["id"],
-                "title": it.get("title") or "AI Generated Quiz",
+                "title": it.get("title") or "AI Generated Item",
                 "questions_count": sum((it.get("counts") or {}).values()) if it.get("counts") else len(it.get("questions", [])),
                 "created_at": it.get("created_at"),
-            })
-        return render_template('student_index.html', quizzes=quizzes, error=None, student_name=user_id)
+            }
+            
+            # Check if it's an assignment or quiz
+            metadata = it.get('metadata', {})
+            if metadata.get('kind') == 'assignment':
+                assignments.append(item_data)
+            else:
+                quizzes.append(item_data)
+        
+        return render_template(
+            'student_index.html', 
+            quizzes=quizzes,
+            assignments=assignments,
+            error=None, 
+            student_name=user_id
+        )
     except Exception as e:
-        print(f"❌ Error fetching student quiz list: {e}")
-        return render_template('student_index.html', quizzes=[], error=f"Failed to load quizzes: {e}", student_name=user_id)
-
+        print(f"❌ Error fetching student item list: {e}")
+        return render_template(
+            'student_index.html', 
+            quizzes=[], 
+            assignments=[],
+            error=f"Failed to load items: {e}", 
+            student_name=user_id
+        )
 @app.route('/student/quiz/<quiz_id>', methods=['GET'])
 def student_quiz(quiz_id):
     """Display quiz for student with time limit and due date dynamically."""
@@ -579,6 +611,107 @@ def student_quiz(quiz_id):
         time_limit=time_limit,
         due_date=due_date
     )
+
+
+@app.route('/student/assignment/<assignment_id>', methods=['GET'])
+def student_assignment(assignment_id):
+    """Display assignment for student to complete."""
+    assignment_data = get_quiz_by_id(assignment_id)
+    
+    if not assignment_data:
+        return "Assignment not found", 404
+    
+    # Check if it's actually an assignment
+    metadata = assignment_data.get('metadata', {})
+    if metadata.get('kind') != 'assignment':
+        return redirect(url_for('student_quiz', quiz_id=assignment_id))
+    
+    questions = assignment_data.get('questions', [])
+    title = assignment_data.get('title') or f"Assignment #{assignment_id}"
+    
+    return render_template(
+        'student_assignment.html',
+        assignment_id=assignment_id,
+        quiz_id=assignment_id,  # For compatibility
+        title=title,
+        questions=questions,
+        student_email="student@example.com",
+        student_name="Student"
+    )
+
+
+@app.route('/student/submit_assignment', methods=['POST'])
+def submit_assignment():
+    """Handle student assignment submission."""
+    try:
+        form_data = request.form
+        files = request.files
+        
+        assignment_id = form_data.get('assignment_id') or form_data.get('quiz_id')
+        
+        if not assignment_id:
+            return jsonify({"error": "Missing assignment ID"}), 400
+        
+        assignment_data = get_quiz_by_id(assignment_id)
+        if not assignment_data:
+            return jsonify({"error": "Assignment not found"}), 404
+        
+        # Collect student answers
+        student_answers = {}
+        uploaded_files = {}
+        
+        for q in assignment_data.get('questions', []):
+            q_id = q.get('id')
+            if not q_id:
+                continue
+            
+            # Get text answer
+            answer_text = (form_data.get(q_id) or '').strip()
+            student_answers[q_id] = answer_text
+        
+        # Handle file upload
+        if 'assignment_file_final' in files:
+            uploaded_file = files['assignment_file_final']
+            if uploaded_file and uploaded_file.filename:
+                # Store file info (you may want to save the actual file)
+                uploaded_files['main_file'] = uploaded_file.filename
+        
+        # Calculate preliminary score (assignments need manual grading)
+        total_questions = len(assignment_data.get('questions', []))
+        
+        submission_data = {
+            "email": "student@example.com",
+            "name": "Student",
+            "answers": student_answers,
+            "files": uploaded_files,
+            "score": 0,  # Assignments start at 0 until manually graded
+            "total_questions": total_questions,
+            "status": "pending_review",
+            "kind": "assignment_submission"
+        }
+        
+        submission_id = save_submission_to_store(assignment_id, submission_data)
+        
+        return render_template(
+            'submission_confirmation.html',
+            quiz_title=assignment_data.get('title', 'Assignment'),
+            score=None,  # Don't show score for assignments
+            total=total_questions,
+            submission_id=submission_id,
+            student_name="Student",
+            student_email="student@example.com",
+            submitted_at=datetime.now().strftime("%b %d, %Y %H:%M UTC"),
+            confirmation_message="Your assignment has been submitted successfully and is pending review by your instructor.",
+            is_assignment=True,
+            item_type="Assignment",
+            now=datetime.now().strftime("%b %d, %Y %H:%M UTC")
+        )
+        
+    except Exception as e:
+        print(f"❌ Error submitting assignment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/student/submit', methods=['POST'])
@@ -1132,6 +1265,469 @@ def quiz_from_pdf():
         traceback.print_exc()
         return (f"Server error: {str(e)}", 500)
 
+@app.route("/api/custom/extract-subtopics", methods=["POST"])
+def extract_subtopics():
+    """
+    Extract subtopics from uploaded PDF/text file with enhanced processing.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "Missing file (multipart field 'file')"}), 400
+
+    uploaded_file = request.files['file']
+    file_name = uploaded_file.filename or "uploaded_content.txt"
+
+    try:
+        # 1. ENHANCED TEXT EXTRACTION WITH STRUCTURE ANALYSIS
+        processor = SmartPDFProcessor(
+            max_chars=70000,
+            target_chunk_size=3500,
+            chunk_overlap=200
+        )
+        
+        raw_text, document_analysis = processor.extract_pdf_text(uploaded_file)
+        if not raw_text or len(raw_text.strip()) < 50:
+            return jsonify({"error": "Could not extract sufficient text from file. Please ensure it's a valid PDF/Text document."}), 400
+
+        # 2. Store enhanced data for later quiz generation
+        upload_id = str(uuid.uuid4())
+        _SUBTOPIC_UPLOADS[upload_id] = {
+            'text': raw_text, 
+            'file_name': file_name,
+            'analysis': document_analysis  # Store analysis for later use
+        }
+
+                # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
+        # Use adaptive chunking to get the most relevant content for subtopic detection
+        chunks_with_metadata = processor.adaptive_chunking(raw_text, document_analysis)
+        
+        # ✅ Smart sampling across the *whole* document for subtopic extraction
+        total_chunks = len(chunks_with_metadata)
+        sample_chunks: List[Dict[str, Any]] = []
+
+        if total_chunks == 0:
+            sample_chunks = []
+        elif total_chunks <= 6:
+            # Small PDF → use all chunks
+            sample_chunks = chunks_with_metadata
+        else:
+            # Larger PDF → pick ~6 chunks spread from start to end
+            num_samples = 6
+            step = max(1, total_chunks // num_samples)
+
+            indices = set()
+            indices.add(0)                    # very beginning
+            indices.add(total_chunks - 1)     # very end
+
+            # middle positions
+            for i in range(1, num_samples - 1):
+                idx = i * step
+                if 0 <= idx < total_chunks:
+                    indices.add(idx)
+
+            for idx in sorted(indices):
+                sample_chunks.append(chunks_with_metadata[idx])
+
+        sample_text = "\n\n".join(chunk['text'] for chunk in sample_chunks)
+
+        # If we have section-based chunks, still prioritize those for subtopic extraction
+        section_chunks = [chunk for chunk in chunks_with_metadata if chunk.get('chunk_type') == 'section']
+        if section_chunks:
+            # Use section headings as potential subtopics
+            section_based_subtopics = [chunk.get('section', '') for chunk in section_chunks if chunk.get('section')]
+            if section_based_subtopics:
+                sample_text += "\n\nDocument Sections: " + ", ".join(section_based_subtopics)
+
+
+        print(f"📊 Subtopic Extraction Analysis:")
+        print(f"   - Structure Score: {document_analysis.get('structure_score', 0):.2f}")
+        print(f"   - Total Pages: {document_analysis.get('total_pages', 0)}")
+        print(f"   - Chunks Used: {len(sample_chunks)}")
+        print(f"   - Sample Text Length: {len(sample_text)}")
+
+        try:
+            subtopics_llm_output = extract_subtopics_llm(
+                doc_text=sample_text,
+                api_key=GROQ_API_KEY,
+                n=10
+            )
+        except Exception as e:
+            print(f"❌ Error in extract_subtopics_llm: {e}")
+            # ENHANCED FALLBACK: Use structure analysis for better fallback subtopics
+            fallback_subtopics = _get_enhanced_fallback_subtopics(raw_text, document_analysis)
+            subtopics_llm_output = fallback_subtopics
+
+        # normalize LLM output
+        if isinstance(subtopics_llm_output, dict) and subtopics_llm_output.get("subtopics"):
+            subs = subtopics_llm_output["subtopics"]
+        elif isinstance(subtopics_llm_output, list):
+            subs = subtopics_llm_output
+        else:
+            subs = []
+            if isinstance(subtopics_llm_output, dict):
+                for key in ["items", "list", "topics", "subtopics"]:
+                    if key in subtopics_llm_output and isinstance(subtopics_llm_output[key], list):
+                        subs = [str(x).strip() for x in subtopics_llm_output[key] if str(x).strip()]
+                        break
+        
+        # If LLM returned empty or insufficient subtopics, use enhanced fallback
+        if not subs or len(subs) < 3:
+            enhanced_subs = _get_enhanced_fallback_subtopics(raw_text, document_analysis)
+            # Combine with any LLM results
+            subs = list(dict.fromkeys(subs + enhanced_subs))[:10]
+
+        # Remove duplicates and ensure reasonable length
+        subs = list(dict.fromkeys([str(s).strip() for s in subs if str(s).strip()]))[:10]
+
+        return jsonify({
+            "success": True,
+            "upload_id": upload_id,
+            "subtopics": subs,
+            "source_file": file_name,
+            "analysis_metadata": {
+                "structure_score": round(document_analysis.get('structure_score', 0), 2),
+                "total_pages": document_analysis.get('total_pages', 0),
+                "chunking_strategy": sample_chunks[0]['chunk_type'] if sample_chunks else 'none'
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in extract_subtopics: {e}")
+        return jsonify({"error": f"Server error during subtopic extraction: {str(e)}"}), 500
+
+@app.route("/api/custom/quiz-from-subtopics", methods=["POST"])
+def quiz_from_subtopics():
+    """
+    Generate quiz based on chosen subtopics and save (No auth).
+    """
+    try:
+        payload = request.get_json() or {}
+        upload_id = payload.get("upload_id")
+        chosen = payload.get("subtopics", [])
+        totals = payload.get("totals", {})
+        is_assignment = bool(payload.get("is_assignment"))
+
+        # Difficulty settings
+        difficulty = payload.get("difficulty", {})
+        difficulty_mode = difficulty.get('mode', 'auto') if isinstance(difficulty, dict) else difficulty
+
+        if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
+            return jsonify({"error": "Invalid or expired upload_id; run subtopic detection again."}), 400
+        if not chosen:
+            return jsonify({"error": "No subtopics provided"}), 400
+
+        total_requested = sum(int(v) for v in totals.values()) if isinstance(totals, dict) else 0
+        if total_requested <= 0:
+            return jsonify({"error": "Totals must request at least 1 question across types."}), 400
+
+        uploaded_data = _SUBTOPIC_UPLOADS[upload_id]
+        full_text = uploaded_data['text']
+        source_file = uploaded_data['file_name']
+
+        # 1) LLM generate
+        out = generate_quiz_from_subtopics_llm(
+            full_text=full_text,
+            chosen_subtopics=chosen,
+            totals={k: int(v) for k, v in totals.items()},
+            difficulty=difficulty,
+            api_key=GROQ_API_KEY
+        )
+
+        questions = out.get("questions", [])
+        if not questions:
+            error_message = out.get('error', "LLM generated an empty or invalid quiz structure.")
+            return jsonify({"error": f"Quiz generation failed: {error_message}"}), 500
+        for i, q in enumerate(questions):
+            if not q.get('id'):
+                q['id'] = f"q{i+1}"
+            if not q.get('prompt'):
+                q['prompt'] = q.get('question_text', q.get('question', ''))
+            if not q.get('answer') and q.get('correct_answer'):
+                q['answer'] = q.get('correct_answer')
+
+        quiz_data = {
+            "title": source_file,
+            "questions": questions,
+            "metadata": {
+                "source": "subtopics",
+                "upload_id": upload_id,
+                "source_file": source_file,
+                "selected_subtopics": chosen,
+                "totals_requested": totals,
+                "difficulty": difficulty,
+                "kind": "assignment" if is_assignment else "quiz",
+                "total_questions": len(questions)
+            }
+        }
+
+        quiz_id = save_quiz_to_store(quiz_data)
+
+        # ✅ FIX THIS: Return proper structure
+        resp = {
+            "success": True,
+            "quiz_id": quiz_id,
+            "id": quiz_id,  # ✅ ADD THIS
+            "title": source_file,
+            "questions": questions,
+            "metadata": quiz_data["metadata"],
+            "message": "Quiz generated successfully."
+        }
+
+        # Clean memory
+        if upload_id in _SUBTOPIC_UPLOADS:
+            del _SUBTOPIC_UPLOADS[upload_id]
+
+        print(f"✅ Quiz from subtopics saved: {quiz_id}, Questions: {len(questions)}")
+        return jsonify(resp), 200
+
+    except Exception as e:
+        print(f"❌ Error in quiz_from_subtopics: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
+
+@app.route("/generate-question", methods=["POST"])
+def auto_generate_quiz():
+    """
+    Generate a simple AI-Powered quiz based on a topic text (no PDF/subtopic workflow).
+    (No auth)
+    """
+    try:
+        payload = request.get_json() or {}
+        topic_text = (payload.get("topic_text") or "").strip()
+        totals = payload.get("totals", {})
+        is_assignment = bool((payload or {}).get("is_assignment"))
+
+        if not topic_text:
+            return jsonify({"error": "Please enter a topic or text to generate a quiz."}), 400
+
+        total_requested = sum(int(v) for v in totals.values()) if isinstance(totals, dict) else 0
+        if total_requested <= 0:
+            return jsonify({"error": "Totals must request at least 1 question across types."}), 400
+
+        out = generate_quiz_from_subtopics_llm(
+            full_text=topic_text,                   # use topic text as context
+            chosen_subtopics=[topic_text[:50] + "..."],  # snippet for metadata display
+            totals={k: int(v) for k, v in totals.items()},
+            difficulty="auto",
+            api_key=GROQ_API_KEY
+        )
+
+        questions = out.get("questions", [])
+        if not questions:
+            error_message = out.get('error', "LLM generated an empty or invalid quiz structure.")
+            return jsonify({"error": f"AI-Powered Quiz generation failed: {error_message}"}), 500
+
+        for i, q in enumerate(questions):
+            if not q.get('id'):
+                q['id'] = f"q{i+1}"
+            if not q.get('prompt'):
+                q['prompt'] = q.get('question_text', q.get('question', ''))
+            if not q.get('answer') and q.get('correct_answer'):
+                q['answer'] = q.get('correct_answer')
+
+        quiz_data = {
+            "title": topic_text,
+            "questions": questions,
+            "metadata": {
+                "source": "auto-topic",
+                "source_file": topic_text,
+                "totals_requested": totals,
+                "difficulty": "auto",
+                "kind": "assignment" if is_assignment else "quiz",
+                "total_questions": len(questions)
+            }
+        }
+
+        quiz_id = save_quiz_to_store(quiz_data)
+        
+        # ✅ FIX THIS: Return proper structure
+        return jsonify({
+            "success": True,
+            "quiz_id": quiz_id,
+            "id": quiz_id,  # ✅ ADD THIS
+            "questions_count": len(questions),
+            "questions": questions,
+            "quiz": quiz_data,
+            "title": topic_text,  # ✅ ADD THIS
+            "metadata": quiz_data["metadata"]  # ✅ ADD THIS
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in auto_generate_quiz: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
+# ===============================
+# ADVANCED ASSIGNMENT GENERATION
+# ===============================
+# app.py - Update the advanced assignment route
+
+@app.route("/api/custom/advanced-assignment", methods=["POST"])
+def generate_advanced_assignment():
+    """
+    Generate advanced assignment with multiple question types.
+    """
+    try:
+        payload = request.get_json() or {}
+        upload_id = payload.get("upload_id")
+        chosen = payload.get("subtopics", [])
+        task_distribution = payload.get("task_distribution", {})
+        difficulty = payload.get("difficulty", "auto")
+
+        # ✅ FIX: read scenario_style from payload
+        scenario_style = payload.get("scenario_style", "auto")
+
+        if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
+            return jsonify({"error": "Invalid or expired upload_id"}), 400
+
+        if not chosen:
+            return jsonify({"error": "No subtopics selected"}), 400
+
+        total_tasks = sum(task_distribution.values())
+        if total_tasks <= 0:
+            return jsonify({"error": "Task distribution must have at least 1 task"}), 400
+
+        uploaded_data = _SUBTOPIC_UPLOADS[upload_id]
+        full_text = uploaded_data["text"]
+        source_file = uploaded_data["file_name"]
+
+        # Generate using enhanced function
+        result = generate_advanced_assignments_llm(
+            full_text=full_text,
+            chosen_subtopics=chosen,
+            task_distribution=task_distribution,
+            api_key=GROQ_API_KEY,
+            difficulty=difficulty,
+            # ✅ FIX: pass scenario_style into generator
+            scenario_style=scenario_style,
+        )
+
+        if not result.get("success"):
+            error_detail = result.get("error", "Unknown error")
+            raw_response = result.get("raw_response", "")
+
+            error_msg = f"Assignment generation failed: {error_detail}"
+            if raw_response:
+                error_msg += f"\n\nRaw LLM response snippet: {raw_response[:500]}..."
+
+            return jsonify({"error": error_msg, "details": error_detail}), 500
+
+        questions = result.get("questions", [])
+        if not questions:
+            return jsonify({
+                "error": "LLM generated an empty assignment",
+                "details": "No questions were generated"
+            }), 500
+
+        assignment_data = {
+            "title": f"{source_file} - Advanced Assignment",
+            "questions": questions,
+            "metadata": {
+                "source": "advanced-assignment",
+                "upload_id": upload_id,
+                "source_file": source_file,
+                "selected_subtopics": chosen,
+                "task_distribution": task_distribution,
+                "difficulty": difficulty,
+                # ✅ include scenario_style in metadata
+                "scenario_style": scenario_style,
+                "kind": "assignment",
+                "total_tasks": len(questions),
+            },
+        }
+
+        assignment_id = save_quiz_to_store(assignment_data)
+
+        # Clean up
+        if upload_id in _SUBTOPIC_UPLOADS:
+            del _SUBTOPIC_UPLOADS[upload_id]
+
+        return jsonify({
+            "success": True,
+            "assignment_id": assignment_id,
+            "title": assignment_data["title"],
+            "questions": questions,
+            "metadata": assignment_data["metadata"],
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in generate_advanced_assignment: {e}")
+        # ✅ FIX: return only ONE response tuple
+        return jsonify({
+            "error": str(e),
+            "message": "Internal server error during assignment generation"
+        }), 500
+
+
+@app.route("/api/custom/advanced-assignment-topics", methods=["POST"])
+def generate_advanced_assignment_from_topics():
+    """
+    Generate advanced assignment from typed topics (no PDF).
+    """
+    try:
+        payload = request.get_json() or {}
+        topic_text = (payload.get("topic_text") or "").strip()
+        task_distribution = payload.get("task_distribution", {})
+        difficulty = payload.get("difficulty", "auto")
+
+        # ✅ FIX: read scenario_style from payload
+        scenario_style = payload.get("scenario_style", "auto")
+
+        if not topic_text:
+            return jsonify({"error": "Please enter at least one topic"}), 400
+
+        total_tasks = sum(task_distribution.values())
+        if total_tasks <= 0:
+            return jsonify({"error": "Task distribution must have at least 1 task"}), 400
+
+        topics_list = [t.strip() for t in topic_text.split("\n") if t.strip()]
+        if not topics_list:
+            return jsonify({"error": "No valid topics found"}), 400
+
+        result = generate_advanced_assignments_llm(
+            full_text=topic_text,  # Use topics as context
+            chosen_subtopics=topics_list,
+            task_distribution=task_distribution,
+            api_key=GROQ_API_KEY,
+            difficulty=difficulty,
+            # ✅ FIX: pass scenario_style into generator
+            scenario_style=scenario_style,
+        )
+
+        if not result.get("success") or not result.get("questions"):
+            return jsonify({"error": result.get("error", "Failed to generate assignment")}), 500
+
+        questions = result["questions"]
+
+        assignment_data = {
+            "title": "Topics-Based Assignment",
+            "questions": questions,
+            "metadata": {
+                "source": "advanced-topics",
+                "topics": topics_list,
+                "task_distribution": task_distribution,
+                "difficulty": difficulty,
+                # ✅ include scenario_style in metadata
+                "scenario_style": scenario_style,
+                "kind": "assignment",
+                "total_tasks": len(questions),
+            },
+        }
+
+        assignment_id = save_quiz_to_store(assignment_data)
+
+        return jsonify({
+            "success": True,
+            "assignment_id": assignment_id,
+            "title": assignment_data["title"],
+            "questions": questions,
+            "metadata": assignment_data["metadata"],
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in generate_advanced_assignment_from_topics: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 # ===============================
 # CUSTOM SUBTOPIC / ASSIGNMENT ROUTES (unchanged from earlier version)
@@ -1294,7 +1890,22 @@ def send_quiz_to_students(quiz_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
+def get_quiz_settings(quiz_id):
+    """Get current settings of a quiz"""
+    try:
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Fetch the current settings, if available
+        settings = quiz_data.get('settings', {})
+        
+        return jsonify(settings)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ===============================
 # MAIN
