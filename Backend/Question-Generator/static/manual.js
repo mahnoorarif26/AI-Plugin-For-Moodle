@@ -20,6 +20,105 @@
 
   const letter = i => String.fromCharCode(65+i);
 
+  // 🔥 NEW: Debounced similarity check
+  let similarityTimeout = null;
+  
+  async function checkSimilarQuestions(questionText, questionType, questionIndex) {
+    if (!questionText || questionText.trim().length < 10) {
+      hideSimilarQuestionsPanel();
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/questions/similar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          question_text: questionText,
+          type: questionType,
+          exclude_ids: [`q${questionIndex}`]
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (data.success && data.similar && data.similar.length > 0) {
+        showSimilarQuestionsPanel(data.similar, questionIndex);
+      } else {
+        hideSimilarQuestionsPanel(questionIndex);
+      }
+    } catch (err) {
+      console.error('Failed to check similar questions:', err);
+    }
+  }
+  
+  function showSimilarQuestionsPanel(similarQuestions, questionIndex) {
+    // Remove any existing panel for this question
+    const existingPanel = document.querySelector(`[data-similar-panel="${questionIndex}"]`);
+    if (existingPanel) {
+      existingPanel.remove();
+    }
+    
+    const container = document.querySelector(`[data-p="${questionIndex}"]`)?.closest('.question-item');
+    if (!container) return;
+    
+    const panel = document.createElement('div');
+    panel.className = 'similar-questions-panel';
+    panel.setAttribute('data-similar-panel', questionIndex);
+    panel.innerHTML = `
+      <div class="similar-header">
+        <i class='bx bx-info-circle'></i>
+        <strong>⚠️ Similar Questions Found</strong>
+        <button class="close-similar" type="button">×</button>
+      </div>
+      <p class="similar-subtitle">These existing questions are similar to yours:</p>
+      <ul class="similar-list">
+        ${similarQuestions.map(q => `
+          <li class="similar-item">
+            <div class="similarity-bar" style="width: ${q.similarity_percent}%"></div>
+            <div class="similar-content">
+              <span class="similarity-score">${q.similarity_percent}% match</span>
+              <p class="similar-text">${escapeHtml(q.question.text)}</p>
+              <small class="similar-reason">${q.reason}</small>
+            </div>
+          </li>
+        `).join('')}
+      </ul>
+      <button class="btn-outline continue-anyway" type="button">
+        Continue Anyway
+      </button>
+    `;
+    
+    // Wire close button
+    panel.querySelector('.close-similar').onclick = () => {
+      panel.remove();
+    };
+    
+    // Wire continue button
+    panel.querySelector('.continue-anyway').onclick = () => {
+      panel.remove();
+    };
+    
+    container.appendChild(panel);
+  }
+  
+  function hideSimilarQuestionsPanel(questionIndex) {
+    if (questionIndex !== undefined) {
+      const panel = document.querySelector(`[data-similar-panel="${questionIndex}"]`);
+      if (panel) panel.remove();
+    } else {
+      // Remove all panels
+      const panels = document.querySelectorAll('.similar-questions-panel');
+      panels.forEach(p => p.remove());
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   function addQuestion(type){
     const q = {
       type,
@@ -87,11 +186,21 @@
       return `<div class="card question-item">${header}${prompt}${body}</div>`;
     }).join('');
 
-    // wire events
+    // Wire prompt events with similarity check
     list.querySelectorAll('.prompt').forEach(el=>{
       el.oninput = e => {
         const qi = +e.target.getAttribute('data-p');
         state.items[qi].prompt = e.target.value;
+        
+        // 🔥 NEW: Check for similar questions (debounced)
+        clearTimeout(similarityTimeout);
+        similarityTimeout = setTimeout(() => {
+          checkSimilarQuestions(
+            e.target.value,
+            state.items[qi].type,
+            qi
+          );
+        }, 1000); // Wait 1 second after user stops typing
       };
     });
 
@@ -199,6 +308,10 @@
       if (res.ok && data) {
         const savedId = data.id || data.quiz_id || "(no id)";
         notify((isAssignment ? "Assignment" : "Quiz") + " saved! ID: " + savedId);
+        
+        // 🔥 NEW: Questions are automatically indexed by the backend
+        // No need to manually index here - the /api/quizzes endpoint handles it
+        
         // Redirect after successful save
         setTimeout(() => {
           window.location.href = "/teacher/generate";
