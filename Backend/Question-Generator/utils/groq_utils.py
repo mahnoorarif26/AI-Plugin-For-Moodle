@@ -3,6 +3,7 @@ import json
 import re
 from typing import List, Dict, Tuple, Any, Optional
 from groq import Groq
+from utils.duplicate_prevention import get_existing_questions_context
 
 # Choose a sensible default model here so .env only needs the API key
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
@@ -15,6 +16,12 @@ Question types you may use:
 - true_false: A statement marked true or false; include explanation.
 - short: Short answer (1-3 sentences).
 - long: Long answer (4-8 sentences or key points).
+
+⚠️ DUPLICATE PREVENTION:
+- You may be provided with existing questions from the database.
+- Generate questions that are SEMANTICALLY DIFFERENT from these.
+- Avoid rephrasing or creating slight variations.
+- Explore different aspects, angles, and concepts.
 
 Difficulty guidelines:
 - easy: direct recall/definitions/examples from text
@@ -432,6 +439,7 @@ def generate_quiz_from_subtopics_llm(
     difficulty: Dict[str, Any] | None = None,
     api_key: str | None = None,
     model: str | None = None,
+    existing_context: str = "",  # Add this parameter
 ) -> dict:
     """
     Create a targeted quiz constrained to the selected subtopics.
@@ -439,6 +447,7 @@ def generate_quiz_from_subtopics_llm(
 
     totals: {"mcq": int, "true_false": int, "short": int, "long": int}
     difficulty: {"mode":"auto"} or {"mode":"custom","easy":..,"medium":..,"hard":..}
+    existing_context: Context about existing questions to avoid duplicates
 
     Returns {"questions":[...]}.
     """
@@ -507,6 +516,10 @@ CRITICAL RULES:
 - Make every question self-contained (no references like "as above")
 - If text is limited, create valid questions from available content
 - Questions must test understanding, not just verbatim recall
+- You will be shown existing questions from the database.
+- Generate questions that are SEMANTICALLY DIFFERENT.
+- Avoid similar wording, concepts, or phrasing.
+- Explore NEW angles and aspects.
 
 QUESTION TYPES:
 - mcq: Multiple choice with exactly 4 options (A/B/C/D), one correct answer, include explanation
@@ -520,6 +533,7 @@ DIFFICULTY LEVELS:
 OUTPUT FORMAT:
 {"questions":[{...}]}"""
 
+    # Include existing_context in the user prompt
     user_prompt = f"""
 TARGET SUBTOPICS:
 {", ".join(chosen_subtopics) if chosen_subtopics else "General topics from the document"}
@@ -527,11 +541,14 @@ TARGET SUBTOPICS:
 {counts_contract}
 {diff_line}
 
+{existing_context}  # Add the existing questions context here
+
 Generate questions that:
 - Relate directly to the specified subtopics (or general content if no specific subtopics)
 - Test conceptual understanding
 - Are clear and unambiguous
 - Cover different aspects of the material
+- Are DIFFERENT from the existing questions shown above
 
 RELEVANT TEXT EXCERPTS:
 {joined}
@@ -547,7 +564,7 @@ Return valid JSON only with EXACTLY the requested number of questions for each t
             api_key=api_key,
             model=model,
             max_tokens=8000,  # Increased from 6000
-            temperature=0.5,  # Slightly higher for more creativity with small docs
+            temperature=0.7,  # Slightly higher for more creativity with small docs
         )
         
         print(f"🔍 Raw LLM output: {len(out.get('questions', []))} questions generated")

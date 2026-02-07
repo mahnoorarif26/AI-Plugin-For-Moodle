@@ -9,6 +9,7 @@ from typing import Dict, List, Any
 import importlib.util
 import time
 from utils.embedding_engine import question_embedder
+from utils.duplicate_prevention import get_existing_questions_context
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
@@ -1363,7 +1364,18 @@ def quiz_from_pdf():
         print(f" - Total Pages: {document_analysis.get('total_pages', 0)}")
         print(f" - Total Chunks: {len(chunks)}")
         print(f" - Estimated Tokens: {document_analysis.get('estimated_tokens', 0)}")
-
+        topic_keywords = []
+        if 'metadata' in options and 'subtopics' in options['metadata']:
+            topic_keywords = options['metadata']['subtopics']
+        else:
+             topic_keywords = chunks[0].split()[:10] if chunks else []
+        existing_context: str = get_existing_questions_context(
+                    topic_keywords=topic_keywords,
+                    max_results=15
+                )
+                
+                # Get existing questions context
+                
         mix_counts = {}
         if diff_mode == "custom":
             mix_counts = _allocate_counts(
@@ -1374,16 +1386,19 @@ def quiz_from_pdf():
             )
 
         user_prompt = build_user_prompt(
-            pdf_chunks=chunks,
-            num_questions=num_questions,
-            qtypes=qtypes,
-            difficulty_mode=diff_mode,
-            mix_counts=mix_counts,
-            type_targets=dist,
-        )
-
+        pdf_chunks=chunks,
+        num_questions=num_questions,
+        qtypes=qtypes,
+        difficulty_mode=diff_mode,
+        mix_counts=mix_counts,
+        type_targets=dist,
+    )
+        user_prompt = user_prompt.replace(
+        "PDF EXCERPTS:",
+        f"{existing_context}\nPDF EXCERPTS:"
+    )
         llm_json = call_groq_json(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=SYSTEM_PROMPT + f"\n\nExisting Questions Context:\n{existing_context}",
             user_prompt=user_prompt,
             api_key=GROQ_API_KEY,
         )
@@ -1628,13 +1643,20 @@ def quiz_from_subtopics():
         full_text = uploaded_data['text']
         source_file = uploaded_data['file_name']
 
-        # 1) LLM generate
+        # Get existing questions context BEFORE generating new questions
+        existing_context: str = get_existing_questions_context(
+            topic_keywords=chosen,
+            max_results=15
+        )
+        
+        # 1) LLM generate - pass the existing context
         out = generate_quiz_from_subtopics_llm(
             full_text=full_text,
             chosen_subtopics=chosen,
             totals={k: int(v) for k, v in totals.items()},
             difficulty=difficulty,
-            api_key=GROQ_API_KEY
+            api_key=GROQ_API_KEY,
+            existing_context=existing_context  # Pass context to prevent duplicates
         )
 
         questions = out.get("questions", [])
@@ -1666,6 +1688,7 @@ def quiz_from_subtopics():
 
         quiz_id = save_quiz_to_store(quiz_data)
 
+        # ADD THIS: Index questions for similarity search
         try:
             for q in questions:
                 question_embedder.add_question(
@@ -1676,10 +1699,10 @@ def quiz_from_subtopics():
                         'difficulty': q.get('difficulty'),
                         'tags': chosen,
                         'quiz_id': quiz_id,
-                        'source': 'subtopics'
+                        'source': 'subtopics_pdf'  # Different source identifier
                     }
                 )
-            print(f"✅ Indexed {len(questions)} from subtopics")
+            print(f"✅ Indexed {len(questions)} questions from subtopics quiz")
         except Exception as e:
             print(f"⚠️ Indexing failed: {e}")
         
@@ -1706,12 +1729,10 @@ def quiz_from_subtopics():
         traceback.print_exc()
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
 
-
 @app.route("/generate-question", methods=["POST"])
 def auto_generate_quiz():
     """
     Generate a simple AI-Powered quiz based on a topic text (no PDF/subtopic workflow).
-    (No auth)
     """
     try:
         payload = request.get_json() or {}
@@ -1726,18 +1747,25 @@ def auto_generate_quiz():
         if total_requested <= 0:
             return jsonify({"error": "Totals must request at least 1 question across types."}), 400
 
+        # Get existing questions context
+        existing_context: str = get_existing_questions_context(
+            topic_keywords=[topic_text],
+            max_results=15
+        )
+        
         out = generate_quiz_from_subtopics_llm(
             full_text=topic_text,
             chosen_subtopics=[topic_text[:50] + "..."],
             totals={k: int(v) for k, v in totals.items()},
             difficulty="auto",
-            api_key=GROQ_API_KEY
+            api_key=GROQ_API_KEY,
+            existing_context=existing_context  # Pass context
         )
 
         questions = out.get("questions", [])
         if not questions:
             error_message = out.get('error', "LLM generated an empty or invalid quiz structure.")
-            return jsonify({"error": f"AI-Powered Quiz generation failed: {error_message}"}), 500
+            return jsonify({"error": f"Quiz generation failed: {error_message}"}), 500
 
         for i, q in enumerate(questions):
             if not q.get('id'):
@@ -1751,9 +1779,8 @@ def auto_generate_quiz():
             "title": topic_text,
             "questions": questions,
             "metadata": {
-                "source": "auto-topic",
-                "source_file": topic_text,
-                "totals_requested": totals,
+                "source": "auto_topic",
+                "topic_text": topic_text,
                 "difficulty": "auto",
                 "kind": "assignment" if is_assignment else "quiz",
                 "total_questions": len(questions)
@@ -1762,6 +1789,7 @@ def auto_generate_quiz():
 
         quiz_id = save_quiz_to_store(quiz_data)
 
+        # Add indexing section:
         try:
             for q in questions:
                 question_embedder.add_question(
@@ -1824,7 +1852,13 @@ def generate_advanced_assignment():
         full_text = uploaded_data["text"]
         source_file = uploaded_data["file_name"]
 
-        # Generate using enhanced function
+        # Get existing questions context BEFORE generating new tasks
+        existing_context: str = get_existing_questions_context(
+            topic_keywords=chosen,
+            max_results=15
+        )
+        
+        # Generate using enhanced function - pass existing_context
         result = generate_advanced_assignments_llm(
             full_text=full_text,
             chosen_subtopics=chosen,
@@ -1832,6 +1866,7 @@ def generate_advanced_assignment():
             api_key=GROQ_API_KEY,
             difficulty=difficulty,
             scenario_style=scenario_style,
+            existing_context=existing_context  # Add this parameter
         )
 
         if not result.get("success"):
@@ -1869,6 +1904,7 @@ def generate_advanced_assignment():
 
         assignment_id = save_quiz_to_store(assignment_data)
 
+        # ADD THIS: Index assignment tasks for similarity search
         try:
             for q in questions:
                 question_text = q.get('prompt', '')
@@ -1934,6 +1970,13 @@ def generate_advanced_assignment_from_topics():
         if not topics_list:
             return jsonify({"error": "No valid topics found"}), 400
 
+        # Get existing questions context BEFORE generating new tasks
+        existing_context: str = get_existing_questions_context(
+            topic_keywords=topics_list,
+            max_results=15
+        )
+        
+        # Pass existing_context to the LLM function
         result = generate_advanced_assignments_llm(
             full_text=topic_text,
             chosen_subtopics=topics_list,
@@ -1941,6 +1984,7 @@ def generate_advanced_assignment_from_topics():
             api_key=GROQ_API_KEY,
             difficulty=difficulty,
             scenario_style=scenario_style,
+            existing_context=existing_context  # Add this parameter
         )
 
         if not result.get("success") or not result.get("questions"):
@@ -1964,6 +2008,7 @@ def generate_advanced_assignment_from_topics():
 
         assignment_id = save_quiz_to_store(assignment_data)
 
+        # ADD THIS: Index assignment tasks for similarity search
         try:
             for q in questions:
                 question_text = q.get('prompt', '')

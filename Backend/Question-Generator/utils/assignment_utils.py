@@ -102,6 +102,7 @@ def generate_advanced_assignments_llm(
     api_key: str,
     difficulty: str = "auto",
     scenario_style: str = "auto",
+    existing_context: str = "",  # Add this parameter
 ):
     """
     Generate diverse assignment tasks based on subtopics.
@@ -120,6 +121,7 @@ def generate_advanced_assignments_llm(
         api_key: Groq API key
         difficulty: "auto", "easy", "medium", "hard"
         scenario_style: "auto", "code_based", "decision_based"
+        existing_context: Context about existing questions to avoid duplicates
     """
 
     client = Groq(api_key=api_key)
@@ -176,6 +178,17 @@ def generate_advanced_assignments_llm(
         effective_style = scenario_style
         is_technical = scenario_style == "code_based"
 
+    # Include existing context in the user prompt
+    duplicate_prevention_section = ""
+    if existing_context:
+        duplicate_prevention_section = f"""
+DUPLICATE PREVENTION CONTEXT:
+{existing_context}
+
+IMPORTANT: When generating questions, make sure they are substantively different from the existing questions shown above.
+Avoid similar phrasing, concepts, or approaches. Create original tasks that explore new angles.
+"""
+
     user_prompt = f"""Based on the following educational content, generate {total_tasks} assignment tasks.
 
 CONTENT:
@@ -183,6 +196,8 @@ CONTENT:
 
 SELECTED TOPICS:
 {", ".join(chosen_subtopics or [])}
+
+{duplicate_prevention_section}
 
 SCENARIO STYLE: {effective_style.upper()}
 {"IMPORTANT: Generate CODE-BASED scenarios with actual code snippets." if effective_style == "code_based" else "IMPORTANT: Generate DECISION-BASED scenarios focusing on strategy/analysis. ABSOLUTELY NO CODE ANYWHERE."}
@@ -272,6 +287,16 @@ Generate questions that:
         user_prompt += """- Focus on strategic analysis and decision-making
 - Specify analytical deliverables (reports, frameworks, recommendations)
 - NO code snippets and NO code-like text anywhere
+"""
+
+    # Add duplicate prevention reminder
+    if existing_context:
+        user_prompt += """
+DUPLICATE PREVENTION:
+- Review the existing questions provided above
+- Create questions that are ORIGINAL and DIFFERENT
+- Explore new aspects, angles, and approaches
+- Avoid similar phrasing or concepts
 """
 
     user_prompt += "\nReturn ONLY valid JSON, no other text."
