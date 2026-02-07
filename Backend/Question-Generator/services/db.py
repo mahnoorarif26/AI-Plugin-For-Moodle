@@ -63,6 +63,18 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
     quiz["title"] = quiz.get("title") or quiz.get("metadata", {}).get("source_file") or "AI Generated Content"
     quiz["created_at"] = quiz.get("created_at") or datetime.utcnow()
 
+    # ✅ NEW: Ensure settings field exists and is properly structured
+    if 'settings' not in quiz or not isinstance(quiz['settings'], dict):
+        quiz['settings'] = {}
+    
+    # ✅ NEW: Sync top-level settings fields with settings object
+    settings_fields = ['time_limit', 'due_date', 'note', 'allow_retakes', 'shuffle_questions']
+    for field in settings_fields:
+        if field in quiz:
+            quiz['settings'][field] = quiz[field]
+        elif field in quiz['settings']:
+            quiz[field] = quiz['settings'][field]
+
     # normalize question IDs
     for q in quiz.get("questions", []):
         if not q.get("id"):
@@ -70,7 +82,7 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
         if not q.get("prompt") and q.get("question_text"):
             q["prompt"] = q["question_text"]
 
-    # DETECT COLLECTION - FIXED VERSION
+    # DETECT COLLECTION
     metadata = quiz.get("metadata", {})
     detected_kind = metadata.get("kind", "quiz")  # Default to "quiz"
     
@@ -101,7 +113,6 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
     
     print(f"✅ Saved locally as: {_local_path(qid)}")
     return qid
-
 
 # ----------------------------------------------------
 #   GET QUIZ/ASSIGNMENT

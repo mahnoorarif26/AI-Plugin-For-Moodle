@@ -7,7 +7,8 @@ import math
 from datetime import datetime, timezone
 from typing import Dict, List, Any
 import importlib.util
-
+import time
+from utils.embedding_engine import question_embedder
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
@@ -27,7 +28,7 @@ from services.db import (
     list_quizzes,
     save_submission as save_submission_to_store,
     get_submitted_quiz_ids,
-    get_submissions_for_quiz,  # Assuming this exists
+    get_submissions_for_quiz,
 )
 from services import db as _db_mod
 
@@ -91,8 +92,8 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # GLOBAL MEMORY STORE
 # ===============================
 # Stores the raw text and metadata of uploaded files, keyed by a unique upload_id
-# Format: {upload_id: {'text': raw_text, 'file_name': file_name}}
-_SUBTOPIC_UPLOADS: Dict[str, Dict[str, str]] = {}
+# Format: {upload_id: {'text': raw_text, 'file_name': file_name, 'timestamp': time.time()}}
+_SUBTOPIC_UPLOADS: Dict[str, Dict[str, Any]] = {}
 
 # ===============================
 # HELPER FUNCTIONS
@@ -213,6 +214,25 @@ def _ceil_score(val: Any) -> int:
         return 0
 
 
+def _cleanup_old_uploads(max_age_hours=6):
+    """Remove old uploads from memory to prevent memory leaks"""
+    current_time = time.time()
+    to_delete = []
+    
+    for upload_id, data in _SUBTOPIC_UPLOADS.items():
+        upload_time = data.get('timestamp', 0)
+        if current_time - upload_time > max_age_hours * 3600:
+            to_delete.append(upload_id)
+    
+    for upload_id in to_delete:
+        del _SUBTOPIC_UPLOADS[upload_id]
+    
+    if to_delete:
+        print(f"🧹 Cleaned up {len(to_delete)} old uploads from memory")
+    
+    return len(to_delete)
+
+
 def _humanize_datetime(val: Any) -> str:
     """Return a consistent, human-readable UTC timestamp string."""
     try:
@@ -232,6 +252,20 @@ def _humanize_datetime(val: Any) -> str:
         return ""
 
 
+# Add periodic cleanup decorator
+@app.before_request
+def cleanup_before_request():
+    """Clean up old uploads before each request"""
+    # Run cleanup with 1% probability per request
+    import random
+    if random.random() < 0.01:  # 1% chance per request
+        _cleanup_old_uploads()
+
+
+# ===============================
+# API ROUTES
+# ===============================
+
 @app.route('/api/quizzes/<quiz_id>/settings', methods=['POST'])
 def update_quiz_settings(quiz_id):
     """Update quiz settings (time_limit, due_date, note, etc.)"""
@@ -242,8 +276,8 @@ def update_quiz_settings(quiz_id):
         if not quiz_data:
             return jsonify({"error": "Quiz not found"}), 404
 
+        # Validate time_limit (0 = no limit)
         time_limit = data.get('time_limit', 30)
-        # Allow 0 (no time limit), reject <0 or >180
         if not isinstance(time_limit, int) or time_limit < 0 or time_limit > 180:
             return jsonify({
                 "error": "Invalid time limit. Must be between 0 and 180 minutes."
@@ -255,9 +289,11 @@ def update_quiz_settings(quiz_id):
 
         note = data.get('note', '')
 
+        # ✅ CRITICAL FIX: Ensure quiz_data has settings object
         if 'settings' not in quiz_data:
             quiz_data['settings'] = {}
-
+        
+        # Update settings
         quiz_data['settings'].update({
             'time_limit': time_limit,
             'due_date': due_date,
@@ -267,115 +303,239 @@ def update_quiz_settings(quiz_id):
             'note': note,
         })
 
-        # Expose as top-level fields so /api/quizzes sees them
+        # ✅ Also update top-level fields for backward compatibility
         quiz_data['time_limit'] = time_limit
         quiz_data['due_date'] = due_date
         quiz_data['note'] = note
 
-        if 'id' not in quiz_data:
-            quiz_data['id'] = quiz_id
+        # ✅ Ensure ID is preserved
+        quiz_data['id'] = quiz_id
 
+        # ✅ Save using the imported function
         save_quiz_to_store(quiz_data)
 
         return jsonify({
             "success": True,
             "message": "Settings updated successfully",
+            "quiz_id": quiz_id
         })
 
     except Exception as e:
+        print(f"❌ Error in update_quiz_settings: {e}")
         return jsonify({"error": str(e)}), 500
 
 
-# ===============================
-# CRITICAL: SAVE QUIZ TO STORE (ENSURE ID IS SET)
-# ===============================
-def save_quiz_to_store(quiz_data):
-    from services import db as _db_mod
-    import uuid
-    
-    fs = getattr(_db_mod, '_db', None)
-    
-    # Ensure ID is set
-    if 'id' not in quiz_data or not quiz_data['id']:
-        quiz_data['id'] = str(uuid.uuid4())
-    
-    # Ensure settings object exists
-    if 'settings' not in quiz_data or not isinstance(quiz_data['settings'], dict):
-        quiz_data['settings'] = {}
-    
-    # Copy top-level fields into settings and vice versa
-    for key in ['time_limit', 'due_date', 'note']:
-        val = quiz_data.get(key, quiz_data['settings'].get(key))
-        quiz_data[key] = val
-        quiz_data['settings'][key] = val
-    
-    # Detect collection based on kind
-    metadata = quiz_data.get("metadata", {})
-    detected_kind = metadata.get("kind", "quiz")
-    
-    if detected_kind == "assignment":
-        collection_name = "assignments"
-    else:
-        collection_name = "AIquizzes"
-    
-    print(f"💾 Saving to Firestore collection '{collection_name}':", {
-        "id": quiz_data.get('id'),
-        "title": quiz_data.get('title'),
-        "kind": detected_kind,
-        "time_limit": quiz_data.get('time_limit'),
-        "due_date": quiz_data.get('due_date'),
-        "note": quiz_data.get('note'),
-    })
-    
-    # Save to the correct collection
-    if fs is not None:
-        fs.collection(collection_name).document(quiz_data['id']).set(quiz_data)
-    
-    return quiz_data['id']  # ✅ Return must be outside the if block
-
-# ===============================
-# LIST QUIZZES (FILTER OUT ITEMS WITHOUT ID)
-# ===============================
-def list_quizzes(kind=None):
-    from services import db as _db_mod
-    
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return []
-    
-    quizzes = []
-    collections = []
-    
-    if kind == "assignment":
-        collections = ["assignments"]
-    elif kind == "quiz":
-        collections = ["AIquizzes"]
-    else:
-        collections = ["AIquizzes", "assignments"]
-    
-    for collection_name in collections:
-        for doc in fs.collection(collection_name).stream():
-            quiz = doc.to_dict()
-            quiz_kind = quiz.get('kind') or (quiz.get('metadata') or {}).get('kind')
-            if kind is None or quiz_kind == kind:
-                quizzes.append(quiz)
-    
-    # Filter out any quiz/assignment without 'id'
-    quizzes = [q for q in quizzes if 'id' in q and q['id']]
-    return quizzes
+@app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
+def get_quiz_settings(quiz_id):
+    """Get current settings of a quiz"""
+    try:
+        quiz_data = get_quiz_by_id(quiz_id)
+        
+        if not quiz_data:
+            return jsonify({"error": "Quiz not found"}), 404
+        
+        # Get settings from quiz data
+        settings = quiz_data.get('settings', {})
+        
+        # If no settings object, create basic one
+        if not settings:
+            settings = {
+                'time_limit': quiz_data.get('time_limit', 30),
+                'due_date': quiz_data.get('due_date'),
+                'note': quiz_data.get('note', ''),
+                'allow_retakes': quiz_data.get('allow_retakes', False),
+                'shuffle_questions': quiz_data.get('shuffle_questions', True)
+            }
+        
+        return jsonify({
+            "success": True,
+            "quiz_id": quiz_id,
+            "settings": settings
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_quiz_settings: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/questions/similar', methods=['POST'])
+def find_similar_questions():
+    """
+    API endpoint to find similar questions.
+    Used when teacher is creating/editing questions.
+    """
+    try:
+        data = request.get_json()
+        query_text = data.get('question_text', '').strip()
+        question_type = data.get('type')
+        exclude_ids = data.get('exclude_ids', [])
+        
+        if not query_text:
+            return jsonify({'similar': []}), 200
+        
+        similar = question_embedder.find_similar_questions(
+            query_text=query_text,
+            top_k=5,
+            filter_type=question_type,
+            min_similarity=0.7,
+            exclude_ids=exclude_ids
+        )
+        
+        return jsonify({'success': True, 'similar': similar}), 200
+        
+    except Exception as e:
+        print(f"❌ Error in find_similar_questions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/questions/stats', methods=['GET'])
+def get_question_stats():
+    """Get statistics about indexed questions"""
+    try:
+        stats = question_embedder.get_stats()
+        return jsonify({'success': True, 'stats': stats}), 200
+    except Exception as e:
+        print(f"❌ Error in get_question_stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/questions/check-duplicates', methods=['POST'])
+def check_duplicates_in_quiz():
+    """Check for duplicates before saving quiz"""
+    try:
+        data = request.get_json()
+        questions = data.get('questions', [])
+        duplicates_report = []
+        
+        for i, q in enumerate(questions):
+            question_text = q.get('prompt') or q.get('question_text', '')
+            if not question_text:
+                continue
+            
+            similar = question_embedder.find_similar_questions(
+                query_text=question_text,
+                top_k=3,
+                min_similarity=0.75
+            )
+            
+            if similar:
+                duplicates_report.append({
+                    'question_index': i,
+                    'question_text': question_text[:100],
+                    'similar_count': len(similar),
+                    'highest_similarity': similar[0]['similarity_percent'],
+                    'matches': similar
+                })
+        
+        return jsonify({
+            'success': True,
+            'has_duplicates': len(duplicates_report) > 0,
+            'duplicate_count': len(duplicates_report),
+            'report': duplicates_report
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/questions/analytics', methods=['GET'])
+def question_analytics():
+    """Get analytics about indexed questions"""
+    try:
+        stats = question_embedder.get_stats()
+        source_counts = {}
+        for q in question_embedder.questions_db:
+            source = q['metadata'].get('source', 'unknown')
+            source_counts[source] = source_counts.get(source, 0) + 1
+        
+        return jsonify({
+            'success': True,
+            'total_questions': stats['total_questions'],
+            'by_type': stats['by_type'],
+            'by_difficulty': stats['by_difficulty'],
+            'by_source': source_counts
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route("/api/quizzes", methods=["GET"])
+def api_list_quizzes():
+    """List quizzes/assignments with time_limit, due_date, note per item."""
+    kind = request.args.get("kind")
+
+    try:
+        # Use the imported function from services.db
+        raw_quizzes = list_quizzes(kind=kind) or []
+
+        items = []
+        for q in raw_quizzes:
+            # Get settings from the quiz data
+            settings = q.get('settings', {})
+            if not settings:
+                # Try to get from metadata as fallback
+                settings = q.get('metadata', {}).get('settings', {})
+
+            # Extract settings
+            time_limit = settings.get('time_limit') or q.get('time_limit')
+            due_date = settings.get('due_date') or q.get('due_date')
+            note = settings.get('note') or settings.get('notification_message') or ''
+
+            # Determine item kind
+            metadata = q.get('metadata', {})
+            item_kind = metadata.get('kind', 'quiz')
+            if kind and item_kind != kind:
+                continue  # Skip if filter doesn't match
+
+            # Calculate questions count
+            questions_count = len(q.get('questions', []))
+            if questions_count == 0 and 'counts' in q:
+                # Sum up counts if available
+                counts = q.get('counts', {})
+                questions_count = sum(counts.values())
+
+            item = {
+                "id": q.get('id'),
+                "title": q.get('title', 'Untitled Quiz'),
+                "created_at": q.get('created_at'),
+                "questions_count": questions_count,
+                "time_limit": time_limit,
+                "due_date": due_date,
+                "note": note,
+                "kind": item_kind,
+                "metadata": metadata
+            }
+            
+            # Add questions for preview if available
+            if q.get('questions'):
+                item['questions'] = q['questions'][:3]  # First 3 for preview
+
+            items.append(item)
+
+        print(f"📊 API /api/quizzes called with kind={kind}")
+        print(f"📊 Returning {len(items)} items")
+        
+        return jsonify({
+            "success": True,
+            "items": items,
+            "total": len(items),
+            "kind": kind or "all",
+        })
+
+    except Exception as e:
+        print(f"❌ Error in api_list_quizzes: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "items": [],
+        }), 500
+
+
 # ===============================
-# API: GET QUIZZES (FILTER OUT ITEMS WITHOUT ID)
+# BASIC ROUTES
 # ===============================
 
-
-
-
-
-# ===============================
-# LANDING (always open teacher/generate)
-# ===============================
 @app.route('/', methods=['GET'])
 def root_redirect():
     """Always land on the teacher generation page."""
@@ -385,6 +545,7 @@ def root_redirect():
 def get_submissions_by_quiz_id(quiz_id: str) -> list:
     """Fetches all student submissions for a given quiz ID (placeholder)."""
     return []
+
 
 # ===============================
 # LTI CONFIGURATION / ENDPOINTS
@@ -502,9 +663,6 @@ def jwks():
     return jsonify(LTI_JWKS)
 
 
-# ===============================
-# BASIC HOME ROUTE
-# ===============================
 @app.route('/home')
 def home():
     return '''
@@ -518,17 +676,59 @@ def home():
 
 
 # ===============================
-# TEACHER DASHBOARD (Main Teacher Page)
+# TEACHER ROUTES
 # ===============================
+
 @app.route('/teacher')
 def teacher_index():
     """Main teacher dashboard - ALWAYS show teacher interface"""
     return redirect(url_for('teacher_generate'))
 
 
+@app.route('/teacher/generate')
+def teacher_generate():
+    """Quiz generation page (no auth) — this is the landing page from '/'."""
+    return render_template('index.html', teacher_name="Teacher")
+
+
+@app.route('/teacher/manual', methods=['GET'])
+def teacher_manual():
+    return render_template('manual_create.html')
+
+
+@app.route('/teacher/submissions/<quiz_id>', methods=['GET'])
+def teacher_submissions(quiz_id):
+    """View student submissions for a specific quiz (UI shell; wire your data in template)."""
+    quiz_data = get_quiz_by_id(quiz_id)
+    if not quiz_data:
+        return ("Quiz not found.", 404)
+    quiz_title = quiz_data.get("title") or quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
+    try:
+        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=[])
+    except Exception as e:
+        print(f"❌ Error fetching submissions: {e}")
+        return ("Failed to load submissions.", 500)
+
+
+@app.route('/teacher/preview/<quiz_id>')
+def teacher_preview(quiz_id):
+    """Preview quiz as teacher."""
+    quiz_data = get_quiz_by_id(quiz_id)
+    if not quiz_data:
+        return "Quiz not found", 404
+
+    return render_template(
+        'teacher_preview.html',
+        quiz=quiz_data,
+        quiz_id=quiz_id,
+        quiz_title=quiz_data.get('title', f"Quiz {quiz_id}"),
+    )
+
+
 # ===============================
-# STUDENT ROUTES (no auth)
+# STUDENT ROUTES
 # ===============================
+
 @app.route('/student')
 def student_index():
     """Student dashboard - shows available quizzes and assignments"""
@@ -576,6 +776,8 @@ def student_index():
             error=f"Failed to load items: {e}", 
             student_name=user_id
         )
+
+
 @app.route('/student/quiz/<quiz_id>', methods=['GET'])
 def student_quiz(quiz_id):
     """Display quiz for student with time limit and due date dynamically."""
@@ -779,9 +981,112 @@ def submission_confirmation(quiz_id):
     )
 
 
+@app.get('/student/grade/<submission_id>')
+def student_grade_detail(submission_id: str):
+    """Render grade details page for a submission (Firestore required)."""
+    origin = request.args.get('origin') or 'student'
+    fs = getattr(_db_mod, '_db', None)
+    if fs is None:
+        return redirect(url_for('student_index'))
+    try:
+        found = None
+        quiz_data = None
+        collection_match = None
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in fs.collection(collection_name).stream():
+                qid = qdoc.id
+                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
+                sub = subref.get()
+                if not sub.exists:
+                    continue
+                found = sub.to_dict() or {}
+                quiz_data = qdoc.to_dict() or {}
+                collection_match = collection_name
+                quiz_data["id"] = qid
+                break
+            if found:
+                break
+
+        if not found or not quiz_data:
+            return redirect(url_for('student_index'))
+
+        if grader is not None and not (found.get('grading_items') or []):
+            try:
+                quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
+                result = grader.grade_quiz(
+                    quiz=quiz_for_grader,
+                    responses=found.get('answers') or {},
+                    policy=os.getenv("GRADING_POLICY", "balanced"),
+                )
+                fs.collection(collection_match).document(quiz_data["id"]).collection('submissions').document(submission_id).update({
+                    'score': _ceil_score(result.get('total_score', 0)),
+                    'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
+                    'grading_items': result.get('items') or [],
+                })
+                found['score'] = _ceil_score(result.get('total_score', 0))
+                found['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
+                found['grading_items'] = result.get('items') or []
+            except Exception as e:
+                print(f"[student/grade] auto-grade failed: {e}")
+
+        rows = []
+        total_max = 0.0
+        by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
+        for q in quiz_data.get('questions', []) or []:
+            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
+        total_max = _ceil_score(total_max)
+
+        for item in found.get('grading_items') or []:
+            qq = by_id.get(item.get('question_id')) or {}
+            expected_val = ""
+            if (qq.get('type') or '').lower() in ('mcq', 'true_false'):
+                expected_val = qq.get('answer') if qq.get('answer') is not None else qq.get('correct_answer')
+            else:
+                for key in ["answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
+                    if qq.get(key):
+                        expected_val = str(qq.get(key))
+                        break
+            rows.append({
+                "prompt": qq.get('prompt') or qq.get('question_text') or '(no prompt)',
+                "student_answer": (found.get('answers') or {}).get(item.get('question_id')),
+                "expected": expected_val,
+                "verdict": item.get('verdict'),
+                "is_correct": item.get('is_correct'),
+                "score": item.get('score'),
+                "max_score": item.get('max_score'),
+            })
+
+        if rows:
+            try:
+                display_score = _ceil_score(sum(float(r.get('score') or 0) for r in rows))
+            except Exception:
+                display_score = found.get('score', 0)
+        else:
+            display_score = _ceil_score(found.get('score', 0))
+        max_total_display = _ceil_score(found.get('max_total') or total_max)
+        back_url = '/teacher/generate' if origin == 'teacher' else url_for('student_index')
+        return render_template(
+            'grade_detail.html',
+            quiz_title=quiz_data.get('title') or quiz_data.get('metadata', {}).get('source_file') or "Submitted Grade",
+            score=display_score,
+            total=total_max,
+            max_total=max_total_display,
+            submission_id=submission_id,
+            submitted_at=_humanize_datetime(found.get('submitted_at') or ''),
+            student_email=found.get('student_email') or found.get('email') or '',
+            student_name=found.get('student_name') or found.get('name') or '',
+            back_url=back_url,
+            rows=rows,
+        )
+    except Exception as e:
+        print(f"[student/grade] failed: {e}")
+        return redirect(url_for('student_index'))
+
+
 # ===============================
 # GRADES + SUBMISSION APIs
 # ===============================
+
 @app.get('/api/grades')
 def api_grades():
     """Return graded submissions for a student (requires Firestore)."""
@@ -927,156 +1232,39 @@ def api_regrade_submission(submission_id: str):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.get('/student/grade/<submission_id>')
-def student_grade_detail(submission_id: str):
-    """Render grade details page for a submission (Firestore required)."""
-    origin = request.args.get('origin') or 'student'
-    fs = getattr(_db_mod, '_db', None)
-    if fs is None:
-        return redirect(url_for('student_index'))
-    try:
-        found = None
-        quiz_data = None
-        collection_match = None
-        for collection_name in ['AIquizzes', 'assignments']:
-            for qdoc in fs.collection(collection_name).stream():
-                qid = qdoc.id
-                subref = fs.collection(collection_name).document(qid).collection('submissions').document(submission_id)
-                sub = subref.get()
-                if not sub.exists:
-                    continue
-                found = sub.to_dict() or {}
-                quiz_data = qdoc.to_dict() or {}
-                collection_match = collection_name
-                quiz_data["id"] = qid
-                break
-            if found:
-                break
-
-        if not found or not quiz_data:
-            return redirect(url_for('student_index'))
-
-        if grader is not None and not (found.get('grading_items') or []):
-            try:
-                quiz_for_grader = _prepare_quiz_for_grading(quiz_data)
-                result = grader.grade_quiz(
-                    quiz=quiz_for_grader,
-                    responses=found.get('answers') or {},
-                    policy=os.getenv("GRADING_POLICY", "balanced"),
-                )
-                fs.collection(collection_match).document(quiz_data["id"]).collection('submissions').document(submission_id).update({
-                    'score': _ceil_score(result.get('total_score', 0)),
-                    'max_total': _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None,
-                    'grading_items': result.get('items') or [],
-                })
-                found['score'] = _ceil_score(result.get('total_score', 0))
-                found['max_total'] = _ceil_score(result.get('max_total')) if result.get('max_total') is not None else None
-                found['grading_items'] = result.get('items') or []
-            except Exception as e:
-                print(f"[student/grade] auto-grade failed: {e}")
-
-        rows = []
-        total_max = 0.0
-        by_id = {q.get('id'): q for q in (quiz_data.get('questions') or [])}
-        for q in quiz_data.get('questions', []) or []:
-            total_max += float(q.get('max_score') or _default_max_score(q.get('type')))
-        total_max = _ceil_score(total_max)
-
-        for item in found.get('grading_items') or []:
-            qq = by_id.get(item.get('question_id')) or {}
-            expected_val = ""
-            if (qq.get('type') or '').lower() in ('mcq', 'true_false'):
-                expected_val = qq.get('answer') if qq.get('answer') is not None else qq.get('correct_answer')
-            else:
-                for key in ["answer", "reference_answer", "expected_answer", "ideal_answer", "solution", "model_answer"]:
-                    if qq.get(key):
-                        expected_val = str(qq.get(key))
-                        break
-            rows.append({
-                "prompt": qq.get('prompt') or qq.get('question_text') or '(no prompt)',
-                "student_answer": (found.get('answers') or {}).get(item.get('question_id')),
-                "expected": expected_val,
-                "verdict": item.get('verdict'),
-                "is_correct": item.get('is_correct'),
-                "score": item.get('score'),
-                "max_score": item.get('max_score'),
-            })
-
-        if rows:
-            try:
-                display_score = _ceil_score(sum(float(r.get('score') or 0) for r in rows))
-            except Exception:
-                display_score = found.get('score', 0)
-        else:
-            display_score = _ceil_score(found.get('score', 0))
-        max_total_display = _ceil_score(found.get('max_total') or total_max)
-        back_url = '/teacher/generate' if origin == 'teacher' else url_for('student_index')
-        return render_template(
-            'grade_detail.html',
-            quiz_title=quiz_data.get('title') or quiz_data.get('metadata', {}).get('source_file') or "Submitted Grade",
-            score=display_score,
-            total=total_max,
-            max_total=max_total_display,
-            submission_id=submission_id,
-            submitted_at=_humanize_datetime(found.get('submitted_at') or ''),
-            student_email=found.get('student_email') or found.get('email') or '',
-            student_name=found.get('student_name') or found.get('name') or '',
-            back_url=back_url,
-            rows=rows,
-        )
-    except Exception as e:
-        print(f"[student/grade] failed: {e}")
-        return redirect(url_for('student_index'))
-
-
-# ===============================
-# TEACHER ROUTES (no auth)
-# ===============================
-@app.route('/teacher/generate')
-def teacher_generate():
-    """Quiz generation page (no auth) — this is the landing page from '/'."""
-    return render_template('index.html', teacher_name="Teacher")
-
-
-@app.route('/teacher/manual', methods=['GET'])
-def teacher_manual():
-    return render_template('manual_create.html')
-
-
-@app.route('/teacher/submissions/<quiz_id>', methods=['GET'])
-def teacher_submissions(quiz_id):
-    """View student submissions for a specific quiz (UI shell; wire your data in template)."""
-    quiz_data = get_quiz_by_id(quiz_id)
-    if not quiz_data:
-        return ("Quiz not found.", 404)
-    quiz_title = quiz_data.get("title") or quiz_data.get("metadata", {}).get("source_file", f"Quiz #{quiz_id}")
-    try:
-        return render_template('teacher_submissions.html', quiz_title=quiz_title, quiz_id=quiz_id, submissions=[])
-    except Exception as e:
-        print(f"❌ Error fetching submissions: {e}")
-        return ("Failed to load submissions.", 500)
-
-
 @app.route('/api/quizzes/<quiz_id>/submissions', methods=['GET'])
 def api_get_quiz_submissions(quiz_id):
     """API endpoint to fetch all submissions for a specific quiz"""
     try:
         submissions = get_submissions_for_quiz(quiz_id)
 
+        # Check if submissions is a list (even if empty)
         if submissions is None:
             return jsonify({
                 "success": False,
-                "error": "Could not fetch submissions. Firestore may not be available.",
+                "error": "Could not fetch submissions. Database may not be available.",
             }), 500
 
         formatted_submissions = []
         for sub in submissions:
+            # Calculate score percentage if possible
+            score = sub.get("score", 0)
+            total_questions = sub.get("total_questions", 0)
+            max_score = sub.get("max_total", total_questions)
+            
+            if max_score > 0:
+                percentage = (score / max_score) * 100
+            else:
+                percentage = 0
+
             formatted_submissions.append({
-                "id": sub.get("id"),
-                "student_name": sub.get("student_name", "Unknown"),
-                "student_email": sub.get("student_email", "N/A"),
-                "score": sub.get("score", 0),
-                "total_questions": sub.get("total_questions", 0),
+                "id": sub.get("id", "unknown"),
+                "student_name": sub.get("student_name") or sub.get("name") or "Unknown",
+                "student_email": sub.get("student_email") or sub.get("email") or "N/A",
+                "score": score,
+                "max_score": max_score,
+                "percentage": round(percentage, 1),
+                "total_questions": total_questions,
                 "submitted_at": sub.get("submitted_at", ""),
                 "time_taken_sec": sub.get("time_taken_sec", 0),
                 "status": sub.get("status", "completed"),
@@ -1086,15 +1274,22 @@ def api_get_quiz_submissions(quiz_id):
             "success": True,
             "submissions": formatted_submissions,
             "total": len(formatted_submissions),
+            "quiz_id": quiz_id
         }), 200
 
     except Exception as e:
         print(f"❌ Error in api_get_quiz_submissions: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": str(e),
         }), 500
 
+
+# ===============================
+# QUIZ/ASSIGNMENT APIs
+# ===============================
 
 @app.route("/api/quizzes/<quiz_id>", methods=["GET"])
 def api_get_quiz(quiz_id):
@@ -1105,17 +1300,11 @@ def api_get_quiz(quiz_id):
     return jsonify(quiz_data), 200
 
 
-# ===============================
-# HEALTH
-# ===============================
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"ok": True})
 
 
-# ===============================
-# QUIZ GEN API (PDF)
-# ===============================
 @app.route("/api/quiz/from-pdf", methods=["POST"])
 def quiz_from_pdf():
     """Generate quiz from uploaded PDF. Returns quiz JSON and saves via services/db.py."""
@@ -1249,6 +1438,22 @@ def quiz_from_pdf():
         result["id"] = quiz_id
         result["metadata"]["quiz_id"] = quiz_id
 
+        try:
+            for q in questions:
+                question_embedder.add_question(
+                    question_id=f"{quiz_id}_{q.get('id', '')}",
+                    question_text=q.get('prompt', ''),
+                    metadata={
+                        'type': q.get('type'),
+                        'difficulty': q.get('difficulty'),
+                        'tags': q.get('tags', []),
+                        'quiz_id': quiz_id,
+                        'source': 'ai_pdf'
+                    }
+                )
+            print(f"✅ Indexed {len(questions)} questions from AI quiz")
+        except Exception as e:
+            print(f"⚠️ Indexing failed: {e}")
         print("✅ Quiz Generation Complete:")
         print(f" - Quiz ID: {quiz_id}")
         print(f" - Questions Generated: {len(questions)}")
@@ -1264,6 +1469,7 @@ def quiz_from_pdf():
         import traceback
         traceback.print_exc()
         return (f"Server error: {str(e)}", 500)
+
 
 @app.route("/api/custom/extract-subtopics", methods=["POST"])
 def extract_subtopics():
@@ -1293,14 +1499,13 @@ def extract_subtopics():
         _SUBTOPIC_UPLOADS[upload_id] = {
             'text': raw_text, 
             'file_name': file_name,
-            'analysis': document_analysis  # Store analysis for later use
+            'analysis': document_analysis,
+            'timestamp': time.time()  # Add timestamp for cleanup
         }
 
-                # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
-        # Use adaptive chunking to get the most relevant content for subtopic detection
+        # 3. ENHANCED SUBTOPIC EXTRACTION WITH ADAPTIVE CHUNKING
         chunks_with_metadata = processor.adaptive_chunking(raw_text, document_analysis)
         
-        # ✅ Smart sampling across the *whole* document for subtopic extraction
         total_chunks = len(chunks_with_metadata)
         sample_chunks: List[Dict[str, Any]] = []
 
@@ -1336,7 +1541,6 @@ def extract_subtopics():
             section_based_subtopics = [chunk.get('section', '') for chunk in section_chunks if chunk.get('section')]
             if section_based_subtopics:
                 sample_text += "\n\nDocument Sections: " + ", ".join(section_based_subtopics)
-
 
         print(f"📊 Subtopic Extraction Analysis:")
         print(f"   - Structure Score: {document_analysis.get('structure_score', 0):.2f}")
@@ -1393,6 +1597,7 @@ def extract_subtopics():
     except Exception as e:
         print(f"❌ Error in extract_subtopics: {e}")
         return jsonify({"error": f"Server error during subtopic extraction: {str(e)}"}), 500
+
 
 @app.route("/api/custom/quiz-from-subtopics", methods=["POST"])
 def quiz_from_subtopics():
@@ -1461,11 +1666,27 @@ def quiz_from_subtopics():
 
         quiz_id = save_quiz_to_store(quiz_data)
 
-        # ✅ FIX THIS: Return proper structure
+        try:
+            for q in questions:
+                question_embedder.add_question(
+                    question_id=f"{quiz_id}_{q.get('id', '')}",
+                    question_text=q.get('prompt', ''),
+                    metadata={
+                        'type': q.get('type'),
+                        'difficulty': q.get('difficulty'),
+                        'tags': chosen,
+                        'quiz_id': quiz_id,
+                        'source': 'subtopics'
+                    }
+                )
+            print(f"✅ Indexed {len(questions)} from subtopics")
+        except Exception as e:
+            print(f"⚠️ Indexing failed: {e}")
+        
         resp = {
             "success": True,
             "quiz_id": quiz_id,
-            "id": quiz_id,  # ✅ ADD THIS
+            "id": quiz_id,
             "title": source_file,
             "questions": questions,
             "metadata": quiz_data["metadata"],
@@ -1484,6 +1705,7 @@ def quiz_from_subtopics():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
+
 
 @app.route("/generate-question", methods=["POST"])
 def auto_generate_quiz():
@@ -1505,8 +1727,8 @@ def auto_generate_quiz():
             return jsonify({"error": "Totals must request at least 1 question across types."}), 400
 
         out = generate_quiz_from_subtopics_llm(
-            full_text=topic_text,                   # use topic text as context
-            chosen_subtopics=[topic_text[:50] + "..."],  # snippet for metadata display
+            full_text=topic_text,
+            chosen_subtopics=[topic_text[:50] + "..."],
             totals={k: int(v) for k, v in totals.items()},
             difficulty="auto",
             api_key=GROQ_API_KEY
@@ -1539,17 +1761,33 @@ def auto_generate_quiz():
         }
 
         quiz_id = save_quiz_to_store(quiz_data)
+
+        try:
+            for q in questions:
+                question_embedder.add_question(
+                    question_id=f"{quiz_id}_{q.get('id', '')}",
+                    question_text=q.get('prompt', ''),
+                    metadata={
+                        'type': q.get('type'),
+                        'difficulty': q.get('difficulty'),
+                        'tags': [topic_text[:50]],
+                        'quiz_id': quiz_id,
+                        'source': 'auto_topic'
+                    }
+                )
+            print(f"✅ Indexed {len(questions)} from auto-quiz")
+        except Exception as e:
+            print(f"⚠️ Indexing failed: {e}")
         
-        # ✅ FIX THIS: Return proper structure
         return jsonify({
             "success": True,
             "quiz_id": quiz_id,
-            "id": quiz_id,  # ✅ ADD THIS
+            "id": quiz_id,
             "questions_count": len(questions),
             "questions": questions,
             "quiz": quiz_data,
-            "title": topic_text,  # ✅ ADD THIS
-            "metadata": quiz_data["metadata"]  # ✅ ADD THIS
+            "title": topic_text,
+            "metadata": quiz_data["metadata"]
         }), 200
 
     except Exception as e:
@@ -1557,10 +1795,7 @@ def auto_generate_quiz():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Server error during quiz generation: {str(e)}"}), 500
-# ===============================
-# ADVANCED ASSIGNMENT GENERATION
-# ===============================
-# app.py - Update the advanced assignment route
+
 
 @app.route("/api/custom/advanced-assignment", methods=["POST"])
 def generate_advanced_assignment():
@@ -1573,8 +1808,6 @@ def generate_advanced_assignment():
         chosen = payload.get("subtopics", [])
         task_distribution = payload.get("task_distribution", {})
         difficulty = payload.get("difficulty", "auto")
-
-        # ✅ FIX: read scenario_style from payload
         scenario_style = payload.get("scenario_style", "auto")
 
         if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
@@ -1598,7 +1831,6 @@ def generate_advanced_assignment():
             task_distribution=task_distribution,
             api_key=GROQ_API_KEY,
             difficulty=difficulty,
-            # ✅ FIX: pass scenario_style into generator
             scenario_style=scenario_style,
         )
 
@@ -1629,7 +1861,6 @@ def generate_advanced_assignment():
                 "selected_subtopics": chosen,
                 "task_distribution": task_distribution,
                 "difficulty": difficulty,
-                # ✅ include scenario_style in metadata
                 "scenario_style": scenario_style,
                 "kind": "assignment",
                 "total_tasks": len(questions),
@@ -1638,6 +1869,28 @@ def generate_advanced_assignment():
 
         assignment_id = save_quiz_to_store(assignment_data)
 
+        try:
+            for q in questions:
+                question_text = q.get('prompt', '')
+                if q.get('context'):
+                    question_text = f"{question_text} [Context: {q.get('context')[:100]}]"
+                
+                question_embedder.add_question(
+                    question_id=f"{assignment_id}_{q.get('id', '')}",
+                    question_text=question_text,
+                    metadata={
+                        'type': q.get('assignment_type', 'task'),
+                        'difficulty': difficulty,
+                        'tags': chosen,
+                        'quiz_id': assignment_id,
+                        'source': 'assignment_pdf',
+                        'has_code': bool(q.get('code_snippet'))
+                    }
+                )
+            print(f"✅ Indexed {len(questions)} assignment tasks")
+        except Exception as e:
+            print(f"⚠️ Indexing failed: {e}")
+        
         # Clean up
         if upload_id in _SUBTOPIC_UPLOADS:
             del _SUBTOPIC_UPLOADS[upload_id]
@@ -1652,7 +1905,6 @@ def generate_advanced_assignment():
 
     except Exception as e:
         print(f"❌ Error in generate_advanced_assignment: {e}")
-        # ✅ FIX: return only ONE response tuple
         return jsonify({
             "error": str(e),
             "message": "Internal server error during assignment generation"
@@ -1669,8 +1921,6 @@ def generate_advanced_assignment_from_topics():
         topic_text = (payload.get("topic_text") or "").strip()
         task_distribution = payload.get("task_distribution", {})
         difficulty = payload.get("difficulty", "auto")
-
-        # ✅ FIX: read scenario_style from payload
         scenario_style = payload.get("scenario_style", "auto")
 
         if not topic_text:
@@ -1685,12 +1935,11 @@ def generate_advanced_assignment_from_topics():
             return jsonify({"error": "No valid topics found"}), 400
 
         result = generate_advanced_assignments_llm(
-            full_text=topic_text,  # Use topics as context
+            full_text=topic_text,
             chosen_subtopics=topics_list,
             task_distribution=task_distribution,
             api_key=GROQ_API_KEY,
             difficulty=difficulty,
-            # ✅ FIX: pass scenario_style into generator
             scenario_style=scenario_style,
         )
 
@@ -1707,7 +1956,6 @@ def generate_advanced_assignment_from_topics():
                 "topics": topics_list,
                 "task_distribution": task_distribution,
                 "difficulty": difficulty,
-                # ✅ include scenario_style in metadata
                 "scenario_style": scenario_style,
                 "kind": "assignment",
                 "total_tasks": len(questions),
@@ -1716,6 +1964,28 @@ def generate_advanced_assignment_from_topics():
 
         assignment_id = save_quiz_to_store(assignment_data)
 
+        try:
+            for q in questions:
+                question_text = q.get('prompt', '')
+                if q.get('context'):
+                    question_text = f"{question_text} [Context: {q.get('context')[:100]}]"
+                
+                question_embedder.add_question(
+                    question_id=f"{assignment_id}_{q.get('id', '')}",
+                    question_text=question_text,
+                    metadata={
+                        'type': q.get('assignment_type', 'task'),
+                        'difficulty': difficulty,
+                        'tags': topics_list,
+                        'quiz_id': assignment_id,
+                        'source': 'assignment_topics',
+                        'has_code': bool(q.get('code_snippet'))
+                    }
+                )
+            print(f"✅ Indexed {len(questions)} from topics assignment")
+        except Exception as e:
+            print(f"⚠️ Indexing failed: {e}")
+            
         return jsonify({
             "success": True,
             "assignment_id": assignment_id,
@@ -1729,20 +1999,13 @@ def generate_advanced_assignment_from_topics():
         return jsonify({"error": str(e)}), 500
 
 
-# ===============================
-# CUSTOM SUBTOPIC / ASSIGNMENT ROUTES (unchanged from earlier version)
-# ===============================
-# (I’ll skip re-pasting those here to keep this answer within limits,
-# since your question is specifically about dynamic settings & list API.)
-
-# ===============================
-# QUIZ CREATION API (manual)
-# ===============================
 @app.post("/api/quizzes")
 def api_create_quiz():
+    """Create quiz and index questions for similarity search"""
     data = request.get_json(force=True) or {}
     items = data.get("items") or []
 
+    # Normalize questions (existing code)
     questions = []
     for i, it in enumerate(items):
         qtype = (it.get("type") or "").strip().lower()
@@ -1752,14 +2015,13 @@ def api_create_quiz():
             qtype = "mcq"
         elif qtype in ("short", "short_answer", "saq"):
             qtype = "short"
-        else:
-            qtype = "mcq"
 
         q = {
             "type": qtype,
             "prompt": it.get("prompt") or it.get("question_text") or "",
             "difficulty": it.get("difficulty"),
             "order": i,
+            "id": it.get("id") or f"q{i+1}"
         }
         if qtype in ("mcq", "true_false"):
             q["options"] = it.get("options") or []
@@ -1773,96 +2035,35 @@ def api_create_quiz():
         "title": data.get("title") or "Untitled Quiz",
         "questions": questions,
         "metadata": data.get("metadata") or {},
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.utcnow()
     }
 
+    # Save quiz
     quiz_id = save_quiz_to_store(quiz_dict)
-    return jsonify({"id": quiz_id, "title": quiz_dict["title"]}), 201
-
-
-# ===============================
-# LIST QUIZZES (includes dynamic settings)
-# ===============================
-@app.route("/api/quizzes", methods=["GET"])
-def api_list_quizzes():
-    """List quizzes/assignments with time_limit, due_date, note per item."""
-    kind = request.args.get("kind")
-
+    
+    # Index all questions for similarity search
     try:
-        raw_quizzes = list_quizzes(kind=kind) or []
-
-        items = []
-        for q in raw_quizzes:
-            settings = (
-                q.get('settings')
-                or (q.get('metadata') or {}).get('settings')
-                or {}
+        for q in questions:
+            question_embedder.add_question(
+                question_id=f"{quiz_id}_{q.get('id', '')}",
+                question_text=q.get('prompt', ''),
+                metadata={
+                    'type': q.get('type'),
+                    'difficulty': q.get('difficulty'),
+                    'tags': q.get('tags', []),
+                    'quiz_id': quiz_id
+                }
             )
-
-            time_limit = settings.get('time_limit')
-            due_date = settings.get('due_date')
-            note = settings.get('note') or settings.get('notification_message') or ''
-
-            item = dict(q)
-
-            meta_kind = (q.get('metadata') or {}).get('kind')
-            item['kind'] = (meta_kind or kind or 'quiz')
-
-            if 'questions_count' not in item:
-                if 'counts' in q and isinstance(q['counts'], dict):
-                    item['questions_count'] = sum(q['counts'].values())
-                else:
-                    item['questions_count'] = len(q.get('questions') or [])
-
-            item['time_limit'] = time_limit
-            item['due_date'] = due_date
-            item['note'] = note
-
-            items.append(item)
-
-        print(f"📊 API /api/quizzes called with kind={kind}")
-        print(f"📊 Returning {len(items)} items")
-        for q in items[:3]:
-            print(
-                f" - {q.get('title')}: {q.get('questions_count', 0)} questions, "
-                f"time_limit={q.get('time_limit')}, due_date={q.get('due_date')}"
-            )
-
-        return jsonify({
-            "success": True,
-            "items": items,
-            "kind": kind or "all",
-        })
-
+        print(f"✅ Indexed {len(questions)} questions for quiz {quiz_id}")
     except Exception as e:
-        print(f"❌ Error in api_list_quizzes: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "error": str(e),
-            "items": [],
-        }), 500
+        print(f"⚠️ Failed to index questions: {e}")
+    
+    return jsonify({"id": quiz_id, "title": quiz_dict["title"]}), 201
 
 
 @app.post("/api/quizzes/<quiz_id>/publish")
 def api_publish_quiz(quiz_id):
     return jsonify({"quiz_id": quiz_id, "status": "published"}), 200
-
-
-@app.route('/teacher/preview/<quiz_id>')
-def teacher_preview(quiz_id):
-    """Preview quiz as teacher."""
-    quiz_data = get_quiz_by_id(quiz_id)
-    if not quiz_data:
-        return "Quiz not found", 404
-
-    return render_template(
-        'teacher_preview.html',
-        quiz=quiz_data,
-        quiz_id=quiz_id,
-        quiz_title=quiz_data.get('title', f"Quiz {quiz_id}"),
-    )
 
 
 @app.route('/api/quizzes/<quiz_id>/send', methods=['POST'])
@@ -1890,22 +2091,6 @@ def send_quiz_to_students(quiz_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
-def get_quiz_settings(quiz_id):
-    """Get current settings of a quiz"""
-    try:
-        quiz_data = get_quiz_by_id(quiz_id)
-        
-        if not quiz_data:
-            return jsonify({"error": "Quiz not found"}), 404
-        
-        # Fetch the current settings, if available
-        settings = quiz_data.get('settings', {})
-        
-        return jsonify(settings)
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 # ===============================
 # MAIN
