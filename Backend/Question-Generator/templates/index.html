@@ -178,7 +178,7 @@ aria-live="polite">
 <div id="fileNameDisplay" class="file-name"></div>
 <div class="progress" id="progress"><div></div></div>
 
-<!-- Per-quiz settings (AI‑powered) -->
+<!-- Per-quiz settings (AI-powered) -->
 <div class="section-title" style="margin-top: 16px;">2) Quiz Settings</div>
 <div class="field">
 <label class="label" for="auto-time-limit">Time limit (minutes)</label>
@@ -311,6 +311,15 @@ aria-live="polite">
 <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
 </div>
 <div id="assignFileNameDisplay" class="file-name-display"></div>
+
+<!-- Added: Detect Subtopics Button -->
+<div class="center-btn-wrapper">
+<button id="btn-detect-subtopics-assign" type="button" class="btn detect-btn">Detect Subtopics</button>
+</div>
+<div id="assign-subtopics-section" style="display:none; margin-top:10px;">
+<p><strong>Select subtopics:</strong></p>
+<div id="assign-subtopics-list" class="subtopics-list"></div>
+</div>
 
 <!-- Step 2: Assignment Type Distribution -->
 <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
@@ -561,14 +570,14 @@ Choose whether scenario-based and case study questions should include code or fo
 </main>
 
 <!-- Scripts (deferred) -->
-<!-- Scripts (deferred) -->
-  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='assignments.js') }}"></script>
-  <script src="{{ url_for('static', filename='view_items.js') }}"></script>
-  <script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
+<script src="{{ url_for('static', filename='script.js') }}" defer></script>
+<script src="{{ url_for('static', filename='modal.js') }}" defer></script>
+<script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+<script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+<script src="{{ url_for('static', filename='assignments.js') }}"></script>
+<script src="{{ url_for('static', filename='view_items.js') }}"></script>
+<script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
+
 <!-- Router + Home Rotator -->
 <script defer>
 (function () {
@@ -695,7 +704,80 @@ requestAnimationFrame(() => { nxt.style.opacity = 1; });
 }, 200);
 }, 2800);
 })();
+
+document.addEventListener("DOMContentLoaded", function () {
+  const detectBtn = document.getElementById("btn-detect-subtopics-assign");
+  const fileInput = document.getElementById("assign-pdf-file");
+  const subtopicsSection = document.getElementById("assign-subtopics-section");
+  const subtopicsList = document.getElementById("assign-subtopics-list");
+
+  if (detectBtn) {
+    detectBtn.addEventListener("click", async function () {
+      try {
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          alert("Please upload a PDF first.");
+          return;
+        }
+
+        detectBtn.disabled = true;
+        detectBtn.innerText = "Detecting...";
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        const res = await fetch("/api/detect-subtopics", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (!data || !data.subtopics || data.subtopics.length === 0) {
+          alert("No subtopics detected.");
+          detectBtn.disabled = false;
+          detectBtn.innerText = "Detect Subtopics";
+          return;
+        }
+
+        subtopicsList.innerHTML = "";
+
+        data.subtopics.forEach((topic, index) => {
+          const div = document.createElement("div");
+          div.className = "subtopic-item";
+
+          div.innerHTML = `
+            <label style="display:flex; gap:10px; align-items:center;">
+              <input type="checkbox" name="assign-subtopic" value="${topic}" checked />
+              <span>${topic}</span>
+            </label>
+          `;
+
+          subtopicsList.appendChild(div);
+        });
+
+        subtopicsSection.style.display = "block";
+        detectBtn.disabled = false;
+        detectBtn.innerText = "Detect Subtopics";
+      } catch (err) {
+        console.error(err);
+        alert("Error detecting subtopics.");
+        detectBtn.disabled = false;
+        detectBtn.innerText = "Detect Subtopics";
+      }
+    });
+  }
+});
+
 })();
+</script>
+<!-- ✅ Added Publish Function -->
+<script>
+async function publishQuiz(id) {
+  const res = await fetch(`/api/quizzes/${id}/publish`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) alert('✅ Quiz published successfully!');
+  else alert('❌ ' + data.error);
+}
 </script>
 </body>
 </html>

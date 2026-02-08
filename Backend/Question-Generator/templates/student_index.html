@@ -422,309 +422,175 @@ border-left: 3px solid #ff9800;
 </head>
 <body>
 <nav class="topbar" role="navigation" aria-label="Primary">
-<div class="brand">
-<i class='bx bx-bulb card-icon'></i>
-<span>AI Plugin</span>
-</div>
-<ul class="topnav">
-<li><button class="link active" data-route="profile">profile</button></li>
-<li><button class="link" data-route="quizzes">Quizzes</button></li>
-<li><button class="link" data-route="assignments">Assignments</button></li>
-<li><button class="link" data-route="grades">Grades</button></li>
-</ul>
+  <div class="brand">
+    <i class='bx bx-bulb card-icon'></i>
+    <span>AI Plugin</span>
+  </div>
+  <ul class="topnav">
+    <li><button class="link active" data-route="profile">Profile</button></li>
+    <li><button class="link" data-route="quizzes">Quizzes</button></li>
+    <li><button class="link" data-route="assignments">Assignments</button></li>
+    <li><button class="link" data-route="grades">Grades</button></li>
+  </ul>
 </nav>
 
 <div class="container">
-<div class="dashboard">
-<div class="main-content">
-<div id="profile" class="content-section">
-<h2 class="section-title">Student Profile</h2>
-</div>
+  <div class="dashboard">
+    <div class="main-content">
+      <div id="profile" class="content-section">
+        <h2 class="section-title">Student Profile</h2>
+      </div>
 
-<div id="assignments" class="content-section hidden">
-<h2 class="section-title">My Assignments</h2>
-{% if error %}
-<div class="error">{{ error }}</div>
-{% endif %}
-<div id="assignments-list" class="assignments-list">
-<div class="loading">Loading assignments...</div>
-</div>
-</div>
+      <div id="assignments" class="content-section hidden">
+        <h2 class="section-title">My Assignments</h2>
+        <div id="assignments-list" class="assignments-list">
+          <div class="loading">Loading assignments...</div>
+        </div>
+      </div>
 
-<div id="quizzes" class="content-section hidden">
-<h2 class="section-title">My Quizzes</h2>
-{% if error %}
-<div class="error">{{ error }}</div>
-{% endif %}
-<div id="quizzes-list" class="quizzes-list">
-<div class="loading">Loading quizzes...</div>
-</div>
-</div>
+      <div id="quizzes" class="content-section hidden">
+        <h2 class="section-title">My Quizzes</h2>
+        <div id="quizzes-list" class="quizzes-list">
+          <div class="loading">Loading quizzes...</div>
+        </div>
+      </div>
 
-<div id="grades" class="content-section hidden">
-<h2 class="section-title">My Grades</h2>
-{% if error %}
-<div class="error">{{ error }}</div>
-{% endif %}
-<div id="grades-list" class="grades-list">
-<div class="empty-state">No grades are added</div>
-</div>
-</div>
-</div>
-</div>
+      <div id="grades" class="content-section hidden">
+        <h2 class="section-title">My Grades</h2>
+        <div id="grades-list" class="grades-list">
+          <div class="empty-state">No grades are added</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-const DEBUG = true; // Set to false in production
+const DEBUG = true;
 
-const fmtScore = (n) => {
-const num = Number(n);
-return Number.isFinite(num) ? Math.ceil(num) : 0;
-};
-
+const fmtScore = (n) => Number.isFinite(Number(n)) ? Math.ceil(Number(n)) : 0;
 const fmtDate = (v) => {
-try {
-if (!v) return 'No due date';
-const d = new Date(v);
-if (Number.isNaN(d.getTime())) return 'No due date';
-return d.toLocaleString('en-US', {
-year: 'numeric',
-month: 'short',
-day: '2-digit',
-hour: '2-digit',
-minute: '2-digit',
-hour12: false
-});
-} catch (e) {
-return 'No due date';
-}
+  try {
+    if (!v) return 'No due date';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return 'No due date';
+    return d.toLocaleString('en-US', {year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  } catch { return 'No due date'; }
 };
 
 const topnavLinks = document.querySelectorAll('.topnav .link');
 const contentSections = document.querySelectorAll('.content-section');
 
 topnavLinks.forEach(item => {
-item.addEventListener('click', function() {
-topnavLinks.forEach(i => i.classList.remove('active'));
-this.classList.add('active');
-
-contentSections.forEach(section => section.classList.add('hidden'));
-
-const targetId = this.getAttribute('data-route');
-document.getElementById(targetId).classList.remove('hidden');
-
-if (targetId === 'assignments') {
-loadAssignments();
-} else if (targetId === 'quizzes') {
-loadQuizzes();
-} else if (targetId === 'grades') {
-loadGrades();
-}
-});
+  item.addEventListener('click', function() {
+    topnavLinks.forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+    contentSections.forEach(section => section.classList.add('hidden'));
+    const targetId = this.getAttribute('data-route');
+    document.getElementById(targetId).classList.remove('hidden');
+    if (targetId === 'assignments') loadAssignments();
+    if (targetId === 'quizzes') loadQuizzes();
+    if (targetId === 'grades') loadGrades();
+  });
 });
 
-const activeLink = document.querySelector('.topnav .link.active');
-if (activeLink) {
-activeLink.click();
-}
+document.querySelector('.topnav .link.active')?.click();
 
-// ---------- Loaders ----------
 async function loadAssignments() {
-const el = document.getElementById('assignments-list');
-if (!el) return;
-el.innerHTML = '<div class="loading">Loading assignments...</div>';
-
-try {
-const res = await fetch('/api/quizzes?kind=assignment');
-const data = await res.json();
-
-if (DEBUG) {
-console.log('Assignments API response:', data);
-}
-
-if (data?.success && Array.isArray(data.items) && data.items.length) {
-renderItems(el, data.items, 'assignment');
-} else {
-el.innerHTML = '<div class="empty-state">No assignments available at the moment.</div>';
-}
-} catch (err) {
-console.error('Error loading assignments:', err);
-el.innerHTML = `
-<div class="error">
-Failed to load assignments. (Check API endpoint)
-<button onclick="loadAssignments()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
-</div>`;
-}
+  const el = document.getElementById('assignments-list');
+  el.innerHTML = '<div class="loading">Loading assignments...</div>';
+  try {
+    const res = await fetch('/api/quizzes?kind=assignment');
+    const data = await res.json();
+    if (data?.success && data.items?.length) renderItems(el, data.items, 'assignment');
+    else el.innerHTML = '<div class="empty-state">No assignments available.</div>';
+  } catch (err) {
+    console.error(err);
+    el.innerHTML = `<div class="error">Failed to load assignments</div>`;
+  }
 }
 
 async function loadQuizzes() {
-const el = document.getElementById('quizzes-list');
-if (!el) return;
-el.innerHTML = '<div class="loading">Loading quizzes...</div>';
-
-try {
-const res = await fetch('/api/quizzes?kind=quiz');
-const data = await res.json();
-
-if (DEBUG) {
-console.log('Quizzes API response:', data);
-}
-
-if (data?.success && Array.isArray(data.items) && data.items.length) {
-renderItems(el, data.items, 'quiz');
-} else {
-el.innerHTML = '<div class="empty-state">No quizzes available at the moment.</div>';
-}
-} catch (err) {
-console.error('Error loading quizzes:', err);
-el.innerHTML = `
-<div class="error">
-Failed to load quizzes. (Check API endpoint)
-<button onclick="loadQuizzes()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
-</div>`;
-}
+  const el = document.getElementById('quizzes-list');
+  el.innerHTML = '<div class="loading">Loading quizzes...</div>';
+  try {
+    const res = await fetch('/api/quizzes?kind=quiz');
+    const data = await res.json();
+    if (data?.success && data.items?.length) renderItems(el, data.items, 'quiz');
+    else el.innerHTML = '<div class="empty-state">No quizzes available.</div>';
+  } catch (err) {
+    console.error(err);
+    el.innerHTML = `<div class="error">Failed to load quizzes</div>`;
+  }
 }
 
 async function loadGrades() {
-const gradesList = document.getElementById('grades-list');
-if (!gradesList) return;
-gradesList.innerHTML = '<div class="loading">Loading grades...</div>';
-
-try {
-const res = await fetch('/api/grades');
-const data = await res.json();
-const items = (data.success && data.items) ? data.items : [];
-if (!items.length) {
-gradesList.innerHTML = '<div class="empty-state">No grades are added</div>';
-return;
+  const el = document.getElementById('grades-list');
+  el.innerHTML = '<div class="loading">Loading grades...</div>';
+  try {
+    const res = await fetch('/api/grades');
+    const data = await res.json();
+    if (!data?.items?.length) { el.innerHTML = '<div class="empty-state">No grades</div>'; return; }
+    const grouped = { quiz: [], assignment: [] };
+    data.items.forEach(i => grouped[i.kind === 'assignment' ? 'assignment' : 'quiz'].push(i));
+    el.innerHTML = `${renderGradeGroup('Quizzes', grouped.quiz)}${renderGradeGroup('Assignments', grouped.assignment)}`;
+  } catch (err) {
+    console.error(err);
+    el.innerHTML = `<div class="error">Failed to load grades</div>`;
+  }
 }
 
-const grouped = { quiz: [], assignment: [] };
-items.forEach(it => {
-const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
-grouped[k].push(it);
-});
-
-gradesList.innerHTML = `
-${renderGradeGroup('Quizzes', grouped.quiz)}
-${renderGradeGroup('Assignments', grouped.assignment)}
-`;
-} catch (err) {
-console.error('Error loading grades:', err);
-gradesList.innerHTML = `
-<div class="error">
-Failed to load grades. (Check API endpoint)
-<button onclick="loadGrades()" class="btn btn-secondary" style="margin-top:10px;">Retry</button>
-</div>`;
-}
-}
-
-function renderGradeGroup(title, arr) {
-if (!arr || !arr.length) return '';
-return `
-<div class="grade-group">
-<h3 class="grade-group-title">${title}</h3>
-<div class="grade-divider"></div>
-${arr.map(renderGradeCard).join('')}
-</div>`;
-}
-
-// FIXED: Shows time_limit, due_date, note on each card
 function renderItems(container, items, type) {
   container.innerHTML = '';
-
-  if (DEBUG) {
-    console.log(`Rendering ${type}s:`, items);
-  }
-
+  const now = new Date();
   items.forEach(item => {
     const card = document.createElement('div');
     card.className = type === 'assignment' ? 'assignment-card' : 'quiz-card';
-
-    const questionsCount = item.questions_count || (item.questions ? item.questions.length : 0);
-
-    // FIXED: Extract settings properly
     const settings = item.settings || {};
-    
-    // Get values - check settings first, then root level for backward compatibility
-    const timeLimit = settings.time_limit !== undefined ? settings.time_limit : item.time_limit;
-    const dueDateRaw = settings.due_date !== undefined ? settings.due_date : item.due_date;
-    const note = (settings.note && settings.note.trim()) || (item.note && item.note.trim()) || '';
+    const timeLimit = settings.time_limit ?? item.time_limit ?? null;
+    const dueDate = settings.due_date ?? item.due_date ?? null;
+    const note = settings.note || item.note || '';
+    const questionsCount = item.questions_count || item.questions?.length || 0;
 
-    // Debug log for each item
-    if (DEBUG) {
-      console.log(`Item ${item.id}:`, {
-        title: item.title,
-        settings: settings,
-        time_limit: timeLimit,
-        due_date: dueDateRaw,
-        note: note,
-        rawItem: item
-      });
+    let isExpired = false;
+    if (dueDate) {
+      const parsedDue = new Date(dueDate);
+      if (!isNaN(parsedDue) && parsedDue < now) isExpired = true;
     }
 
-    const timeLimitDisplay = (timeLimit !== null && timeLimit !== undefined) ? `${timeLimit} min` : 'No time limit';
-    const due = fmtDate(dueDateRaw);
+    const timeText = timeLimit !== null ? `${timeLimit} min` : 'No time limit';
+    const dueText = fmtDate(dueDate);
 
     card.innerHTML = `
-      <div class="${type}-title">${item.title || `Untitled ${type.charAt(0).toUpperCase() + type.slice(1)}`}</div>
+      <div class="${type}-title">
+        ${item.title || 'Untitled'}
+        ${isExpired ? '<span style="color:#cc0000; font-size:14px; margin-left:8px;">(Expired)</span>' : ''}
+      </div>
       <div class="${type}-details">
         <span>Questions: ${questionsCount}</span>
-        <span>time_limit: ${timeLimitDisplay}</span>
-        <span>due_date: ${due}</span>
+        <span>Time Limit: ${timeText}</span>
+        <span>Due Date: ${dueText}</span>
       </div>
       ${note ? `<div class="item-note"><strong>Note:</strong> ${note}</div>` : ''}
-      ${DEBUG ? `<div class="debug-info">ID: ${item.id} | Settings keys: ${Object.keys(settings).join(', ')}</div>` : ''}
-      <div style="margin-top: 10px;">
-        <a href="/student/${type}/${item.id}" class="btn btn-primary" target="_blank" rel="noopener">
-          ${type === 'quiz' ? 'Take Quiz' : 'Start Assignment'}
+      <div style="margin-top:10px;">
+        <a href="/student/${type}/${item.id}" class="btn btn-primary ${isExpired ? 'disabled-btn' : ''}" target="_blank" ${isExpired ? 'onclick="return false;" style="opacity:0.6;cursor:not-allowed;"' : ''}>
+          ${isExpired ? 'Unavailable' : (type === 'quiz' ? 'Take Quiz' : 'Start Assignment')}
         </a>
-      </div>
-    `;
-
+      </div>`;
     container.appendChild(card);
   });
 }
 
-function renderGradeCard(item) {
-const s = fmtScore(item.score);
-const m = fmtScore(item.max_score);
-const scoreDisplay = `${s}/${m || 'N/A'}`;
-
-const safeDate = (() => {
-try {
-if (item.date_human) return item.date_human;
-if (!item.date) return 'N/A';
-const d = new Date(item.date);
-if (Number.isNaN(d.getTime())) return 'N/A';
-return d.toLocaleString('en-US', {
-year: 'numeric',
-month: 'short',
-day: '2-digit',
-hour: '2-digit',
-minute: '2-digit',
-hour12: false
-});
-} catch (e) {
-return 'N/A';
+function renderGradeGroup(title, arr) {
+  if (!arr?.length) return '';
+  return `<div class="grade-group"><h3>${title}</h3><div class="grade-divider"></div>${arr.map(renderGradeCard).join('')}</div>`;
 }
-})();
 
-return `
-<div class="grade-card">
-<div class="grade-title">${item.title || 'Untitled Grade Item'}</div>
-<div class="grade-details">
-<span>Date: ${safeDate}</span>
-<span class="grade-score">${scoreDisplay}</span>
-</div>
-<div style="margin-top: 15px;">
-<a href="/student/grade/${item.id}" class="btn btn-secondary" target="_blank" rel="noopener">
-View Details
-</a>
-</div>
-<div class="grade-divider"></div>
-</div>`;
+function renderGradeCard(item) {
+  const score = fmtScore(item.score);
+  const max = fmtScore(item.max_score);
+  return `<div class="grade-card"><div class="grade-title">${item.title}</div><div class="grade-details"><span>${fmtDate(item.date)}</span><span class="grade-score">${score}/${max || 'N/A'}</span></div><div style="margin-top:10px;"><a href="/student/grade/${item.id}" class="btn btn-secondary" target="_blank">View Details</a></div><div class="grade-divider"></div></div>`;
 }
 
 window.loadAssignments = loadAssignments;
