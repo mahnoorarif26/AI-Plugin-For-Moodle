@@ -93,7 +93,129 @@
     .btn-outline:hover{
       border-color:#fb923c; box-shadow:0 4px 12px rgba(251,147,60,0.12); transform: translateY(-1px);
     }
+    /* Similar Questions Panel */
+    .similar-questions-panel {
+      background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+      border: 2px solid #fb923c;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+      animation: slideIn 0.3s ease;
+    }
 
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .similar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      color: #92400e;
+      font-weight: 700;
+    }
+
+    .similar-header i {
+      font-size: 20px;
+    }
+
+    .close-similar {
+      margin-left: auto;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #92400e;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      line-height: 1;
+    }
+
+    .close-similar:hover {
+      color: #78350f;
+    }
+
+    .similar-subtitle {
+      font-size: 14px;
+      color: #78350f;
+      margin-bottom: 12px;
+    }
+
+    .similar-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 12px 0;
+    }
+
+    .similar-item {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .similarity-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(251, 146, 60, 0.1), rgba(251, 146, 60, 0.05));
+      z-index: 0;
+    }
+
+    .similar-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .similarity-score {
+      display: inline-block;
+      background: linear-gradient(135deg, #fb923c, #f59e0b);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .similar-text {
+      margin: 6px 0;
+      font-size: 14px;
+      color: #1f2937;
+      font-weight: 500;
+    }
+
+    .similar-reason {
+      color: #6b7280;
+      font-size: 12px;
+      font-style: italic;
+    }
+
+    .continue-anyway {
+      width: 100%;
+      margin-top: 8px;
+      background: white;
+      border: 2px solid #fb923c;
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    .continue-anyway:hover {
+      background: #fb923c;
+      color: white;
+    }
     .danger{
       background:#f44336; color:#fff; border:none;
       box-shadow:0 4px 12px rgba(244,67,54,0.25);
