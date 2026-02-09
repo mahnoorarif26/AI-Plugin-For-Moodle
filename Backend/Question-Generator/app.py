@@ -13,6 +13,7 @@ from utils.duplicate_prevention import get_existing_questions_context
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 from utils.pdf_utils import SmartPDFProcessor
 from utils.assignment_utils import generate_advanced_assignments_llm
@@ -88,6 +89,11 @@ else:
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_only_secret_change_me")
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Optional upload folder for assignment file uploads
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "student_uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # ===============================
 # GLOBAL MEMORY STORE
@@ -189,6 +195,22 @@ def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
     normalized_questions: List[Dict[str, Any]] = []
     for q in quiz_for_grader.get("questions", []) or []:
         qq = dict(q)
+
+        # Map assignment-specific question types to grader-supported types
+        qtype = (qq.get("type") or "").strip().lower()
+        if qtype == "assignment_task":
+            atype = (qq.get("assignment_type") or "").strip().lower()
+            if atype == "conceptual":
+                mapped_type = "conceptual"
+            elif atype == "scenario":
+                mapped_type = "scenario"
+            elif atype in {"case_study", "case-study"}:
+                mapped_type = "case_study"
+            else:
+                # Fallback: treat as a long free-form question
+                mapped_type = "long"
+            qq["type"] = mapped_type
+
         if qq.get("answer") is None:
             for key in [
                 "correct_answer",
@@ -202,7 +224,13 @@ def _prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
                     qq["answer"] = qq.get(key)
                     break
         if qq.get("max_score") is None:
-            qq["max_score"] = _default_max_score(qq.get("type"))
+            if qq.get("marks") is not None:
+                try:
+                    qq["max_score"] = float(qq.get("marks"))
+                except Exception:
+                    qq["max_score"] = _default_max_score(qq.get("type"))
+            else:
+                qq["max_score"] = _default_max_score(qq.get("type"))
         normalized_questions.append(qq)
     quiz_for_grader["questions"] = normalized_questions
     return quiz_for_grader
@@ -980,7 +1008,6 @@ def submit_quiz():
     if not correct_quiz_data:
         return jsonify({"error": "Quiz not found"}), 404
 
-    score = 0
     total_questions = len(correct_quiz_data.get('questions', []))
     student_answers: Dict[str, str] = {}
 
@@ -988,24 +1015,28 @@ def submit_quiz():
         q_id = q.get('id')
         if not q_id:
             continue
-        correct_answer = q.get('correct_answer')
         student_response = (form_data.get(q_id) or '').strip()
         student_answers[q_id] = student_response
-
-        if q.get('type') in ['mcq', 'true_false'] and correct_answer is not None:
-            if str(student_response).lower() == str(correct_answer).lower():
-                score += 1
 
     submission_data = {
         "email": "student@example.com",
         "name": "Student",
         "answers": student_answers,
-        "score": score,
+        "score": 0,
         "total_questions": total_questions,
+        "status": "pending",
     }
     submission_id = save_submission_to_store(quiz_id, submission_data)
 
-    return redirect(url_for('submission_confirmation', quiz_id=quiz_id, score=score, total=total_questions, submission_id=submission_id))
+    return redirect(
+        url_for(
+            'submission_confirmation',
+            quiz_id=quiz_id,
+            score='N/A',
+            total=total_questions,
+            submission_id=submission_id,
+        )
+    )
 
 
 @app.route('/student/confirmation/<quiz_id>', methods=['GET'])
@@ -1221,8 +1252,12 @@ def api_get_submission(submission_id: str):
                 if not sub.exists:
                     continue
                 s = sub.to_dict() or {}
+                # Treat submissions without an explicit max_total as "pending"
+                has_max_total = "max_total" in s and s.get("max_total") is not None
                 s["score"] = _ceil_score(s.get("score") or 0)
-                s["max_total"] = _ceil_score(s.get("max_total") or 0)
+                s["max_total"] = (
+                    _ceil_score(s.get("max_total") or 0) if has_max_total else None
+                )
                 s["submitted_at_human"] = _humanize_datetime(s.get("submitted_at") or '')
                 s["student_email"] = s.get("student_email") or s.get("email")
                 s["student_name"] = s.get("student_name") or s.get("name")
