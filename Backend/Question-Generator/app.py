@@ -8,7 +8,11 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any
 import importlib.util
 import time
-from utils.embedding_engine import question_embedder
+try:
+    from utils.embedding_engine_firestore import firestore_embedder as question_embedder
+except ImportError:
+    from utils.embedding_engine import question_embedder
+
 from utils.duplicate_prevention import get_existing_questions_context
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
@@ -95,6 +99,22 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "student_uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def cleanup_old_data():
+    """Background cleanup task"""
+    try:
+        deleted = question_embedder.cleanup_old_embeddings(days_old=90)
+        print(f"🧹 Cleaned {deleted} old embeddings")
+    except Exception as e:
+        print(f"⚠️ Cleanup error: {e}")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=cleanup_old_data, trigger="interval", hours=24)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+print("✅ Background cleanup started")
 # ===============================
 # GLOBAL MEMORY STORE
 # ===============================
@@ -362,7 +382,30 @@ def update_quiz_settings(quiz_id):
         print("❌ SETTINGS ERROR:", e)
         return jsonify({"error": str(e)}), 500
     
+@app.route('/api/admin/embeddings/stats', methods=['GET'])
+def get_embedding_stats():
+    """Get embedding statistics"""
+    try:
+        stats = question_embedder.get_stats()
+        return jsonify({'success': True, 'stats': stats}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/admin/embeddings/cleanup', methods=['POST'])
+def manual_cleanup_embeddings():
+    """Manual cleanup trigger"""
+    try:
+        data = request.get_json() or {}
+        days_old = int(data.get('days_old', 90))
+        deleted = question_embedder.cleanup_old_embeddings(days_old=days_old)
+        return jsonify({
+            'success': True,
+            'deleted': deleted,
+            'message': f'Cleaned {deleted} embeddings'
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/quizzes/<quiz_id>/settings', methods=['GET'])
 def get_quiz_settings(quiz_id):
