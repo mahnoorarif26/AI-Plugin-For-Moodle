@@ -127,7 +127,6 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
 
     print(f"✅ Saved locally as: {_local_path(qid)}")
     return qid
-
 # ----------------------------------------------------
 #   GET QUIZ/ASSIGNMENT
 # ----------------------------------------------------
@@ -282,8 +281,12 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
 #   SUBMISSIONS (Firestore only)
 # ----------------------------------------------------
 def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Save a submission to Firestore (or fallback to local).
+    NOW INCLUDES roll_no field.
+    """
     if not _db:
-        print("ℹ️ Submissions require Firestore; skipping (no _db).")
+        print("⚠️ Firestore not available, cannot save submission")
         return None
     try:
         # Determine collection robustly so quiz submissions go under AIquizzes
@@ -312,8 +315,9 @@ def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]
 
         payload = {
             "quiz_id": quiz_id,
-            "student_email": student_data.get("email"),
-            "student_name": student_data.get("name"),
+            "student_email": student_data.get("email") or student_data.get("student_email"),
+            "student_name": student_data.get("name") or student_data.get("student_name"),
+            "roll_no": student_data.get("roll_no", ""),  # NEW FIELD
             "answers": student_data.get("answers", {}),
             "files": student_data.get("files", {}),
             "score": student_data.get("score", 0),
@@ -323,47 +327,56 @@ def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]
             "submitted_at": datetime.utcnow(),
             "kind": student_data.get("kind", "quiz_submission")
         }
+        
         ref = _db.collection(collection_name).document(quiz_id).collection("submissions").add(payload)
         submission_id = ref[1].id
         print(f"✅ Submission saved to {collection_name} with ID: {submission_id}")
+        print(f"   Student: {payload['student_name']} ({payload['student_email']}) - Roll No: {payload['roll_no']}")
         return submission_id
     except Exception as e:
         print(f"❌ save_submission failed: {e}")
         return None
 
-
-def get_submitted_quiz_ids(student_email: str) -> List[str]:
-    """Get list of quiz/assignment IDs that the student has already submitted"""
+def get_submitted_quiz_ids(submission_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve a submission by ID from Firestore.
+    NOW INCLUDES roll_no field.
+    """
     if not _db:
-        print("ℹ️ Firestore not available for submission check")
-        return []
+        return None
+    
     try:
-        submitted_ids = set()
-        
-        # Check both collections for submissions
-        for collection_name in ["AIquizzes", "assignments"]:
-            print(f"🔍 Checking submissions in {collection_name} for {student_email}")
-            
-            # Get all documents in the collection
-            quizzes_ref = _db.collection(collection_name).stream()
-            
-            for quiz_doc in quizzes_ref:
-                quiz_id = quiz_doc.id
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in _db.collection(collection_name).stream():
+                qid = qdoc.id
+                subref = _db.collection(collection_name).document(qid).collection('submissions').document(submission_id)
+                sub = subref.get()
+                if not sub.exists:
+                    continue
+                s = sub.to_dict() or {}
                 
-                # Check if this student has submissions for this quiz
-                submissions_ref = _db.collection(collection_name).document(quiz_id).collection("submissions")
-                student_submissions = submissions_ref.where("student_email", "==", student_email).limit(1).stream()
-                
-                if list(student_submissions):
-                    submitted_ids.add(quiz_id)
-                    print(f"📝 Student has submitted: {quiz_id}")
+                # Include roll_no in the returned data
+                return {
+                    "submission_id": submission_id,
+                    "quiz_id": qid,
+                    "collection": collection_name,
+                    "student_email": s.get("student_email") or s.get("email"),
+                    "student_name": s.get("student_name") or s.get("name"),
+                    "roll_no": s.get("roll_no", ""),  # NEW FIELD
+                    "answers": s.get("answers", {}),
+                    "files": s.get("files", {}),
+                    "score": s.get("score", 0),
+                    "max_total": s.get("max_total"),
+                    "total_questions": s.get("total_questions", 0),
+                    "status": s.get("status", "completed"),
+                    "submitted_at": s.get("submitted_at"),
+                    "kind": s.get("kind", "quiz_submission")
+                }
         
-        print(f"✅ Student has submitted {len(submitted_ids)} items")
-        return list(submitted_ids)
-        
+        return None
     except Exception as e:
-        print(f"❌ get_submitted_quiz_ids failed: {e}")
-        return []
+        print(f"❌ get_submission_by_id failed: {e}")
+        return None
 
 
 # ----------------------------------------------------

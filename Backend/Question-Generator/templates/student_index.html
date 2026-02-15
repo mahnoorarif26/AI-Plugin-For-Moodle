@@ -242,8 +242,8 @@ background-color: #ffffff;
 }
 
 .grade-card {
-background-color: #fffaf0;
-padding: 25px;
+background-color: #ffffff;
+padding: 30px 30px 35px 30px;
 border-radius: 10px;
 border-left: 6px solid #f39c12;
 transition: transform 0.2s ease, box-shadow 0.3s ease;
@@ -251,7 +251,7 @@ transition: transform 0.2s ease, box-shadow 0.3s ease;
 .grade-card:hover {
 transform: translateY(-3px);
 box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-background-color: #ffffff;
+background-color: #fffaf0;
 }
 
 .assignment-title, .quiz-title, .grade-title {
@@ -427,7 +427,6 @@ border-left: 3px solid #ff9800;
     <span>AI Plugin</span>
   </div>
   <ul class="topnav">
-    <li><button class="link active" data-route="profile">Profile</button></li>
     <li><button class="link" data-route="quizzes">Quizzes</button></li>
     <li><button class="link" data-route="assignments">Assignments</button></li>
     <li><button class="link" data-route="grades">Grades</button></li>
@@ -437,9 +436,7 @@ border-left: 3px solid #ff9800;
 <div class="container">
   <div class="dashboard">
     <div class="main-content">
-      <div id="profile" class="content-section">
-        <h2 class="section-title">Student Profile</h2>
-      </div>
+      
 
       <div id="assignments" class="content-section hidden">
         <h2 class="section-title">My Assignments</h2>
@@ -448,7 +445,7 @@ border-left: 3px solid #ff9800;
         </div>
       </div>
 
-      <div id="quizzes" class="content-section hidden">
+      <div id="quizzes" class="content-section ">
         <h2 class="section-title">My Quizzes</h2>
         <div id="quizzes-list" class="quizzes-list">
           <div class="loading">Loading quizzes...</div>

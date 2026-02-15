@@ -1,6 +1,6 @@
 // static/publish.js
 // Enhanced Student/teacher-friendly quiz renderer with improved PDF generation
-// Supports both student view (no answers) and teacher view (with answers)
+// Modified to show only correct answers (answer key mode)
 
 (function () {
     'use strict';
@@ -91,7 +91,7 @@
     /* ---------------- View Mode Management ---------------- */
     class ViewModeManager {
         static getMode() {
-            return localStorage.getItem(VIEW_MODE_KEY) || 'student';
+            return localStorage.getItem(VIEW_MODE_KEY) || 'teacher'; // Default to teacher mode (answer key)
         }
 
         static setMode(mode) {
@@ -175,7 +175,8 @@
             note: root.note ?? direct.note ?? metaSettings.note ?? metaSettings.notification_message ?? '',
             total_points: root.total_points ?? meta.total_points ?? 0,
             shuffle: root.shuffle ?? direct.shuffle ?? metaSettings.shuffle ?? false,
-            show_answers: root.show_answers ?? direct.show_answers ?? metaSettings.show_answers ?? false
+            show_answers: root.show_answers ?? direct.show_answers ?? metaSettings.show_answers ?? false,
+            pdf_name: root.pdf_name ?? meta.pdf_name ?? direct.pdf_name ?? ''
         };
 
         return settings;
@@ -207,34 +208,30 @@
     const quizState = new QuizState();
 
     /* ---------------- Exam Header ---------------- */
-    function renderExamHeader(title, settings, viewMode = 'student') {
-        const { time_limit, due_date, note, total_points } = settings || {};
+    function renderExamHeader(title, settings, viewMode = 'teacher') {
+        const { time_limit, due_date, note, total_points, pdf_name } = settings || {};
 
         const timeLimitText = typeof time_limit === 'number' && time_limit > 0 
             ? `${time_limit} minutes` 
             : '';
         
         const dueDateText = fmtDateTime(due_date);
-        const pointsText = total_points ? `${total_points} points` : '';
         
-        const hasMeta = !!(timeLimitText || dueDateText || pointsText || (note && note.trim()));
+        // Display PDF name as title if available
+        const displayTitle = pdf_name || title || 'Quiz';
         
-        const viewModeIndicator = viewMode === 'teacher' 
-            ? '<span class="view-mode-badge teacher-mode">Teacher View</span>' 
-            : '<span class="view-mode-badge student-mode">Student View</span>';
+        const hasMeta = !!(timeLimitText || dueDateText || (note && note.trim()));
 
         return `
 <div class="exam-header">
     <div class="exam-header-top">
-        <h1>${escapeHtml(title || 'Quiz')}</h1>
-        ${viewModeIndicator}
+        <h1>${escapeHtml(displayTitle)}</h1>
     </div>
     
     ${hasMeta ? `
     <div class="exam-meta">
         ${timeLimitText ? `<div class="meta-item"><strong>Time limit:</strong> ${timeLimitText}</div>` : ''}
         ${dueDateText ? `<div class="meta-item"><strong>Due date:</strong> ${dueDateText}</div>` : ''}
-        ${pointsText ? `<div class="meta-item"><strong>Total points:</strong> ${pointsText}</div>` : ''}
         ${note && note.trim() ? `<div class="exam-note meta-item"><strong>Note:</strong> ${escapeHtml(note.trim())}</div>` : ''}
     </div>
     ` : ''}
@@ -244,68 +241,15 @@
 `;
     }
 
-    /* ---------------- Toolbar with Enhanced Controls ---------------- */
+    /* ---------------- Toolbar - Removed ---------------- */
     function renderToolbar() {
-        return `
-<div class="quiz-toolbar">
-    <div class="toolbar-group">
-        <button id="btn-download" class="toolbar-btn" title="Download as PDF">
-            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download PDF
-        </button>
-        
-        <button id="btn-print" class="toolbar-btn" title="Print">
-            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-            </svg>
-            Print
-        </button>
-    </div>
-    
-    <div class="toolbar-group">
-        <button id="btn-toggle-view" class="toolbar-btn toggle-view-btn" title="Toggle between student and teacher view">
-            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <span id="view-mode-label">Teacher View</span>
-        </button>
-        
-        <button id="btn-close-quiz" class="toolbar-btn close-btn" title="Close quiz">
-            <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-            Close
-        </button>
-    </div>
-</div>
-`;
+        return ''; // No toolbar needed
     }
 
     /* ---------------- Question Renderers ---------------- */
-    function renderTrueFalse(viewMode = 'student') {
-        return `
-<div class="options-container">
-    <div class="option">
-        <span class="option-letter">A.</span>
-        <span class="option-text">True</span>
-    </div>
-    <div class="option">
-        <span class="option-letter">B.</span>
-        <span class="option-text">False</span>
-    </div>
-</div>
-`;
-    }
-
-    function renderOptions(q, viewMode = 'student') {
+    
+    // Show all options with correct one marked
+    function renderOptions(q, viewMode = 'teacher') {
         const ansIdx = getAnswerIndex(q);
         const options = safeArray(q.options);
         const showAnswers = viewMode === 'teacher';
@@ -318,7 +262,7 @@
 <div class="option ${shouldShowAnswer ? 'correct' : ''}">
     <span class="option-letter">${letterFrom(i)}.</span>
     <span class="option-text">${escapeHtml(opt ?? '')}</span>
-    ${shouldShowAnswer ? `<span class="correct-badge" aria-label="Correct answer">✓</span>` : ''}
+    ${shouldShowAnswer ? `<span class="correct-badge" aria-label="Correct answer">✓ Correct</span>` : ''}
 </div>
 `;
         }).join('');
@@ -326,6 +270,21 @@
         return `
 <div class="options-container">
     <div class="options">${items}</div>
+</div>
+`;
+    }
+
+    function renderTrueFalse(viewMode = 'teacher') {
+        return `
+<div class="options-container">
+    <div class="option">
+        <span class="option-letter">A.</span>
+        <span class="option-text">True</span>
+    </div>
+    <div class="option">
+        <span class="option-letter">B.</span>
+        <span class="option-text">False</span>
+    </div>
 </div>
 `;
     }
@@ -342,50 +301,26 @@
 `;
     }
 
-    function renderCorrectAnswer(q, viewMode = 'student') {
+    function renderCorrectAnswer(q, viewMode = 'teacher') {
+        // Don't show separate correct answer section for MCQ (shown inline with options)
         if (viewMode !== 'teacher') return '';
         
         const type = (q.type || '').toLowerCase();
-        const opts = safeArray(q.options);
-        const ans = q.answer;
-        let answerText = '';
-
         if (type === 'mcq') {
-            const idx = getAnswerIndex(q);
-            if (idx >= 0 && idx < opts.length) {
-                answerText = `<strong>${letterFrom(idx)}.</strong> ${escapeHtml(opts[idx])}`;
-            } else if (typeof ans === 'string' && ans.trim()) {
-                answerText = escapeHtml(ans.trim());
-            }
-        } else if (type === 'true_false') {
-            if (typeof ans === 'boolean') {
-                answerText = ans ? 'True' : 'False';
-            } else if (typeof ans === 'string') {
-                answerText = escapeHtml(ans.trim());
-            }
-        } else {
-            if (ans != null && String(ans).trim()) {
-                answerText = escapeHtml(String(ans).trim());
-            }
+            return ''; // Already shown in renderOptions
         }
-
-        if (!answerText) return '';
         
-        return `
-<div class="correct-answer-section">
-    <div class="correct-answer-label">Correct Answer:</div>
-    <div class="correct-answer-content">${answerText}</div>
-</div>
-`;
+        // For other question types, we don't show correct answer separately
+        return '';
     }
 
+    // Points rendering removed
     function renderQuestionPoints(q) {
-        const points = q.points || q.marks || 1;
-        return `<span class="question-points" aria-label="${points} point${points !== 1 ? 's' : ''}">${points} pts</span>`;
+        return ''; // Don't show points
     }
 
     /* ---------------- Main Question Renderer ---------------- */
-    function toHtml(q, idx, viewMode = 'student') {
+    function toHtml(q, idx, viewMode = 'teacher') {
         const n = idx + 1;
         const type = (q.type || '').toLowerCase();
         const typeLabel = prettyType(q.type);
@@ -416,16 +351,12 @@
         // Get explanation (only in teacher mode)
         const explanation = showAnswers ? (q.explanation || '').trim() : '';
 
-        // Calculate question value
-        const questionValue = q.points || q.marks || 1;
-
         return `
-<article class="question-card" data-question-index="${idx}" data-question-type="${type}" data-question-value="${questionValue}">
+<article class="question-card" data-question-index="${idx}" data-question-type="${type}">
     <div class="question-header">
         <div class="question-header-left">
             <h3 class="question-number">Question ${n}</h3>
             ${diffLabel ? `<span class="difficulty-badge" aria-label="Difficulty: ${diffLabel}">${diffLabel}</span>` : ''}
-            ${renderQuestionPoints(q)}
         </div>
         <div class="question-header-right">
             <span class="question-type" aria-label="Question type: ${typeLabel}">${typeLabel}</span>
@@ -470,7 +401,7 @@
                 .replace(/\s+/g, '_')
                 .substring(0, CONFIG.validation.maxFilenameLength);
             
-            const filename = `${CONFIG.filenamePrefix}${cleanFilename}.pdf`;
+            const filename = `${CONFIG.pdf.filenamePrefix}${cleanFilename}.pdf`;
 
             // Clone container to avoid affecting displayed content
             const pdfContainer = container.cloneNode(true);
@@ -494,7 +425,6 @@
                 }
                 @media print {
                     .quiz-toolbar { display: none !important; }
-                    .close-quiz-btn { display: none !important; }
                 }
             `;
             document.head.appendChild(style);
@@ -533,344 +463,138 @@
 
     /* ---------------- UI Event Handlers ---------------- */
     function setupToolbarEvents() {
-        // Download PDF
-        const downloadBtn = $('#btn-download');
-        if (downloadBtn && !downloadBtn._wired) {
-            downloadBtn.addEventListener('click', handleDownload);
-            downloadBtn._wired = true;
-        }
-
-        // Print
-        const printBtn = $('#btn-print');
-        if (printBtn) {
-            printBtn.addEventListener('click', () => window.print());
-        }
-
-        // Toggle View Mode
-        const toggleBtn = $('#btn-toggle-view');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', handleToggleView);
-        }
-
-        // Close Quiz
-        const closeBtn = $('#btn-close-quiz');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', handleCloseQuiz);
-        }
+        // No events to set up since close button is removed
     }
 
-    async function handleDownload() {
-        const btn = $('#btn-download');
-        if (!btn) return;
+    /* ---------------- Main Render Function ---------------- */
+    function renderQuiz(quizDataRaw, forcedViewMode = null) {
+        console.log('🎯 renderQuiz called with:', quizDataRaw);
 
-        const originalText = btn.textContent;
-        const originalHTML = btn.innerHTML;
-        
-        try {
-            // Show loading state
-            btn.disabled = true;
-            btn.innerHTML = `
-                <span class="loading-spinner" style="display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 1s linear infinite;margin-right:8px;"></span>
-                Generating PDF...
+        const section = $(SEC_ID);
+        const container = $(CONT_ID);
+
+        if (!section || !container) {
+            console.error('Quiz section or container not found in DOM');
+            return;
+        }
+
+        // Extract quiz data
+        const quizData = quizDataRaw?.data || quizDataRaw;
+        const questions = safeArray(quizData.questions);
+
+        if (!questions.length) {
+            container.innerHTML = `
+                <div class="no-questions">
+                    <p>No questions available to display.</p>
+                </div>
             `;
-
-            const container = $(CONT_ID);
-            const quizData = quizState.getQuiz();
-            const title = quizData?.title || quizData?.metadata?.title || 'Quiz';
-            
-            await PDFGenerator.generate(container, title);
-            
-        } catch (error) {
-            console.error('Download error:', error);
-            alert(error.message || 'Failed to generate PDF. Please try again.');
-        } finally {
-            // Restore button state
-            btn.disabled = false;
-            btn.textContent = originalText;
-            btn.innerHTML = originalHTML;
+            unhide(section);
+            return;
         }
-    }
 
-    function handleToggleView() {
-        const newMode = ViewModeManager.toggleMode();
-        const quizData = quizState.getQuiz();
-        
-        if (quizData) {
-            renderQuiz(quizData, newMode);
-            updateViewModeLabel(newMode);
-        }
-    }
+        // Store quiz data
+        quizState.setQuiz(quizData);
 
-    function handleCloseQuiz() {
-        const sec = $(SEC_ID);
-        const cont = $(CONT_ID);
-        
-        if (sec) {
-            sec.style.display = 'none';
-            sec.setAttribute('aria-hidden', 'true');
-        }
-        
-        if (cont) {
-            cont.innerHTML = '';
-        }
-        
-        quizState.clear();
-        
-        // Clear event listeners
-        const downloadBtn = $('#btn-download');
-        if (downloadBtn && downloadBtn._wired) {
-            downloadBtn._wired = false;
-            downloadBtn.onclick = null;
-        }
-    }
+        // Determine view mode
+        const viewMode = forcedViewMode || ViewModeManager.getMode();
 
-    function updateViewModeLabel(mode) {
-        const label = $('#view-mode-label');
-        if (label) {
-            label.textContent = mode === 'teacher' ? 'Student View' : 'Teacher View';
-        }
-        
-        const toggleBtn = $('#btn-toggle-view');
-        if (toggleBtn) {
-            toggleBtn.setAttribute('title', `Switch to ${mode === 'teacher' ? 'student' : 'teacher'} view`);
-            toggleBtn.setAttribute('aria-label', `Currently in ${mode} view. Click to switch.`);
-        }
-    }
+        // Extract settings
+        const settings = extractSettings(quizData);
+        const title = quizData.title || quizData.metadata?.title || settings.pdf_name || 'Quiz';
 
-    /* ---------------- Main Quiz Renderer ---------------- */
-    function renderQuiz(quizData, viewMode = null) {
-        try {
-            const root = quizData?.data || quizData || {};
-            const title = root.title || root.metadata?.title || 'Generated Quiz';
-            const questions = safeArray(root.questions);
-            const settings = extractSettings(root);
-            
-            const effectiveViewMode = viewMode || ViewModeManager.getMode();
+        // Build HTML
+        const questionsHtml = questions.map((q, i) => toHtml(q, i, viewMode)).join('');
 
-            const sec = $(SEC_ID);
-            const cont = $(CONT_ID);
-            
-            if (!sec || !cont) {
-                throw new Error('Quiz section or container not found in HTML');
-            }
+        container.innerHTML = `
+            ${renderExamHeader(title, settings, viewMode)}
+            ${renderToolbar()}
+            <div class="questions-list">
+                ${questionsHtml}
+            </div>
+        `;
 
-            // Store quiz data
-            quizState.setQuiz(quizData);
+        // Setup events
+        setupToolbarEvents();
 
-            // Show section
-            unhide(sec);
-            sec.setAttribute('aria-hidden', 'false');
+        // Show section
+        unhide(section);
 
-            // Render content
-            cont.innerHTML = questions.length
-                ? renderExamHeader(title, settings, effectiveViewMode) + 
-                  renderToolbar() +
-                  questions.map((q, i) => toHtml(q, i, effectiveViewMode)).join('')
-                : '<div class="no-questions" role="alert">No questions available for this quiz.</div>';
+        // Scroll to top with a small delay to ensure rendering is complete
+        setTimeout(() => {
+            section.scrollIntoView({ behavior: CONFIG.ui.scrollBehavior, block: 'start' });
+        }, 100);
 
-            // Setup events
-            setupToolbarEvents();
-            updateViewModeLabel(effectiveViewMode);
-
-            // Add animation
-            cont.style.opacity = '0';
-            cont.style.transition = `opacity ${CONFIG.ui.animationDuration}ms ease`;
-            
-            requestAnimationFrame(() => {
-                cont.style.opacity = '1';
-            });
-
-            // Scroll to quiz
-            sec.scrollIntoView({ 
-                behavior: CONFIG.ui.scrollBehavior, 
-                block: 'start' 
-            });
-
-            // Dispatch custom event
-            window.dispatchEvent(new CustomEvent('quiz:rendered', {
-                detail: { 
-                    quizId: root.id || root.quiz_id,
-                    questionCount: questions.length,
-                    viewMode: effectiveViewMode 
-                }
-            }));
-
-        } catch (error) {
-            console.error('Quiz rendering error:', error);
-            alert('Failed to render quiz. Please check console for details.');
-            throw error;
-        }
+        quizState.isRendered = true;
     }
 
     /* ---------------- Public API ---------------- */
     window.renderGeneratedQuiz = function (payload) {
-        return renderQuiz(payload);
+        console.log('📦 renderGeneratedQuiz called with:', payload);
+        renderQuiz(payload, 'teacher'); // Always start in teacher mode (answer key)
     };
 
-    window.getCurrentQuizState = function () {
-        return quizState.getQuiz();
-    };
-
-    window.toggleQuizViewMode = function () {
-        return handleToggleView();
-    };
-
-    window.closeQuiz = function () {
-        return handleCloseQuiz();
-    };
-
-    /* ---------------- Initialize ---------------- */
+    /* ---------------- Styles ---------------- */
     function initStyles() {
-        if (!document.querySelector('#quiz-renderer-styles')) {
-            const style = document.createElement('style');
-            style.id = 'quiz-renderer-styles';
-            style.textContent = `
-                /* Quiz Section */
-                #${SEC_ID} {
+        if (document.getElementById('publish-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'publish-styles';
+        style.textContent = `
+                /* Container - Centered Layout */
+                #quiz-section {
+                    max-width: 900px;
+                    margin: 2rem auto 0 auto;  /* Added top margin of 2rem */
+                    padding: 2rem 1rem;
                     position: relative;
-                    margin: 2rem 0;
-                    padding: 1.5rem;
-                    background: #ffffff;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-                    border: 1px solid #e5e7eb;
+                    display: none; /* Hidden by default */
                 }
 
-                /* Toolbar */
-                .quiz-toolbar {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 1.5rem;
-                    padding: 0.75rem 1rem;
-                    background: #f8fafc;
+                #quiz-container {
+                    background: white;
                     border-radius: 8px;
-                    border: 1px solid #e2e8f0;
-                    flex-wrap: wrap;
-                    gap: 0.75rem;
-                }
-
-                .toolbar-group {
-                    display: flex;
-                    gap: 0.5rem;
-                    flex-wrap: wrap;
-                }
-
-                .toolbar-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    padding: 0.625rem 1rem;
-                    background: #ffffff;
-                    border: 1px solid #d1d5db;
-                    border-radius: 6px;
-                    color: #374151;
-                    font-size: 0.875rem;
-                    font-weight: 500;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    text-decoration: none;
-                }
-
-                .toolbar-btn:hover {
-                    background: #f3f4f6;
-                    border-color: #9ca3af;
-                    transform: translateY(-1px);
-                }
-
-                .toolbar-btn:active {
-                    transform: translateY(0);
-                }
-
-                .toolbar-btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    transform: none;
-                }
-
-                .toolbar-icon {
-                    width: 1.125rem;
-                    height: 1.125rem;
-                }
-
-                .close-btn {
-                    color: #dc2626;
-                    border-color: #fca5a5;
-                }
-
-                .close-btn:hover {
-                    background: #fef2f2;
-                    border-color: #f87171;
-                }
-
-                .toggle-view-btn {
-                    background: #dbeafe;
-                    border-color: #93c5fd;
-                    color: #1e40af;
-                }
-
-                .toggle-view-btn:hover {
-                    background: #bfdbfe;
-                    border-color: #60a5fa;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    padding: 2rem;
+                    position: relative;
                 }
 
                 /* Exam Header */
                 .exam-header {
                     margin-bottom: 2rem;
+                    text-align: center;
+                    position: relative;
                 }
 
                 .exam-header-top {
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: center;
                     align-items: center;
-                    margin-bottom: 1rem;
-                    flex-wrap: wrap;
-                    gap: 1rem;
+                    margin-bottom: 1.5rem;
+                    padding: 0;
+                    position: relative;
+                    min-height: 48px;
                 }
 
                 .exam-header h1 {
                     margin: 0;
-                    color: #111827;
-                    font-size: 1.875rem;
+                    font-size: 2rem;
                     font-weight: 700;
-                    line-height: 1.2;
-                }
-
-                .view-mode-badge {
-                    padding: 0.375rem 0.75rem;
-                    border-radius: 9999px;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-
-                .teacher-mode {
-                    background: #fef3c7;
-                    color: #92400e;
-                    border: 1px solid #fbbf24;
-                }
-
-                .student-mode {
-                    background: #dbeafe;
-                    color: #1e40af;
-                    border: 1px solid #93c5fd;
+                    color: #1f2937;
                 }
 
                 .exam-meta {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 1rem;
-                    margin-top: 0.5rem;
-                    padding: 0.75rem;
+                    justify-content: center;
+                    margin: 1rem 0;
+                    padding: 1rem;
                     background: #f9fafb;
                     border-radius: 6px;
-                    border: 1px solid #e5e7eb;
                 }
 
                 .meta-item {
+                    color: #6b7280;
                     font-size: 0.875rem;
-                    color: #4b5563;
                 }
 
                 .meta-item strong {
@@ -878,34 +602,48 @@
                     margin-right: 0.25rem;
                 }
 
-                .exam-divider {
-                    margin: 1.5rem 0;
-                    border: none;
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent, #d1d5db, transparent);
+                .exam-note {
+                    flex-basis: 100%;
+                    text-align: center;
+                    padding: 0.75rem;
+                    background: #fef3c7;
+                    border: 1px solid #fbbf24;
+                    border-radius: 6px;
+                    color: #92400e;
                 }
 
-                /* Question Cards */
+                .exam-divider {
+                    border: none;
+                    border-top: 2px solid #e5e7eb;
+                    margin: 1.5rem 0;
+                }
+
+                /* Questions */
+                .questions-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.5rem;
+                }
+
                 .question-card {
-                    margin-bottom: 1.5rem;
-                    padding: 1.5rem;
-                    background: #ffffff;
+                    background: white;
                     border: 1px solid #e5e7eb;
                     border-radius: 8px;
-                    transition: box-shadow 0.2s ease;
+                    padding: 1.5rem;
+                    transition: all 0.2s ease;
                 }
 
                 .question-card:hover {
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                 }
 
                 .question-header {
                     display: flex;
                     justify-content: space-between;
-                    align-items: flex-start;
+                    align-items: center;
                     margin-bottom: 1rem;
                     flex-wrap: wrap;
-                    gap: 0.75rem;
+                    gap: 0.5rem;
                 }
 
                 .question-header-left {
@@ -915,16 +653,22 @@
                     flex-wrap: wrap;
                 }
 
+                .question-header-right {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
                 .question-number {
                     margin: 0;
                     font-size: 1.125rem;
                     font-weight: 600;
-                    color: #111827;
+                    color: #1f2937;
                 }
 
                 .difficulty-badge {
-                    padding: 0.25rem 0.5rem;
-                    border-radius: 4px;
+                    padding: 0.25rem 0.75rem;
+                    border-radius: 9999px;
                     font-size: 0.75rem;
                     font-weight: 600;
                     text-transform: uppercase;
@@ -943,15 +687,6 @@
                 .difficulty-badge[aria-label*="Hard"] {
                     background: #fee2e2;
                     color: #991b1b;
-                }
-
-                .question-points {
-                    padding: 0.25rem 0.5rem;
-                    background: #e0e7ff;
-                    color: #3730a3;
-                    border-radius: 4px;
-                    font-size: 0.75rem;
-                    font-weight: 600;
                 }
 
                 .question-type {
@@ -1051,6 +786,21 @@
                     line-height: 1.5;
                 }
 
+                .answer-section {
+                    margin-top: 1rem;
+                    padding: 1rem;
+                    background: #f0fdf4;
+                    border: 1px solid #bbf7d0;
+                    border-radius: 6px;
+                }
+
+                .answer-label {
+                    font-weight: 600;
+                    color: #166534;
+                    margin-bottom: 0.5rem;
+                    font-size: 0.875rem;
+                }
+
                 /* Correct Answer Section */
                 .correct-answer-section {
                     margin-top: 1rem;
@@ -1109,13 +859,6 @@
 
                 /* Print Styles */
                 @media print {
-                    .quiz-toolbar,
-                    .close-quiz-btn,
-                    .view-mode-badge,
-                    .toggle-view-btn {
-                        display: none !important;
-                    }
-
                     .question-card {
                         break-inside: avoid;
                         page-break-inside: avoid;
@@ -1134,39 +877,20 @@
 
                 /* Responsive */
                 @media (max-width: 768px) {
-                    .quiz-toolbar {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-
-                    .toolbar-group {
-                        width: 100%;
-                        justify-content: center;
-                    }
-
-                    .toolbar-btn {
-                        flex: 1;
-                        justify-content: center;
-                        min-width: 140px;
+                    #quiz-container {
+                        padding: 1rem;
                     }
 
                     .exam-header-top {
-                        flex-direction: column;
-                        align-items: flex-start;
+                        padding: 0;
                     }
 
-                    .question-header {
-                        flex-direction: column;
-                        align-items: flex-start;
-                    }
-
-                    .question-header-right {
-                        align-self: stretch;
+                    .exam-header h1 {
+                        font-size: 1.5rem;
                     }
                 }
             `;
-            document.head.appendChild(style);
-        }
+        document.head.appendChild(style);
     }
 
     // Initialize when DOM is ready

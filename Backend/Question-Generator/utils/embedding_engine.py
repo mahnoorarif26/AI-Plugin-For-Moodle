@@ -1,66 +1,115 @@
+"""
+Firestore-only Embedding Engine - NO LOCAL STORAGE
+All embeddings stored directly in Firestore
+"""
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-import pickle
 import os
 
 class QuestionEmbeddingEngine:
     """
     Semantic search for existing questions using embeddings.
-    Helps teachers avoid duplicate questions and find similar ones.
+    Stores ALL embeddings in Firestore - NO local pickle files.
     """
     
     def __init__(self, model_name='all-MiniLM-L6-v2'):
         """
-        Uses a lightweight model (90MB) that works on CPU.
-        Fast inference: ~50ms per query
+        Initialize with Firestore backend only.
+        Uses in-memory cache for performance during session.
         """
         self.model = SentenceTransformer(model_name)
-        self.embeddings_cache = {}
-        self.questions_db = []
-        self.cache_file = os.path.join(
-            os.path.dirname(__file__), 
-            '..', 
-            'data', 
-            'question_embeddings.pkl'
-        )
+        self.embeddings_cache = {}  # Session-only in-memory cache
+        self.questions_db = []      # Session-only in-memory cache
+        self._db = None
         
-        # Ensure data directory exists
-        os.makedirs(os.path.dirname(self.cache_file), exist_ok=True)
+        # Initialize Firestore connection
+        self._init_firestore()
         
-        # Load existing embeddings if available
-        self.load_cache()
+        # Load embeddings from Firestore into memory for this session
+        self.load_from_firestore()
+    
+    def _init_firestore(self):
+        """Initialize Firestore connection"""
+        try:
+            import firebase_admin
+            from firebase_admin import credentials, firestore
+            
+            # Get existing app or initialize
+            if not firebase_admin._apps:
+                cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccountKey.json")
+                cred = credentials.Certificate(cred_path)
+                firebase_admin.initialize_app(cred)
+            
+            self._db = firestore.client()
+            print("✅ Firestore initialized for embeddings (cloud-only storage)")
+        except Exception as e:
+            print(f"⚠️ Firestore init failed: {e}")
+            self._db = None
     
     def add_question(self, question_id: str, question_text: str, metadata: dict):
-        """Add a question to the searchable database"""
+        """Add question embedding directly to Firestore"""
         if not question_text or not question_text.strip():
+            return
+        
+        if not self._db:
+            print("⚠️ Firestore not available, cannot save embedding")
             return
         
         # Generate embedding
         embedding = self.model.encode(question_text)
         
-        # Check if already exists
-        existing = next((q for q in self.questions_db if q['id'] == question_id), None)
-        if existing:
-            # Update existing
-            existing['text'] = question_text
-            existing['embedding'] = embedding
-            existing['metadata'] = metadata
-        else:
-            # Add new
-            self.questions_db.append({
-                'id': question_id,
-                'text': question_text,
-                'embedding': embedding,
-                'metadata': metadata
-            })
+        # Update in-memory cache for this session
+        question_entry = {
+            'id': question_id,
+            'text': question_text,
+            'embedding': embedding,
+            'metadata': metadata
+        }
         
-        # Update cache
+        # Update or add to session cache
+        existing_idx = next((i for i, q in enumerate(self.questions_db) if q['id'] == question_id), None)
+        if existing_idx is not None:
+            self.questions_db[existing_idx] = question_entry
+        else:
+            self.questions_db.append(question_entry)
+        
         self.embeddings_cache[question_id] = embedding
-        self.save_cache()
+        
+        # Save directly to Firestore (no pickle)
+        self._save_to_firestore(question_id, question_text, embedding.tolist(), metadata)
+    
+    def _save_to_firestore(self, question_id: str, question_text: str, embedding_list: list, metadata: dict):
+        """Save single embedding to Firestore"""
+        if not self._db:
+            return
+        
+        try:
+            doc_data = {
+                'question_id': question_id,
+                'text': question_text,
+                'embedding': embedding_list,
+                'metadata': metadata,
+                'type': metadata.get('type', 'unknown'),
+                'difficulty': metadata.get('difficulty', 'medium'),
+                'tags': metadata.get('tags', []),
+                'quiz_id': metadata.get('quiz_id', ''),
+                'source': metadata.get('source', 'unknown')
+            }
+            
+            self._db.collection('question_embeddings').document(question_id).set(doc_data)
+            
+        except Exception as e:
+            print(f"⚠️ Failed to save embedding to Firestore: {e}")
     
     def add_questions_bulk(self, questions: list):
         """Bulk add questions from a quiz"""
+        if not self._db:
+            print("⚠️ Firestore not available, cannot save embeddings")
+            return 0
+        
+        success_count = 0
+        
         for q in questions:
             q_id = q.get('id', '')
             q_text = q.get('prompt') or q.get('question_text', '')
@@ -68,10 +117,58 @@ class QuestionEmbeddingEngine:
                 'type': q.get('type'),
                 'difficulty': q.get('difficulty'),
                 'tags': q.get('tags', []),
-                'quiz_id': q.get('quiz_id', '')
+                'quiz_id': q.get('quiz_id', ''),
+                'source': q.get('source', 'bulk_import')
             }
+            
             if q_id and q_text:
-                self.add_question(q_id, q_text, metadata)
+                try:
+                    self.add_question(q_id, q_text, metadata)
+                    success_count += 1
+                except Exception as e:
+                    print(f"⚠️ Failed to add question {q_id}: {e}")
+        
+        return success_count
+    
+    def load_from_firestore(self):
+        """Load all embeddings from Firestore into memory at startup"""
+        if not self._db:
+            print("⚠️ Firestore not available, starting with empty index")
+            return
+        
+        try:
+            docs = self._db.collection('question_embeddings').stream()
+            
+            loaded_count = 0
+            for doc in docs:
+                data = doc.to_dict()
+                
+                question_id = data.get('question_id')
+                text = data.get('text')
+                embedding_list = data.get('embedding')
+                metadata = data.get('metadata', {})
+                
+                if not question_id or not text or not embedding_list:
+                    continue
+                
+                # Convert list back to numpy array
+                embedding = np.array(embedding_list)
+                
+                # Add to in-memory cache
+                self.questions_db.append({
+                    'id': question_id,
+                    'text': text,
+                    'embedding': embedding,
+                    'metadata': metadata
+                })
+                
+                self.embeddings_cache[question_id] = embedding
+                loaded_count += 1
+            
+            print(f"✅ Loaded {loaded_count} question embeddings from Firestore")
+            
+        except Exception as e:
+            print(f"⚠️ Failed to load embeddings from Firestore: {e}")
     
     def find_similar_questions(
         self, 
@@ -82,7 +179,7 @@ class QuestionEmbeddingEngine:
         exclude_ids: list = None
     ) -> list:
         """
-        Find similar questions semantically.
+        Find similar questions semantically using in-memory index.
         
         Returns: [
             {
@@ -149,6 +246,7 @@ class QuestionEmbeddingEngine:
         """Get statistics about the question database"""
         type_counts = {}
         difficulty_counts = {}
+        source_counts = {}
         
         for q in self.questions_db:
             # Count by type
@@ -158,38 +256,75 @@ class QuestionEmbeddingEngine:
             # Count by difficulty
             diff = q['metadata'].get('difficulty', 'unknown')
             difficulty_counts[diff] = difficulty_counts.get(diff, 0) + 1
+            
+            # Count by source
+            source = q['metadata'].get('source', 'unknown')
+            source_counts[source] = source_counts.get(source, 0) + 1
         
         return {
             'total_questions': len(self.questions_db),
             'by_type': type_counts,
-            'by_difficulty': difficulty_counts
+            'by_difficulty': difficulty_counts,
+            'by_source': source_counts,
+            'storage': 'Firestore (cloud-only)'
         }
     
-    def save_cache(self):
-        """Save embeddings to disk"""
+    def delete_question(self, question_id: str):
+        """Delete a question embedding from Firestore and cache"""
+        if not self._db:
+            return False
+        
         try:
-            with open(self.cache_file, 'wb') as f:
-                pickle.dump({
-                    'questions_db': self.questions_db,
-                    'embeddings_cache': self.embeddings_cache
-                }, f)
-            print(f"✅ Saved {len(self.questions_db)} questions to cache")
+            # Remove from Firestore
+            self._db.collection('question_embeddings').document(question_id).delete()
+            
+            # Remove from in-memory cache
+            self.questions_db = [q for q in self.questions_db if q['id'] != question_id]
+            if question_id in self.embeddings_cache:
+                del self.embeddings_cache[question_id]
+            
+            print(f"✅ Deleted embedding: {question_id}")
+            return True
+            
         except Exception as e:
-            print(f"⚠️ Failed to save cache: {e}")
+            print(f"⚠️ Failed to delete embedding: {e}")
+            return False
     
-    def load_cache(self):
-        """Load embeddings from disk"""
-        if os.path.exists(self.cache_file):
-            try:
-                with open(self.cache_file, 'rb') as f:
-                    data = pickle.load(f)
-                    self.questions_db = data.get('questions_db', [])
-                    self.embeddings_cache = data.get('embeddings_cache', {})
-                print(f"✅ Loaded {len(self.questions_db)} questions from cache")
-            except Exception as e:
-                print(f"⚠️ Failed to load cache: {e}")
-                self.questions_db = []
-                self.embeddings_cache = {}
+    def clear_all_embeddings(self):
+        """DANGER: Clear all embeddings from Firestore"""
+        if not self._db:
+            return False
+        
+        try:
+            # Delete all documents in collection
+            docs = self._db.collection('question_embeddings').stream()
+            batch = self._db.batch()
+            count = 0
+            
+            for doc in docs:
+                batch.delete(doc.reference)
+                count += 1
+                
+                # Commit in batches of 500 (Firestore limit)
+                if count % 500 == 0:
+                    batch.commit()
+                    batch = self._db.batch()
+            
+            # Commit remaining
+            if count % 500 != 0:
+                batch.commit()
+            
+            # Clear in-memory cache
+            self.questions_db = []
+            self.embeddings_cache = {}
+            
+            print(f"✅ Cleared {count} embeddings from Firestore")
+            return True
+            
+        except Exception as e:
+            print(f"⚠️ Failed to clear embeddings: {e}")
+            return False
 
-# Global instance
+
+# Global instance - uses Firestore only
 question_embedder = QuestionEmbeddingEngine()

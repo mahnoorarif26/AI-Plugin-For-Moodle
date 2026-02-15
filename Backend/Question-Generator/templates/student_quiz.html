@@ -3,67 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - Take Quiz</title>
-
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-
+    <title>{{ title }}</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
         :root {
-            --primary-orange: #ff9f1c;
-            --dark-orange: #cc7a00;
-            --danger-red: #cc0000;
-            --warning-orange: #ff9800;
+            --primary-orange: #FF9F1C;
+            --dark-orange: #E07B00;
+            --light-orange: #FFBB5C;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(to bottom, #f9f9f9, #fff);
-            margin: 0;
+            background: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        /* ================= TIMER BAR ================= */
         .timer-bar {
             position: fixed;
             top: 0;
+            left: 0;
             width: 100%;
-            background: var(--primary-orange);
+            background: var(--dark-orange);
             color: white;
             text-align: center;
             padding: 12px;
             font-weight: bold;
             z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         .countdown {
-            font-family: monospace;
-            font-size: 1.3em;
-            background: rgba(255,255,255,0.2);
-            padding: 4px 10px;
-            border-radius: 6px;
-            margin-left: 6px;
+            font-size: 1.2em;
+            margin-left: 10px;
         }
 
-        /* ================= CONTAINER ================= */
         .container {
-            max-width: 800px;
-            margin: 100px auto 50px;
+            max-width: 900px;
+            margin: 60px auto 20px;
             background: white;
-            padding: 30px;
+            padding: 40px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
         h1 {
             color: var(--primary-orange);
-            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
         }
 
-        .student-info {
+        .student-info-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-orange);
+            margin-bottom: 25px;
+        }
+
+        .student-info-section h2 {
+            color: var(--dark-orange);
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+        }
+
+        .form-group input:required:valid {
+            border-color: #10b981;
+        }
+
+        .quiz-info {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
-            border-left: 4px solid var(--primary-orange);
             margin-bottom: 20px;
+        }
+
+        .quiz-info p {
+            margin: 5px 0;
+            color: #666;
         }
 
         .warning-box {
@@ -89,6 +137,7 @@
         .question-prompt {
             font-weight: bold;
             margin-bottom: 10px;
+            font-size: 16px;
         }
 
         .question-meta span {
@@ -132,10 +181,23 @@
             cursor: pointer;
             width: 100%;
             margin-top: 20px;
+            transition: background 0.3s;
         }
 
         .submit-btn:hover {
             background: var(--dark-orange);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
         }
     </style>
 </head>
@@ -150,35 +212,65 @@
 
 <!-- ================= MAIN ================= -->
 <div class="container"
-     data-time-limit="{{ time_limit }}"
+     data-time-limit="{{ time_limit if time_limit else 0 }}"
      data-due-date="{{ due_date }}">
 
-    <div class="student-info">
-        <h1>{{ title }}</h1>
-        <p><strong>Student:</strong> {{ student_name }} ({{ student_email }})</p>
+    <h1>{{ title }}</h1>
 
-        <p>
-            <strong>Time Limit:</strong>
-            {{ time_limit if time_limit else "No time limit" }}
-        </p>
+    <!-- ================= STUDENT INFORMATION FORM ================= -->
+    <div class="student-info-section">
+        <h2>📝 Student Information (Required)</h2>
+        <div class="form-group">
+            <label for="student_name">Full Name <span style="color: red;">*</span></label>
+            <input type="text" 
+                   id="student_name" 
+                   name="student_name" 
+                   placeholder="Enter your full name"
+                   required
+                   minlength="2"
+                   maxlength="100">
+            <span class="error-message" id="name-error">Please enter your full name</span>
+        </div>
 
-        <p>
-            <strong>Due Date:</strong>
-            {{ due_date if due_date else "No due date" }}
-        </p>
+        <div class="form-group">
+            <label for="student_email">Email Address <span style="color: red;">*</span></label>
+            <input type="email" 
+                   id="student_email" 
+                   name="student_email" 
+                   placeholder="Enter your email address"
+                   required
+                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+            <span class="error-message" id="email-error">Please enter a valid email address</span>
+        </div>
+
+        <div class="form-group">
+            <label for="roll_no">Roll Number <span style="color: red;">*</span></label>
+            <input type="text" 
+                   id="roll_no" 
+                   name="roll_no" 
+                   placeholder="Enter your roll number"
+                   required
+                   maxlength="50">
+            <span class="error-message" id="roll-error">Please enter your roll number</span>
+        </div>
+    </div>
+
+    <!-- ================= QUIZ INFO ================= -->
+    <div class="quiz-info">
+        <p><strong>Time Limit:</strong> {% if time_limit and time_limit > 0 %}{{ time_limit }} minutes{% else %}No time limit{% endif %}</p>
+        <p><strong>Due Date:</strong> {{ settings.due_date|default("No due date") }}</p>
+        <p><strong>Total Questions:</strong> {{ questions|length }}</p>
     </div>
 
     <div class="warning-box">
         <i class='bx bx-error-circle'></i>
-        <span>Quiz will auto-submit when time ends (if enabled).</span>
+        <span>Please fill in your details above before starting the quiz. Quiz will auto-submit when time ends (if enabled).</span>
     </div>
 
     <!-- ================= QUIZ FORM ================= -->
-    <form method="POST" action="{{ url_for('submit_quiz') }}" id="quiz-form">
+    <form method="POST" action="{{ url_for('student.submit_quiz') }}" id="quiz-form">
 
         <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
-        <input type="hidden" name="student_name" value="{{ student_name }}">
-        <input type="hidden" name="student_email" value="{{ student_email }}">
 
         {% for question in questions %}
         <div class="question-block">
@@ -218,7 +310,7 @@
         </div>
         {% endfor %}
 
-        <button class="submit-btn" id="submit-btn">
+        <button class="submit-btn" id="submit-btn" type="submit">
             <i class='bx bx-send'></i> Submit Quiz
         </button>
 
@@ -232,8 +324,102 @@
     const timerBar = document.getElementById("timer-bar");
     const timerText = document.getElementById("quiz-timer");
     const form = document.getElementById("quiz-form");
+    const submitBtn = document.getElementById("submit-btn");
 
-    // If NO time limit → hide timer
+    // Student info fields
+    const studentNameInput = document.getElementById("student_name");
+    const studentEmailInput = document.getElementById("student_email");
+    const rollNoInput = document.getElementById("roll_no");
+
+    // Validate student information before submission
+    form.addEventListener("submit", function(e) {
+        let isValid = true;
+
+        // Validate name
+        if (!studentNameInput.value.trim() || studentNameInput.value.trim().length < 2) {
+            document.getElementById("name-error").style.display = "block";
+            studentNameInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("name-error").style.display = "none";
+            studentNameInput.style.borderColor = "#10b981";
+        }
+
+        // Validate email
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+        if (!emailPattern.test(studentEmailInput.value.trim())) {
+            document.getElementById("email-error").style.display = "block";
+            studentEmailInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("email-error").style.display = "none";
+            studentEmailInput.style.borderColor = "#10b981";
+        }
+
+        // Validate roll number
+        if (!rollNoInput.value.trim()) {
+            document.getElementById("roll-error").style.display = "block";
+            rollNoInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("roll-error").style.display = "none";
+            rollNoInput.style.borderColor = "#10b981";
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            alert("⚠️ Please fill in all student information fields correctly before submitting.");
+            // Scroll to top to show the form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return false;
+        }
+
+        // Add student info to form data as hidden fields
+        const nameField = document.createElement("input");
+        nameField.type = "hidden";
+        nameField.name = "student_name";
+        nameField.value = studentNameInput.value.trim();
+        form.appendChild(nameField);
+
+        const emailField = document.createElement("input");
+        emailField.type = "hidden";
+        emailField.name = "student_email";
+        emailField.value = studentEmailInput.value.trim();
+        form.appendChild(emailField);
+
+        const rollField = document.createElement("input");
+        rollField.type = "hidden";
+        rollField.name = "roll_no";
+        rollField.value = rollNoInput.value.trim();
+        form.appendChild(rollField);
+
+        return true;
+    });
+
+    // Real-time validation feedback
+    studentNameInput.addEventListener("input", function() {
+        if (this.value.trim().length >= 2) {
+            document.getElementById("name-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    studentEmailInput.addEventListener("input", function() {
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+        if (emailPattern.test(this.value.trim())) {
+            document.getElementById("email-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    rollNoInput.addEventListener("input", function() {
+        if (this.value.trim()) {
+            document.getElementById("roll-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    // Timer functionality
     if (!timeLimitRaw || timeLimitRaw === "None" || timeLimitRaw === "") {
         timerBar.style.display = "none";
     } else {
