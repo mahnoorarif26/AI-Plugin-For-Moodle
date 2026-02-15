@@ -99,27 +99,28 @@
 
         /* Main Container */
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 40px auto;
             padding: 30px;
-        }
-
-        /* Header Section */
-        .submissions-header {
             background: white;
             border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
 
-        .submissions-header h1 {
+        /* Header Section */
+        .preview-header {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .preview-header h1 {
             color: var(--primary-orange);
             font-size: 28px;
             margin-bottom: 10px;
         }
 
-        .submissions-badge {
+        .preview-badge {
             display: inline-block;
             padding: 6px 14px;
             background: var(--light-orange);
@@ -149,36 +150,55 @@
             color: var(--primary-orange);
         }
 
-        /* Statistics Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
+        /* Total Submissions Card - Narrower */
+        .total-card {
+            background: linear-gradient(135deg, #fff7ed, #fff);
             border-radius: 12px;
+            padding: 25px;
+            margin: 0 auto 30px auto;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            border-left: 4px solid var(--primary-orange);
+            border: 1px solid var(--border-orange);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            max-width: 350px; /* Reduced width */
+            width: 100%;
         }
 
-        .stat-label {
-            font-size: 14px;
+        .total-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #ff9f1c, #ff6b35);
+        }
+
+        .total-label {
+            font-size: 13px;
             color: #666;
             margin-bottom: 8px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
+        .total-value {
+            font-size: 48px;
+            font-weight: 800;
             color: var(--primary-orange);
+            line-height: 1.2;
+            text-shadow: 2px 2px 4px rgba(255, 159, 28, 0.1);
         }
 
-        /* Submissions Table */
+        .total-sublabel {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Submissions Table Container */
         .submissions-container {
             background: white;
             border-radius: 12px;
@@ -187,69 +207,104 @@
         }
 
         .submissions-container h2 {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             color: #333;
-            font-size: 20px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .submissions-container h2 i {
+            color: var(--primary-orange);
+            font-size: 24px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
         }
 
         .submissions-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 14px;
         }
 
         .submissions-table thead {
-            background: linear-gradient(135deg, var(--light-orange), #fed7aa);
+            background: var(--light-orange);
         }
 
         .submissions-table th {
-            padding: 15px;
+            padding: 16px;
             text-align: left;
             font-weight: 700;
             color: var(--dark-orange);
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .submissions-table td {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
             font-size: 14px;
+            vertical-align: middle;
         }
 
         .submissions-table tbody tr {
-            transition: background 0.2s ease;
+            transition: all 0.2s ease;
         }
 
         .submissions-table tbody tr:hover {
             background: #f9f9f9;
+            transform: translateX(2px);
         }
 
-        .score-badge {
+        /* Student Info */
+        .student-name {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .student-name i {
+            color: var(--primary-orange);
+            font-size: 18px;
+        }
+
+        .roll-badge {
             display: inline-block;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-weight: 700;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border: 1px solid #81c784;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2e7d32;
+            white-space: nowrap;
+        }
+
+        .email-text {
+            color: #666;
             font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .score-high {
-            background: #d1fae5;
-            color: #065f46;
+        .email-text i {
+            color: var(--primary-orange);
+            font-size: 14px;
         }
 
-        .score-medium {
-            background: #fed7aa;
-            color: #92400e;
-        }
-
-        .score-low {
-            background: #fecaca;
-            color: #991b1b;
-        }
-
-        .view-btn {
-            padding: 8px 16px;
-            background: var(--primary-orange);
+        /* Action Buttons */
+        .action-btn {
+            padding: 8px 18px;
+            background: linear-gradient(to right, #ffb366, #fb9026);
             color: white;
             border: none;
             border-radius: 6px;
@@ -257,17 +312,26 @@
             font-size: 13px;
             font-weight: 600;
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(251, 144, 38, 0.2);
         }
 
-        .view-btn:hover {
-            background: var(--dark-orange);
+        .action-btn:hover {
+            background: linear-gradient(to right, #fd9f41, #ffb366);
+            box-shadow: 0 4px 8px rgba(251, 144, 38, 0.3);
             transform: translateY(-2px);
+        }
+
+        .action-btn i {
+            font-size: 14px;
         }
 
         /* Empty State */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
             color: #999;
         }
 
@@ -275,30 +339,34 @@
             font-size: 64px;
             margin-bottom: 20px;
             opacity: 0.3;
+            color: var(--primary-orange);
         }
 
         .empty-state h2 {
             margin-bottom: 10px;
             color: #666;
+            font-size: 20px;
         }
 
         .empty-state p {
             color: #999;
             font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto;
         }
 
         /* Loading State */
         .loading-state {
             text-align: center;
-            padding: 60px 20px;
+            padding: 80px 20px;
         }
 
         .loading-spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid var(--primary-orange);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
@@ -310,36 +378,45 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .container {
-                margin: 20px;
-                padding: 15px;
+            body {
+                padding: 0;
             }
 
             .topbar {
                 flex-direction: column;
                 height: auto;
                 padding: 15px;
+                gap: 10px;
             }
 
             .topbar-actions {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: center;
             }
 
-            .stats-grid {
-                grid-template-columns: 1fr;
+            .container {
+                margin: 20px;
+                padding: 20px;
             }
 
-            .submissions-table {
-                font-size: 12px;
+            .preview-header h1 {
+                font-size: 24px;
             }
 
-            .submissions-table th,
-            .submissions-table td {
-                padding: 10px;
+            .quiz-meta {
+                flex-direction: column;
+                gap: 10px;
             }
 
-            /* Stack table on mobile */
+            .total-card {
+                max-width: 100%; /* Full width on mobile */
+                padding: 20px;
+            }
+
+            .total-value {
+                font-size: 42px;
+            }
+
             .submissions-table thead {
                 display: none;
             }
@@ -347,15 +424,15 @@
             .submissions-table tbody tr {
                 display: block;
                 margin-bottom: 15px;
-                border: 1px solid #eee;
-                border-radius: 8px;
+                border: 1px solid #f0f0f0;
+                border-radius: 10px;
                 padding: 15px;
             }
 
             .submissions-table td {
                 display: block;
                 text-align: right;
-                padding: 8px 0;
+                padding: 10px 0;
                 border: none;
             }
 
@@ -365,6 +442,10 @@
                 font-weight: 600;
                 color: #666;
             }
+
+            .student-name, .email-text {
+                justify-content: flex-end;
+            }
         }
     </style>
 </head>
@@ -373,7 +454,7 @@
     <nav class="topbar">
         <div class="brand">
             <i class='bx bx-file-blank'></i>
-            <span>Submissions</span>
+            <span>Student Submissions</span>
         </div>
         <div class="topbar-actions">
             <a href="/teacher/generate" class="btn btn-secondary">
@@ -386,8 +467,11 @@
     <!-- Main Container -->
     <div class="container">
         <!-- Header -->
-        <div class="submissions-header">
-            <span class="submissions-badge">Student Submissions</span>
+        <div class="preview-header">
+            <span class="preview-badge">
+                <i class='bx bx-check-circle' style="margin-right: 4px;"></i>
+                Quiz Submissions
+            </span>
             <h1>{{ quiz_title }}</h1>
             <div class="quiz-meta">
                 <div class="quiz-meta-item">
@@ -397,29 +481,22 @@
             </div>
         </div>
 
-        <!-- Statistics Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Submissions</div>
-                <div class="stat-value" id="total-submissions">-</div>
+        <!-- Total Submissions Card - Narrower -->
+        <div class="total-card">
+            <div class="total-label">
+                <i class='bx bx-group' style="margin-right: 4px;"></i>
+                Total Submissions
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Average Score</div>
-                <div class="stat-value" id="average-score">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Highest Score</div>
-                <div class="stat-value" id="highest-score">-</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Lowest Score</div>
-                <div class="stat-value" id="lowest-score">-</div>
-            </div>
+            <div class="total-value" id="total-submissions">0</div>
+            <div class="total-sublabel">students have submitted</div>
         </div>
 
         <!-- Submissions Table -->
         <div class="submissions-container">
-            <h2>All Submissions</h2>
+            <h2>
+                <i class='bx bx-list-ul'></i>
+                Student Submissions
+            </h2>
             <div id="submissions-content">
                 <!-- Loading state -->
                 <div class="loading-state">
@@ -440,13 +517,11 @@
 
         async function loadSubmissions() {
             try {
-                // This endpoint needs to be implemented in your backend
                 const response = await fetch(`/api/quizzes/${quizId}/submissions`);
                 const data = await response.json();
 
                 if (data.success && data.submissions) {
                     displaySubmissions(data.submissions);
-                    updateStatistics(data.submissions);
                 } else {
                     showEmptyState();
                 }
@@ -464,45 +539,54 @@
                 return;
             }
 
+            // Update total submissions count
+            document.getElementById('total-submissions').textContent = submissions.length;
+
             let html = `
-                <table class="submissions-table">
-                    <thead>
-                        <tr>
-                            <th>Student Name</th>
-                            <th>Email</th>
-                            <th>Score</th>
-                            <th>Submitted At</th>
-                            <th>Time Taken</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="table-wrapper">
+                    <table class="submissions-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Roll Number</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
             submissions.forEach(sub => {
-                const scorePercent = sub.total_questions > 0 ? 
-                    Math.round((sub.score / sub.total_questions) * 100) : 0;
+                // Make sure to escape the submission ID properly
+                const subId = sub.id.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
                 
-                const scoreClass = scorePercent >= 75 ? 'score-high' : 
-                                   scorePercent >= 50 ? 'score-medium' : 'score-low';
-
-                const timeTaken = sub.time_taken_sec ? 
-                    formatTime(sub.time_taken_sec) : 'N/A';
-
+                // Get roll number with fallback
+                const rollNo = sub.roll_no || 'N/A';
+                
                 html += `
                     <tr>
-                        <td data-label="Student">${sub.student_name || 'Unknown'}</td>
-                        <td data-label="Email">${sub.student_email || 'N/A'}</td>
-                        <td data-label="Score">
-                            <span class="score-badge ${scoreClass}">
-                                ${sub.score}/${sub.total_questions} (${scorePercent}%)
+                        <td data-label="Student">
+                            <div class="student-name">
+                                <i class='bx bx-user-circle'></i>
+                                ${sub.student_name || 'Unknown'}
+                            </div>
+                        </td>
+                        <td data-label="Roll Number">
+                            <span class="roll-badge">
+                                <i class='bx bx-id-card' style="margin-right: 4px;"></i>
+                                ${rollNo}
                             </span>
                         </td>
-                        <td data-label="Submitted">${formatDate(sub.submitted_at)}</td>
-                        <td data-label="Time Taken">${timeTaken}</td>
+                        <td data-label="Email">
+                            <div class="email-text">
+                                <i class='bx bx-envelope'></i>
+                                ${sub.student_email || 'N/A'}
+                            </div>
+                        </td>
                         <td data-label="Actions">
-                            <button class="view-btn" onclick="viewSubmission('${sub.id}')">
-                                View Details
+                            <button class="action-btn" onclick="viewGradeDetail('${subId}')">
+                                <i class='bx bx-show'></i>
+                                View Grade Detail
                             </button>
                         </td>
                     </tr>
@@ -510,34 +594,12 @@
             });
 
             html += `
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             `;
 
             container.innerHTML = html;
-        }
-
-        function updateStatistics(submissions) {
-            if (!submissions || submissions.length === 0) {
-                document.getElementById('total-submissions').textContent = '0';
-                document.getElementById('average-score').textContent = '-';
-                document.getElementById('highest-score').textContent = '-';
-                document.getElementById('lowest-score').textContent = '-';
-                return;
-            }
-
-            const total = submissions.length;
-            const scores = submissions.map(s => s.total_questions > 0 ? 
-                Math.round((s.score / s.total_questions) * 100) : 0);
-            
-            const average = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-            const highest = Math.max(...scores);
-            const lowest = Math.min(...scores);
-
-            document.getElementById('total-submissions').textContent = total;
-            document.getElementById('average-score').textContent = average + '%';
-            document.getElementById('highest-score').textContent = highest + '%';
-            document.getElementById('lowest-score').textContent = lowest + '%';
         }
 
         function showEmptyState() {
@@ -549,44 +611,24 @@
                     <p>Students haven't submitted this quiz yet. Check back later.</p>
                 </div>
             `;
-
-            // Update stats
+            
+            // Also reset the total count
             document.getElementById('total-submissions').textContent = '0';
-            document.getElementById('average-score').textContent = '-';
-            document.getElementById('highest-score').textContent = '-';
-            document.getElementById('lowest-score').textContent = '-';
         }
 
-        function viewSubmission(submissionId) {
-            window.location.href = `/teacher/submission/${submissionId}`;
+        function viewGradeDetail(submissionId) {
+            window.open(`/student/grade/${submissionId}?origin=teacher`, '_blank');
         }
 
-        function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            try {
-                const date = new Date(dateString);
-                return date.toLocaleString();
-            } catch (e) {
-                return dateString;
-            }
-        }
+        // Auto-refresh every 30 seconds
+        setInterval(loadSubmissions, 30000);
 
-        function formatTime(seconds) {
-            if (!seconds) return 'N/A';
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            return `${mins}m ${secs}s`;
-        }
-
-        // Keyboard shortcut for back (Escape key)
+        // Add keyboard shortcut for back (Escape key)
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 window.location.href = '/teacher/generate';
             }
         });
-
-        // Auto-refresh every 30 seconds
-        setInterval(loadSubmissions, 30000);
     </script>
 </body>
 </html>

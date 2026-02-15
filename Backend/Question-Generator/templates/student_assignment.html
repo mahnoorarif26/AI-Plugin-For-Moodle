@@ -3,372 +3,665 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - Assignment</title>
+    <title>{{ title }}</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
+        :root {
+            --primary-orange: #FF9F1C;
+            --dark-orange: #E07B00;
+            --light-orange: #FFBB5C;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:#ffffff;
+            min-height: 100vh;
+            padding: 20px;
         }
-        
+
+        .timer-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: var(--dark-orange);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .countdown {
+            font-size: 1.2em;
+            margin-left: 10px;
+        }
+
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
+            max-width: 900px;
+            margin: 60px auto 20px;
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary-orange);
             margin-bottom: 20px;
+            text-align: center;
         }
-        
-        .assignment-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 10px;
-        }
-        
-        .assignment-info {
-            display: flex;
-            justify-content: space-between;
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        
-        .assignment-form {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .question-card {
+
+        /* Student Information Section */
+        .student-info-section {
             background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
+            border-left: 4px solid var(--primary-orange);
             margin-bottom: 25px;
-            border-left: 4px solid #e67e22;
         }
-        
-        .question-header {
-            display: flex;
-            justify-content: between;
-            align-items: start;
+
+        .student-info-section h2 {
+            color: var(--dark-orange);
+            font-size: 18px;
             margin-bottom: 15px;
         }
-        
-        .question-number {
-            background: #e67e22;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: bold;
-            margin-right: 10px;
+
+        .form-group {
+            margin-bottom: 15px;
         }
-        
-        .question-text {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-            flex: 1;
-        }
-        
-        .answer-section {
-            margin-top: 15px;
-        }
-        
-        .answer-textarea {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            font-size: 14px;
-            resize: vertical;
-            min-height: 120px;
-            font-family: inherit;
-        }
-        
-        .answer-textarea:focus {
-            outline: none;
-            border-color: #e67e22;
-        }
-        
-        .file-upload-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border: 2px dashed #bdc3c7;
-            margin: 30px 0;
-            text-align: center;
-        }
-        
-        .file-upload-label {
+
+        .form-group label {
             display: block;
-            margin-bottom: 10px;
             font-weight: 600;
-            color: #2c3e50;
+            margin-bottom: 5px;
+            color: #333;
         }
-        
-        .file-input {
-            margin: 10px 0;
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
         }
-        
-        .file-info {
-            font-size: 12px;
-            color: #7f8c8d;
-            margin-top: 5px;
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-orange);
         }
-        
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
+
+        .form-group input:required:valid {
+            border-color: #10b981;
         }
-        
-        .btn-primary {
-            background-color: #e67e22;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #d35400;
-        }
-        
-        .btn-secondary {
-            background-color: #95a5a6;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-        
-        .submit-section {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        
-        .instructions {
-            background: #d5edf7;
-            border: 1px solid #b8e2f2;
-            color: #0c5460;
+
+        .assignment-info {
+            background: #f8f9fa;
             padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
             margin-bottom: 20px;
         }
-        
+
+        .assignment-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Question Block - Matching Quiz Style */
+        .question-block {
+            border: 1px solid #eee;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            background: #fafafa;
+        }
+
+        .question-prompt {
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        .question-meta {
+            margin-bottom: 15px;
+        }
+
+        .question-meta span {
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            font-size: 0.85em;
+        }
+
+        /* Question Details Sections */
+        .question-details {
+            margin: 15px 0;
+        }
+
+        .detail-section {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            border-left: 3px solid var(--primary-orange);
+        }
+
+        .detail-section h4 {
+            color: var(--dark-orange);
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-section ul {
+            margin-left: 20px;
+            margin-top: 8px;
+        }
+
+        .detail-section li {
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .detail-section p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        /* Code Snippet Display */
+        .code-snippet-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .code-snippet-box pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #2c3e50;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .code-snippet-box code {
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Context/Background Section */
+        .context-section {
+            background: #e8f4f8;
+            border-left: 3px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+        }
+
+        .context-section p {
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        /* Answer Textarea */
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 150px;
+            line-height: 1.6;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-orange);
+        }
+
         .char-count {
             text-align: right;
             font-size: 12px;
             color: #7f8c8d;
             margin-top: 5px;
         }
-        
-        .uploaded-file {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 10px;
+
+        .word-count-hint {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .submit-btn {
+            background: var(--primary-orange);
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .submit-btn:hover {
+            background: var(--dark-orange);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
             display: none;
+        }
+
+        /* Icons for different sections */
+        .icon-requirements { color: #e74c3c; }
+        .icon-deliverables { color: #3498db; }
+        .icon-grading { color: #f39c12; }
+        .icon-objectives { color: #27ae60; }
+        .icon-code { color: #9b59b6; }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin-top: 40px;
+            }
+
+            .question-block {
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1 class="assignment-title">{{ title }}</h1>
-            <div class="assignment-info">
-                <span>Questions: {{ questions|length }}</span>
-                <span>Student: {{ student_name }}</span>
-                <span>Email: {{ student_email }}</span>
-            </div>
-        </header>
 
-        <div class="instructions">
-            <strong>📝 Assignment Instructions:</strong>
-            <ul style="margin: 10px 0 0 20px;">
-                <li>Provide detailed answers for all questions</li>
-                <li>You can upload supporting files if needed</li>
-                <li>Answers will be reviewed by your teacher</li>
-                <li>Submit only when you're finished</li>
-            </ul>
+<body>
+
+<!-- ================= TIMER BAR ================= -->
+<div class="timer-bar" id="timer-bar" style="display: none;">
+    Time Remaining:
+    <span class="countdown" id="timer-countdown">--:--</span>
+</div>
+
+<!-- ================= MAIN ================= -->
+<div class="container"
+     data-time-limit="{{ time_limit if time_limit else 0 }}"
+     data-due-date="{{ due_date }}">
+
+    <h1>{{ title }}</h1>
+
+    <!-- ================= STUDENT INFORMATION FORM ================= -->
+    <div class="student-info-section">
+        <h2>📝 Student Information (Required)</h2>
+        <div class="form-group">
+            <label for="student_name">Full Name <span style="color: red;">*</span></label>
+            <input type="text" 
+                   id="student_name" 
+                   name="student_name" 
+                   placeholder="Enter your full name"
+                   required
+                   minlength="2"
+                   maxlength="100">
+            <span class="error-message" id="name-error">Please enter your full name</span>
         </div>
 
-        <form id="assignmentForm" method="POST" action="/student/submit_assignment" enctype="multipart/form-data">
-            <input type="hidden" name="assignment_id" value="{{ assignment_id }}">
-            <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
-            
-            <div class="assignment-form">
-                {% for question in questions %}
-                <div class="question-card">
-                    <div class="question-header">
-                        <div class="question-number">Q{{ loop.index }}</div>
-                        <div class="question-text">{{ question.prompt }}</div>
-                    </div>
-                    
-                    <div class="answer-section">
-                        <textarea class="answer-textarea" 
-                                  name="{{ question.id }}" 
-                                  placeholder="Write your detailed answer here..."
-                                  oninput="updateCharCount(this)"></textarea>
-                        <div class="char-count">
-                            <span class="char-count-display">0</span> characters
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-                
-                <div class="file-upload-section">
-                    <label class="file-upload-label">📎 Upload Supporting Files (Optional)</label>
-                    <input type="file" 
-                           class="file-input" 
-                           name="assignment_file_final" 
-                           id="fileInput"
-                           accept=".pdf,.doc,.docx,.txt,.zip,.py,.java,.cpp">
-                    <div class="file-info">
-                        Accepted formats: PDF, Word, Text, Code files, ZIP (Max: 10MB)
-                    </div>
-                    <div class="uploaded-file" id="uploadedFile">
-                        <span id="fileName"></span> - <span id="fileSize"></span>
-                    </div>
-                </div>
-                
-                <div class="submit-section">
-                    <button type="button" class="btn btn-secondary" onclick="saveDraft()">
-                        Save Draft
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="validateSubmission()">
-                        Submit Assignment
-                    </button>
-                </div>
-            </div>
-        </form>
+        <div class="form-group">
+            <label for="student_email">Email Address <span style="color: red;">*</span></label>
+            <input type="email" 
+                   id="student_email" 
+                   name="student_email" 
+                   placeholder="Enter your email address"
+                   required
+                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+            <span class="error-message" id="email-error">Please enter a valid email address</span>
+        </div>
+
+        <div class="form-group">
+            <label for="roll_no">Roll Number <span style="color: red;">*</span></label>
+            <input type="text" 
+                   id="roll_no" 
+                   name="roll_no" 
+                   placeholder="Enter your roll number"
+                   required
+                   maxlength="50">
+            <span class="error-message" id="roll-error">Please enter your roll number</span>
+        </div>
     </div>
 
-    <script>
-        function updateCharCount(textarea) {
-            const charCount = textarea.value.length;
-            const countDisplay = textarea.parentElement.querySelector('.char-count-display');
-            countDisplay.textContent = charCount;
-        }
+    <!-- ================= ASSIGNMENT INFO ================= -->
+    <div class="assignment-info">
+        <p><strong>Total Questions:</strong> {{ questions|length }}</p>
+        {% if time_limit and time_limit > 0 %}
+        <p><strong>Time Limit:</strong> {{ time_limit }} minutes</p>
+        {% endif %}
+        {% if due_date %}
+        <p><strong>Due Date:</strong> {{ due_date }}</p>
+        {% endif %}
+        {% if note %}
+        <p><strong>Note:</strong> {{ note }}</p>
+        {% endif %}
+    </div>
 
-        // Avoid double prompts on navigation when submitting
-        let submissionInProgress = false;
+    <div class="warning-box">
+        <i class='bx bx-error-circle'></i>
+        <span>Please fill in your details above before starting. Read all question requirements carefully before answering.</span>
+    </div>
 
-        function validateSubmission() {
-            let allAnswered = true;
-            const textareas = document.querySelectorAll('.answer-textarea');
+    <!-- ================= ASSIGNMENT FORM ================= -->
+    <form method="POST" action="{{ url_for('student.submit_assignment') }}" id="assignment-form">
 
-            // Highlight empty answers, but do not block submit
-            textareas.forEach((textarea) => {
-                if (textarea.value.trim() === '') {
-                    allAnswered = false;
-                    textarea.style.borderColor = '#e74c3c';
-                } else {
-                    textarea.style.borderColor = '#e9ecef';
-                }
-            });
+        <input type="hidden" name="assignment_id" value="{{ assignment_id }}">
+        <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
 
-            const confirmMsg = allAnswered
-              ? 'Are you sure you want to submit your assignment? You cannot make changes after submission.'
-              : 'You left some answers blank. Submit your assignment anyway? You cannot make changes after submission.';
+        {% for question in questions %}
+        <div class="question-block">
+            <div class="question-prompt">
+                {{ loop.index }}. {{ question.prompt }}
+            </div>
 
-            if (confirm(confirmMsg)) {
-                submissionInProgress = true; // prevent beforeunload prompt
-                document.getElementById('assignmentForm').submit();
-            }
-        }
+            <div class="question-meta">
+                <span>{{ question.assignment_type|upper if question.assignment_type else 'ASSIGNMENT' }}</span>
+                <span>{{ question.marks }} marks</span>
+                {% if question.difficulty %}
+                <span>{{ question.difficulty|upper }}</span>
+                {% endif %}
+            </div>
 
-        function saveDraft() {
-            // Save answers to localStorage
-            const formData = {};
-            document.querySelectorAll('.answer-textarea').forEach(textarea => {
-                formData[textarea.name] = textarea.value;
-            });
-            
-            localStorage.setItem('assignmentDraft_{{ assignment_id }}', JSON.stringify(formData));
-            alert('Draft saved successfully!');
-        }
-
-        function loadDraft() {
-            // Load saved draft from localStorage
-            const saved = localStorage.getItem('assignmentDraft_{{ assignment_id }}');
-            if (saved) {
-                const formData = JSON.parse(saved);
-                document.querySelectorAll('.answer-textarea').forEach(textarea => {
-                    if (formData[textarea.name]) {
-                        textarea.value = formData[textarea.name];
-                        updateCharCount(textarea);
-                    }
-                });
+            <!-- ================= QUESTION DETAILS ================= -->
+            <div class="question-details">
                 
-                if (confirm('A saved draft was found. Would you like to load it?')) {
-                    alert('Draft loaded successfully!');
-                }
-            }
+                <!-- Context/Background -->
+                {% if question.context %}
+                <div class="context-section">
+                    <p><strong>📖 Background:</strong></p>
+                    <p>{{ question.context }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Code Snippet (for code-based questions) -->
+                {% if question.code_snippet %}
+                <div class="detail-section">
+                    <h4><i class='bx bx-code-alt icon-code'></i> Code to Analyze:</h4>
+                    <div class="code-snippet-box">
+                        <pre><code>{{ question.code_snippet }}</code></pre>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Requirements -->
+                {% if question.requirements %}
+                <div class="detail-section">
+                    <h4><i class='bx bx-list-check icon-requirements'></i> Requirements:</h4>
+                    <ul>
+                        {% for req in question.requirements %}
+                        <li>{{ req }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Deliverables -->
+                {% if question.deliverables %}
+                <div class="detail-section">
+                    <h4><i class='bx bx-package icon-deliverables'></i> Expected Deliverables:</h4>
+                    <ul>
+                        {% for del in question.deliverables %}
+                        <li>{{ del }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Grading Criteria -->
+                {% if question.grading_criteria %}
+                <div class="detail-section">
+                    <h4><i class='bx bx-bar-chart icon-grading'></i> Grading Criteria:</h4>
+                    <p>{{ question.grading_criteria }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Learning Objectives -->
+                {% if question.learning_objectives %}
+                <div class="detail-section">
+                    <h4><i class='bx bx-target-lock icon-objectives'></i> Learning Objectives:</h4>
+                    <ul>
+                        {% for obj in question.learning_objectives %}
+                        <li>{{ obj }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Word Count Hint -->
+                {% if question.word_count %}
+                <div class="word-count-hint">
+                    📝 Suggested length: {{ question.word_count }}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- ================= ANSWER SECTION ================= -->
+            <div class="answer-section">
+                <label for="{{ question.id }}" style="font-weight: 600; display: block; margin-bottom: 8px;">
+                    Your Answer:
+                </label>
+                <textarea 
+                    id="{{ question.id }}"
+                    name="{{ question.id }}" 
+                    placeholder="Write your detailed answer here..."
+                    oninput="updateCharCount(this)"
+                    required></textarea>
+                <div class="char-count">
+                    <span class="char-count-display">0</span> characters
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <button class="submit-btn" id="submit-btn" type="submit">
+            <i class='bx bx-send'></i> Submit Assignment
+        </button>
+
+    </form>
+</div>
+
+<!-- ================= JAVASCRIPT ================= -->
+<script>
+    const container = document.querySelector(".container");
+    const timeLimitRaw = container.dataset.timeLimit;
+    const timerBar = document.getElementById("timer-bar");
+    const timerText = document.getElementById("timer-countdown");
+    const form = document.getElementById("assignment-form");
+    const submitBtn = document.getElementById("submit-btn");
+
+    // Student info fields
+    const studentNameInput = document.getElementById("student_name");
+    const studentEmailInput = document.getElementById("student_email");
+    const rollNoInput = document.getElementById("roll_no");
+
+    // Character count update
+    function updateCharCount(textarea) {
+        const charCount = textarea.value.length;
+        const display = textarea.closest('.answer-section').querySelector('.char-count-display');
+        if (display) {
+            display.textContent = charCount;
+        }
+    }
+
+    // Validate student information before submission
+    form.addEventListener("submit", function(e) {
+        let isValid = true;
+
+        // Validate name
+        if (!studentNameInput.value.trim() || studentNameInput.value.trim().length < 2) {
+            document.getElementById("name-error").style.display = "block";
+            studentNameInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("name-error").style.display = "none";
+            studentNameInput.style.borderColor = "#10b981";
         }
 
-        // File upload handling
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const uploadedFileDiv = document.getElementById('uploadedFile');
-                document.getElementById('fileName').textContent = file.name;
-                document.getElementById('fileSize').textContent = formatFileSize(file.size);
-                uploadedFileDiv.style.display = 'block';
-            }
-        });
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        // Validate email
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+        if (!emailPattern.test(studentEmailInput.value.trim())) {
+            document.getElementById("email-error").style.display = "block";
+            studentEmailInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("email-error").style.display = "none";
+            studentEmailInput.style.borderColor = "#10b981";
         }
 
-        // Initialize character counts and load draft
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.answer-textarea').forEach(textarea => {
-                updateCharCount(textarea);
-            });
-            loadDraft();
-        });
+        // Validate roll number
+        if (!rollNoInput.value.trim()) {
+            document.getElementById("roll-error").style.display = "block";
+            rollNoInput.style.borderColor = "#dc3545";
+            isValid = false;
+        } else {
+            document.getElementById("roll-error").style.display = "none";
+            rollNoInput.style.borderColor = "#10b981";
+        }
 
-        // Prevent accidental navigation
-        window.addEventListener('beforeunload', function (e) {
-            if (submissionInProgress) {
-                return; // allow navigation without prompt during submit
-            }
-            const hasAnswers = Array.from(document.querySelectorAll('.answer-textarea'))
-                .some(textarea => textarea.value.trim() !== '');
+        if (!isValid) {
+            e.preventDefault();
+            alert("⚠️ Please fill in all student information fields correctly before submitting.");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return false;
+        }
 
-            if (hasAnswers) {
-                e.preventDefault();
-                e.returnValue = 'You have unsaved work. Are you sure you want to leave?';
+        // Add student info to form data as hidden fields
+        const nameField = document.createElement("input");
+        nameField.type = "hidden";
+        nameField.name = "student_name";
+        nameField.value = studentNameInput.value.trim();
+        form.appendChild(nameField);
+
+        const emailField = document.createElement("input");
+        emailField.type = "hidden";
+        emailField.name = "student_email";
+        emailField.value = studentEmailInput.value.trim();
+        form.appendChild(emailField);
+
+        const rollField = document.createElement("input");
+        rollField.type = "hidden";
+        rollField.name = "roll_no";
+        rollField.value = rollNoInput.value.trim();
+        form.appendChild(rollField);
+
+        // Disable submit button to prevent double submission
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Submitting...';
+
+        return true;
+    });
+
+    // Real-time validation feedback
+    studentNameInput.addEventListener("input", function() {
+        if (this.value.trim().length >= 2) {
+            document.getElementById("name-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    studentEmailInput.addEventListener("input", function() {
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+        if (emailPattern.test(this.value.trim())) {
+            document.getElementById("email-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    rollNoInput.addEventListener("input", function() {
+        if (this.value.trim()) {
+            document.getElementById("roll-error").style.display = "none";
+            this.style.borderColor = "#10b981";
+        }
+    });
+
+    // Timer functionality (if time limit exists)
+    if (timeLimitRaw && timeLimitRaw !== "None" && timeLimitRaw !== "" && parseInt(timeLimitRaw) > 0) {
+        timerBar.style.display = "block";
+        let timeRemaining = parseInt(timeLimitRaw) * 60;
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+        }
+
+        function tick() {
+            timerText.textContent = formatTime(timeRemaining);
+
+            if (timeRemaining <= 0) {
+                alert("⏰ Time is up! Assignment is submitting.");
+                form.submit();
             }
+            timeRemaining--;
+        }
+
+        tick();
+        setInterval(tick, 1000);
+    }
+
+    // Initialize character counts
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('textarea').forEach(textarea => {
+            updateCharCount(textarea);
         });
-    </script>
+    });
+
+    // Warn before leaving with unsaved work
+    window.addEventListener('beforeunload', function (e) {
+        const hasAnswers = Array.from(document.querySelectorAll('textarea'))
+            .some(textarea => textarea.value.trim() !== '');
+
+        if (hasAnswers && !submitBtn.disabled) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved work. Are you sure you want to leave?';
+        }
+    });
+</script>
+
 </body>
 </html>

@@ -54,6 +54,7 @@ class ModalManager {
     this.openBtnAuto = document.getElementById('btn-open-auto');
     this.btnCancelAuto = document.getElementById('btn-cancel');
     this.btnGenAuto = document.getElementById('btn-generate');
+    this.currentPdfName = ''; // Track PDF name
 
     if (typeof API_BASE === 'undefined' || typeof ENDPOINT === 'undefined') {
       console.warn(
@@ -99,8 +100,10 @@ class ModalManager {
     const updateName = () => {
       if (!fileNameDisplay) return;
       if (fileInput.files?.[0]) {
-        fileNameDisplay.textContent = fileInput.files[0].name;
+        this.currentPdfName = fileInput.files[0].name;
+        fileNameDisplay.textContent = this.currentPdfName;
       } else {
+        this.currentPdfName = '';
         fileNameDisplay.textContent = '';
       }
     };
@@ -122,7 +125,7 @@ class ModalManager {
       if (e.dataTransfer.files?.length) {
         fileInput.files = e.dataTransfer.files;
         updateName();
-        notify('PDF selected ✔');
+        notify('PDF selected ✓');
       }
     });
 
@@ -134,12 +137,14 @@ class ModalManager {
 
   // Transform API quiz into the structure expected by renderGeneratedQuiz
   transformFirestoreData(apiData, settings) {
-    console.log('🔄 Transforming Firestore data:', apiData);
+    console.log('📄 Transforming Firestore data:', apiData);
 
     const data = apiData?.data || apiData || {};
     const transformed = {
       data: {
         ...data,
+        // Attach PDF name
+        pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
         // Attach settings so publish.js can read time_limit, due_date, note
         settings: {
           ...(data.settings || {}),
@@ -153,14 +158,14 @@ class ModalManager {
           question: q.prompt || q.question || '',
           meta:
             q.meta ||
-            `Difficulty: ${q.difficulty || 'unknown'}$${
+            `Difficulty: ${q.difficulty || 'unknown'}${
               q.tags ? ` | Tags: ${q.tags.join(', ')}` : ''
-            }$${q.id ? ` | ID: ${q.id}` : ''}`,
+            }${q.id ? ` | ID: ${q.id}` : ''}`,
         })),
       },
     };
 
-    console.log('✅ Transformed data:', transformed);
+    console.log(' Transformed data:', transformed);
     return transformed;
   }
 
@@ -173,6 +178,9 @@ class ModalManager {
       file.type === 'application/pdf' ||
       file.name.toLowerCase().endsWith('.pdf');
     if (!isPdf) return notify('Only PDF (.pdf) is accepted.');
+
+    // Store PDF name
+    this.currentPdfName = file.name;
 
     // Read settings from modal inputs (if present)
     const timeLimitInput = document.getElementById('auto-time-limit');
@@ -250,14 +258,14 @@ class ModalManager {
         if (window.showSection) window.showSection('generate');
         window.renderGeneratedQuiz(payloadForRenderer);
         notify(
-          `AI-powered quiz generated ✅ (${data.questions.length} questions)`,
+          `AI-powered quiz generated  (${data.questions.length} questions)`,
         );
       } else if (typeof window.renderQuiz === 'function') {
         // Fallback to legacy renderer if publish.js is not loaded
         if (window.showSection) window.showSection('generate');
         renderQuiz(data.questions, data.metadata || {});
         notify(
-          `AI-powered quiz generated ✅ (${data.questions.length} questions)`,
+          `AI-powered quiz generated  (${data.questions.length} questions)`,
         );
       } else {
         console.error('[modal] No renderer available (renderGeneratedQuiz or renderQuiz).');

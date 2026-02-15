@@ -2,782 +2,778 @@
 <html lang="en">
 
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AI Plugin for Moodle</title>
-<link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='assignments.css') }}">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Plugin for Moodle</title>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='assignments.css') }}">
 </head>
 
 <body>
-<!-- Top Bar -->
-<nav class="topbar" role="navigation" aria-label="Primary">
-<div class="brand">
-<i class='bx bx-bulb card-icon'></i>
-<span>AI Plugin</span>
-</div>
-<ul class="topnav">
-<li><button class="link" data-route="home">Home</button></li>
-<li><button class="link" data-route="generate">Quizzes</button></li>
-<li><button class="link" data-route="assignments">Assignments</button></li>
-<li><button class="link" data-route="view">View</button></li>
-<li><button class="link" data-route="grades">Grades</button></li>
-</ul>
-</nav>
+  <!-- Top Navigation Bar -->
+  <nav class="topbar" role="navigation" aria-label="Primary">
+    <div class="brand">
+      <i class='bx bx-bulb card-icon'></i>
+      <span>AI Plugin</span>
+    </div>
+    <ul class="topnav">
+      <li><button class="link" data-route="home">Home</button></li>
+      <li><button class="link" data-route="generate">Quizzes</button></li>
+      <li><button class="link" data-route="assignments">Assignments</button></li>
+      <li><button class="link" data-route="view">View</button></li>
+    </ul>
+  </nav>
 
-<main>
-<!-- HOME -->
-<section id="section-home">
-<div class="home-grid">
-<div class="home-left">
-<h1 class="headline">Welcome to <span>AI Plugin</span></h1>
-<p class="subhead">
-Experience the future of learning with our AI-powered<br/>
-Moodle plugin. Transform any study material into interactive<br/>
-quizzes and assignments — automatically, intelligently.
-</p>
-</div>
-<div class="home-right">
-<div class="rotate-card has-bg"
-style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
-aria-live="polite">
-<div id="rotate-text" class="rotate-text">
-<span>Smart PDF Conversion — Automatically generate quizzes from textbooks and materials</span>
-<span>Instant Quiz Creation — Quickly transform study content into assessment tools</span>
-<span>Personalized Assessment — Customize question distribution and complexity levels</span>
-<span>Manual Authoring — Craft bespoke questions with comprehensive creation tools</span>
-</div>
-</div>
-</div>
-</div>
-</section>
+  <main>
+    <!-- Home Section -->
+    <section id="section-home">
+      <div class="home-grid">
+        <div class="home-left">
+          <h1 class="headline">Welcome to <span>AI Plugin</span></h1>
+          <p class="subhead">
+            Experience the future of learning with our AI-powered<br/>
+            Moodle plugin. Transform any study material into interactive<br/>
+            quizzes and assignments — automatically, intelligently and grade them.
+          </p>
+        </div>
+        <div class="home-right">
+          <div class="rotate-card has-bg"
+               style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
+               aria-live="polite">
+            <div id="rotate-text" class="rotate-text">
+              <span>AI-Powered PDF Intelligence — Transform textbooks, lecture notes, and study materials into structured, exam-ready quizzes using advanced AI-driven analysis.</span>
+              <span>One-Click Assessment Generation — Instantly convert learning resources into professionally formatted quizzes optimized for clarity and academic rigor.</span>
+              <span>Adaptive & Configurable Assessments — Fine-tune question distribution, difficulty levels, and topic coverage to align with curriculum objectives.</span>
+              <span>Professional Authoring Suite — Design tailored assessments with full control using a robust and intuitive question creation system.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<!-- GENERATE QUIZZES -->
-<section id="section-generate" style="display:none;">
-<div class="cards-container">
-<div class="quiz-card" id="card-auto">
-<i class='bx bx-brain card-icon'></i>
-<h2>AI-Powered Quiz</h2>
-<p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
-<button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
-</div>
-<!-- Customize Quiz Card -->
-<div class="quiz-card">
-<i class='bx bx-slider-alt card-icon'></i>
-<h2>Customize Quiz</h2>
-<p>Pick exact counts per type, plus scenario/code flags.</p>
-<button class="generate-btn" id="btn-open-custom">Customize Now</button>
-</div>
-<!-- Manual Creation Card -->
-<div class="quiz-card">
-<i class='bx bx-edit card-icon'></i>
-<h2>Manual Creation</h2>
-<p>Create questions from scratch with full control.</p>
-<a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a>
-</div>
-</div>
+    <!-- Quiz Generation Section -->
+    <section id="section-generate" style="display:none;">
+      <div class="cards-container">
+        <!-- AI-Powered Quiz Card -->
+        <div class="quiz-card" id="card-auto">
+          <i class='bx bx-brain card-icon'></i>
+          <h2>AI-Powered Quiz</h2>
+          <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
+          <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
+        </div>
+        <!-- Customize Quiz Card -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>Customize Quiz</h2>
+          <p>Upload your study material and adjust settings like question count, difficulty, and topic focus.</p>
+          <button class="generate-btn" id="btn-open-custom">Customize Now</button>
+        </div>
+        <!-- Manual Creation Card -->
+        <div class="quiz-card">
+          <i class='bx bx-edit card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Create questions from scratch with full control.</p>
+          <a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a>
+        </div>
+      </div>
 
-<!-- Generated Quiz Output Section -->
-<section id="quiz-section" style="display:none">
-<div class="quiz-out-head">
-<h2 id="quiz-title" style="margin:0;">Generated Quiz</h2>
-</div>
-<div id="quiz-container" class="quiz-out"></div>
-</section>
-</section>
+      <!-- Generated Quiz Output Section -->
+      <section id="quiz-section" style="display:none">
+        <div class="quiz-out-head">
+          <h2 id="quiz-title" style="margin:0;">Generated Quiz</h2>
+        </div>
+        <div id="quiz-container" class="quiz-out"></div>
+      </section>
+    </section>
 
-<!-- VIEW QUIZZES / ASSIGNMENTS -->
-<section id="section-view" style="display:none;">
-<div class="cards-container">
-<!-- View Quizzes -->
-<div class="quiz-card">
-<i class='bx bx-show card-icon'></i>
-<h2>View Quizzes</h2>
-<p>See all quizzes you have generated or created manually.</p>
-<button class="generate-btn" id="btn-view-quizzes">View Quizzes</button>
-</div>
-<!-- View Assignments -->
-<div class="quiz-card">
-<i class='bx bx-task card-icon'></i>
-<h2>View Assignments</h2>
-<p>See all assignments generated from PDFs or topics.</p>
-<button class="generate-btn" id="btn-view-assignments">View Assignments</button>
-</div>
-</div>
+    <!-- View Quizzes/Assignments Section -->
+    <section id="section-view" style="display:none;">
+      <div class="cards-container">
+        <!-- View Quizzes Card -->
+        <div class="quiz-card">
+          <i class='bx bx-show card-icon'></i>
+          <h2>View Quizzes</h2>
+          <p>See all quizzes you have generated or created manually.</p>
+          <button class="generate-btn" id="btn-view-quizzes">View Quizzes</button>
+        </div>
+        <!-- View Assignments Card -->
+        <div class="quiz-card">
+          <i class='bx bx-task card-icon'></i>
+          <h2>View Assignments</h2>
+          <p>See all assignments generated from PDFs or topics.</p>
+          <button class="generate-btn" id="btn-view-assignments">View Assignments</button>
+        </div>
+      </div>
 
-<!-- Shared list area -->
-<div id="view-list-container" style="display:none;">
-<h2 id="view-list-title">Quizzes</h2>
-<div id="quiz-list"></div>
-</div>
-</section>
+      <!-- Shared List Area -->
+      <div id="view-list-container" style="display:none;">
+        <h2 id="view-list-title">Quizzes</h2>
+        <div id="quiz-list"></div>
+      </div>
+    </section>
 
-<!-- STUDENT GRADES (placeholder page) -->
-<section id="section-grades" style="display:none;">
-<div class="grades-header">
-<h2>Student Grades</h2>
-<p class="muted">Latest graded submissions. Scores are rounded up to whole numbers.</p>
-</div>
-<div class="grades-controls">
-<label class="label" for="grades-email">Student email (leave blank to view all)</label>
-<div class="inline-input">
-<input type="email" id="grades-email" placeholder="student@example.com" value="student@example.com" />
-<button class="btn" id="btn-refresh-grades">Refresh</button>
-</div>
-</div>
-<div id="grades-list" class="grades-list"></div>
-</section>
+    <!-- Assignments Section -->
+    <section id="section-assignments" style="display:none;">
+      <div class="cards-container">
+        <!-- PDF Assignment Card -->
+        <div class="quiz-card">
+          <i class='bx bx-slider-alt card-icon'></i>
+          <h2>From PDF (Detect Subtopics)</h2>
+          <p>Upload a PDF. We'll detect subtopics and generate assignment questions per subtopic.</p>
+          <button id="btn-open-assign-pdf" class="generate-btn">Generate</button>
+        </div>
+        <!-- Topics Assignment Card -->
+        <div class="quiz-card">
+          <i class='bx bx-list-ul card-icon'></i>
+          <h2>By Topics</h2>
+          <p>Type topics (one per line) and generate assignment questions from them.</p>
+          <button id="btn-open-assign-topics" class="generate-btn">Generate</button>
+        </div>
+        <!-- Manual Assignment Card -->
+        <div class="quiz-card">
+          <i class='bx bx-edit-alt card-icon'></i>
+          <h2>Manual Creation</h2>
+          <p>Compose your own questions, add marks, and organize into sections.</p>
+          <button id="btn-open-assign-manual" class="generate-btn">Start Creating</button>
+        </div>
+        <div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
+      </div>
+    </section>
 
-<!-- ASSIGNMENTS -->
-<section id="section-assignments" style="display:none;">
-<div class="cards-container">
-<!-- Card 1 -->
-<div class="quiz-card">
-<i class='bx bx-slider-alt card-icon'></i>
-<h2>From PDF (Detect Subtopics)</h2>
-<p>Upload a PDF. We'll detect subtopics and generate assignment questions per subtopic.</p>
-<button id="btn-open-assign-pdf" class="generate-btn">Generate</button>
-</div>
-<!-- Card 2 -->
-<div class="quiz-card">
-<i class='bx bx-list-ul card-icon'></i>
-<h2>By Topics</h2>
-<p>Type topics (one per line) and generate assignment questions from them.</p>
-<button id="btn-open-assign-topics" class="generate-btn">Generate</button>
-</div>
-<!-- Card 3 -->
-<div class="quiz-card">
-<i class='bx bx-edit-alt card-icon'></i>
-<h2>Manual Creation</h2>
-<p>Compose your own questions, add marks, and organize into sections.</p>
-<button id="btn-open-assign-manual" class="generate-btn">Start Creating</button>
-</div>
-<div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
-</div>
-</section>
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
 
-<div id="toast" class="toast"></div>
+    <!-- AI-Powered Quiz Modal -->
+    <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3 id="modalTitleAuto">Generate Quiz from PDF</h3>
+          <div class="modal-actions">
+            <button class="btn ghost" id="btn-cancel">Close</button>
+            <button class="generate-btn" id="btn-generate">Generate</button>
+          </div>
+        </div>
+        <div class="section-title">1) Upload PDF</div>
+        <div id="uploader" class="uploader">
+          <b>Drop PDF here</b> or click to select
+          <small>Accepted: .pdf (max ~25MB)</small>
+          <input id="fileInput" type="file" accept="application/pdf" hidden />
+        </div>
+        <div id="fileNameDisplay" class="file-name"></div>
+        <div class="progress" id="progress"><div></div></div>
 
-<!-- QUIZ FROM PDF MODAL (with per-quiz settings) -->
-<div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
-<div class="modal-card">
-<div class="modal-head">
-<h3 id="modalTitleAuto">Generate Quiz from PDF</h3>
-<div class="modal-actions">
-<button class="btn ghost" id="btn-cancel">Close</button>
-<button class="generate-btn" id="btn-generate">Generate</button>
-</div>
-</div>
-<div class="section-title">1) Upload PDF</div>
-<div id="uploader" class="uploader">
-<b>Drop PDF here</b> or click to select
-<small>Accepted: .pdf (max ~25MB)</small>
-<input id="fileInput" type="file" accept="application/pdf" hidden />
-</div>
-<div id="fileNameDisplay" class="file-name"></div>
-<div class="progress" id="progress"><div></div></div>
+        <!-- Quiz Settings -->
+        <div class="section-title" style="margin-top: 16px;">2) Quiz Settings</div>
+        <div class="field">
+          <label class="label" for="auto-time-limit">Time limit (minutes)</label>
+          <input type="number" id="auto-time-limit" min="0" placeholder="e.g. 30" />
+        </div>
+        <div class="field">
+          <label class="label" for="auto-due-date">Due date</label>
+          <input type="datetime-local" id="auto-due-date" />
+        </div>
+        <div class="field">
+          <label class="label" for="auto-note">Note to students</label>
+          <textarea id="auto-note" rows="2" placeholder="Instructions for this quiz"></textarea>
+        </div>
+      </div>
+    </div>
 
-<!-- Per-quiz settings (AI-powered) -->
-<div class="section-title" style="margin-top: 16px;">2) Quiz Settings</div>
-<div class="field">
-<label class="label" for="auto-time-limit">Time limit (minutes)</label>
-<input type="number" id="auto-time-limit" min="0" placeholder="e.g. 30" />
-</div>
-<div class="field">
-<label class="label" for="auto-due-date">Due date</label>
-<input type="datetime-local" id="auto-due-date" />
-</div>
-<div class="field">
-<label class="label" for="auto-note">Note to students</label>
-<textarea id="auto-note" rows="2" placeholder="Instructions for this quiz"></textarea>
-</div>
-</div>
-</div>
+    <!-- Customize Quiz Modal -->
+    <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
+          <div class="modal-actions">
+            <button class="btn ghost" id="btn-cancel-custom">Close</button>
+            <button class="generate-btn" id="btn-generate-custom">Generate</button>
+          </div>
+        </div>
+        <div class="section-title">1) Upload PDF</div>
+        <div id="uploader-custom" class="uploader">
+          <b>Drop PDF here</b> or click to select
+          <small>Accepted: .pdf (max ~25MB)</small>
+          <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
+        </div>
+        <div id="fileNameDisplayCustom" class="file-name"></div>
+        <div class="center-btn-wrapper">
+          <button id="btn-detect-subtopics" type="button" class="btn detect-btn">Detect Subtopics</button>
+        </div>
+        <div id="subtopics-section" style="display:none; margin-top:10px;">
+          <p><strong>Select subtopics:</strong></p>
+          <div id="subtopics-list" class="subtopics-list"></div>
+        </div>
 
-<!-- CUSTOMIZE QUIZ MODAL (with per-quiz settings) -->
-<div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
-<div class="modal-card">
-<div class="modal-head">
-<h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
-<div class="modal-actions">
-<button class="btn ghost" id="btn-cancel-custom">Close</button>
-<button class="generate-btn" id="btn-generate-custom">Generate</button>
-</div>
-</div>
-<div class="section-title">1) Upload PDF</div>
-<div id="uploader-custom" class="uploader">
-<b>Drop PDF here</b> or click to select
-<small>Accepted: .pdf (max ~25MB)</small>
-<input id="fileInputCustom" type="file" accept="application/pdf" hidden />
-</div>
-<div id="fileNameDisplayCustom" class="file-name"></div>
-<div class="center-btn-wrapper">
-<button id="btn-detect-subtopics" type="button" class="btn detect-btn">Detect Subtopics</button>
-</div>
-<div id="subtopics-section" style="display:none; margin-top:10px;">
-<p><strong>Select subtopics:</strong></p>
-<div id="subtopics-list" class="subtopics-list"></div>
-</div>
+        <div class="section-title">2) Question Counts</div>
+        <div class="counts-grid">
+          <div class="field">
+            <label class="label" for="mcqCount">MCQ</label>
+            <input id="mcqCount" type="number" min="0" max="30" value="4" />
+          </div>
+          <div class="field">
+            <label class="label" for="tfCount">True / False</label>
+            <input id="tfCount" type="number" min="0" max="30" value="0" />
+          </div>
+          <div class="field">
+            <label class="label" for="shortCount">Short</label>
+            <input id="shortCount" type="number" min="0" max="20" value="5" />
+          </div>
+          <div class="field">
+            <label class="label" for="longCount">Long</label>
+            <input id="longCount" type="number" min="0" max="20" value="0" />
+          </div>
+        </div>
 
-<div class="section-title">2) Question Counts</div>
-<div class="counts-grid">
-<div class="field">
-<label class="label" for="mcqCount">MCQ</label>
-<input id="mcqCount" type="number" min="0" max="30" value="4" />
-</div>
-<div class="field">
-<label class="label" for="tfCount">True / False</label>
-<input id="tfCount" type="number" min="0" max="30" value="0" />
-</div>
-<div class="field">
-<label class="label" for="shortCount">Short</label>
-<input id="shortCount" type="number" min="0" max="20" value="5" />
-</div>
-<div class="field">
-<label class="label" for="longCount">Long</label>
-<input id="longCount" type="number" min="0" max="20" value="0" />
-</div>
-</div>
+        <div class="section-title">3) Difficulty level</div>
+        <div class="form-row">
+          <div class="field">
+            <label class="label">Mode</label>
+            <select id="difficultyModeCustom">
+              <option value="auto">Auto (AI decides)</option>
+              <option value="custom">Custom % mix</option>
+            </select>
+            <div class="hint">Use custom only if you want a specific E/M/H distribution.</div>
+          </div>
+          <div class="field">
+            <label class="label">Validate</label>
+            <button class="btn" id="btn-validate-mix" type="button">Sum = 100%</button>
+          </div>
+        </div>
 
-<div class="section-title">3) Difficulty level</div>
-<div class="form-row">
-<div class="field">
-<label class="label">Mode</label>
-<select id="difficultyModeCustom">
-<option value="auto">Auto (AI decides)</option>
-<option value="custom">Custom % mix</option>
-</select>
-<div class="hint">Use custom only if you want a specific E/M/H distribution.</div>
-</div>
-<div class="field">
-<label class="label">Validate</label>
-<button class="btn" id="btn-validate-mix" type="button">Sum = 100%</button>
-</div>
-</div>
+        <div id="diffRowC1" class="form-row" style="display:none">
+          <div class="field">
+            <label class="label">Easy %</label>
+            <input id="easyPctC" type="number" min="0" max="100" value="30" />
+          </div>
+          <div class="field">
+            <label class="label">Medium %</label>
+            <input id="medPctC" type="number" min="0" max="100" value="50" />
+          </div>
+        </div>
 
-<div id="diffRowC1" class="form-row" style="display:none">
-<div class="field">
-<label class="label">Easy %</label>
-<input id="easyPctC" type="number" min="0" max="100" value="30" />
-</div>
-<div class="field">
-<label class="label">Medium %</label>
-<input id="medPctC" type="number" min="0" max="100" value="50" />
-</div>
-</div>
+        <div id="diffRowC2" class="form-row" style="display:none">
+          <div class="field">
+            <label class="label">Hard %</label>
+            <input id="hardPctC" type="number" min="0" max="100" value="20" />
+          </div>
+        </div>
 
-<div id="diffRowC2" class="form-row" style="display:none">
-<div class="field">
-<label class="label">Hard %</label>
-<input id="hardPctC" type="number" min="0" max="100" value="20" />
-</div>
-</div>
+        <div class="section-title" style="margin-top: 16px;">4) Quiz Settings</div>
+        <div class="field">
+          <label class="label" for="custom-time-limit">Time limit (minutes)</label>
+          <input type="number" id="custom-time-limit" min="0" placeholder="e.g. 30" />
+        </div>
+        <div class="field">
+          <label class="label" for="custom-due-date">Due date</label>
+          <input type="datetime-local" id="custom-due-date" />
+        </div>
+        <div class="field">
+          <label class="label" for="custom-note">Note to students</label>
+          <textarea id="custom-note" rows="2" placeholder="Instructions for this quiz"></textarea>
+        </div>
 
-<div class="section-title" style="margin-top: 16px;">4) Quiz Settings</div>
-<div class="field">
-<label class="label" for="custom-time-limit">Time limit (minutes)</label>
-<input type="number" id="custom-time-limit" min="0" placeholder="e.g. 30" />
-</div>
-<div class="field">
-<label class="label" for="custom-due-date">Due date</label>
-<input type="datetime-local" id="custom-due-date" />
-</div>
-<div class="field">
-<label class="label" for="custom-note">Note to students</label>
-<textarea id="custom-note" rows="2" placeholder="Instructions for this quiz"></textarea>
-</div>
+        <div class="progress" id="progress-custom"><div></div></div>
+      </div>
+    </div>
 
-<div class="progress" id="progress-custom"><div></div></div>
-</div>
-</div>
+    <!-- PDF Assignment Modal -->
+    <div id="modal-assign-pdf" class="modal" aria-hidden="true">
+      <div class="modal-card" style="max-width: 950px;">
+        <div class="modal-head">
+          <h3>🎓 Generate Advanced Assignment from PDF</h3>
+          <div class="modal-actions">
+            <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
+            <button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <!-- Upload PDF Step -->
+          <div class="section-title">1️⃣ Upload Study Material</div>
+          <div id="assign-uploader" class="uploader">
+            <b>Drop PDF here</b> or click to select
+            <small>Accepted: .pdf (max ~25MB)</small>
+            <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
+          </div>
+          <div id="assignFileNameDisplay" class="file-name-display"></div>
 
-<!-- ASSIGNMENT FROM PDF MODAL (with per-assignment settings) -->
-<div id="modal-assign-pdf" class="modal" aria-hidden="true">
-<div class="modal-card" style="max-width: 950px;">
-<div class="modal-head">
-<h3>🎓 Generate Advanced Assignment from PDF</h3>
-<div class="modal-actions">
-<button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
-<button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
-</div>
-</div>
-<div class="modal-body">
-<!-- Step 1: Upload PDF -->
-<div class="section-title">1️⃣ Upload Study Material</div>
-<div id="assign-uploader" class="uploader">
-<b>Drop PDF here</b> or click to select
-<small>Accepted: .pdf (max ~25MB)</small>
-<input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
-</div>
-<div id="assignFileNameDisplay" class="file-name-display"></div>
+          <!-- Subtopic Detection -->
+          <div class="center-btn-wrapper">
+            <button id="btn-detect-subtopics-assign" type="button" class="btn detect-btn">Detect Subtopics</button>
+          </div>
+          <div id="assign-subtopics-section" style="display:none; margin-top:10px;">
+            <p><strong>Select subtopics:</strong></p>
+            <div id="assign-subtopics-list" class="subtopics-list"></div>
+          </div>
 
-<!-- Added: Detect Subtopics Button -->
-<div class="center-btn-wrapper">
-<button id="btn-detect-subtopics-assign" type="button" class="btn detect-btn">Detect Subtopics</button>
-</div>
-<div id="assign-subtopics-section" style="display:none; margin-top:10px;">
-<p><strong>Select subtopics:</strong></p>
-<div id="assign-subtopics-list" class="subtopics-list"></div>
-</div>
+          <!-- Assignment Type Distribution -->
+          <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
+          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+            Choose how many questions of each type you want to generate
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">💡</span>
+                <div>
+                  <strong>Conceptual</strong>
+                  <p>Theory & principles</p>
+                </div>
+              </div>
+              <input type="number" id="conceptual-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🎯</span>
+                <div>
+                  <strong>Scenario-Based</strong>
+                  <p>Real-world application</p>
+                </div>
+              </div>
+              <input type="number" id="scenario-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🔬</span>
+                <div>
+                  <strong>Research-Based</strong>
+                  <p>Investigation & analysis</p>
+                </div>
+              </div>
+              <input type="number" id="research-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🛠️</span>
+                <div>
+                  <strong>Project-Based</strong>
+                  <p>Practical implementation</p>
+                </div>
+              </div>
+              <input type="number" id="project-count" min="0" max="10" value="0">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">📋</span>
+                <div>
+                  <strong>Case Study</strong>
+                  <p>Complex situation analysis</p>
+                </div>
+              </div>
+              <input type="number" id="case-study-count" min="0" max="10" value="0">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">⚖️</span>
+                <div>
+                  <strong>Comparative</strong>
+                  <p>Compare & contrast</p>
+                </div>
+              </div>
+              <input type="number" id="comparative-count" min="0" max="10" value="0">
+            </div>
+          </div>
 
-<!-- Step 2: Assignment Type Distribution -->
-<div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
-<p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-Choose how many questions of each type you want to generate
-</p>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">💡</span>
-<div>
-<strong>Conceptual</strong>
-<p>Theory & principles</p>
-</div>
-</div>
-<input type="number" id="conceptual-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🎯</span>
-<div>
-<strong>Scenario-Based</strong>
-<p>Real-world application</p>
-</div>
-</div>
-<input type="number" id="scenario-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🔬</span>
-<div>
-<strong>Research-Based</strong>
-<p>Investigation & analysis</p>
-</div>
-</div>
-<input type="number" id="research-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🛠️</span>
-<div>
-<strong>Project-Based</strong>
-<p>Practical implementation</p>
-</div>
-</div>
-<input type="number" id="project-count" min="0" max="10" value="0">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">📋</span>
-<div>
-<strong>Case Study</strong>
-<p>Complex situation analysis</p>
-</div>
-</div>
-<input type="number" id="case-study-count" min="0" max="10" value="0">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">⚖️</span>
-<div>
-<strong>Comparative</strong>
-<p>Compare & contrast</p>
-</div>
-</div>
-<input type="number" id="project-count" min="0" max="10" value="0">
-</div>
-</div>
+          <div id="total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
+            Total Tasks: <span id="total-tasks-count">4</span>
+          </div>
 
-<div id="total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
-Total Tasks: <span id="total-tasks-count">4</span>
-</div>
+          <!-- Difficulty Selection -->
+          <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
+          <div class="field">
+            <select id="assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+              <option value="auto">Auto (AI decides based on content)</option>
+              <option value="easy">Easy (Beginner level)</option>
+              <option value="medium">Medium (Intermediate level)</option>
+              <option value="hard">Hard (Advanced level)</option>
+            </select>
+          </div>
 
-<!-- Step 3: Difficulty -->
-<div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
-<div class="field">
-<select id="assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-<option value="auto">Auto (AI decides based on content)</option>
-<option value="easy">Easy (Beginner level)</option>
-<option value="medium">Medium (Intermediate level)</option>
-<option value="hard">Hard (Advanced level)</option>
-</select>
-</div>
+          <!-- Scenario Style Selection -->
+          <div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
+          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+            Choose whether scenario-based and case study questions should include code or focus on strategic decisions
+          </p>
+          <div class="field">
+            <select id="assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+              <option value="auto">Auto (Detect from content - includes code for technical topics)</option>
+              <option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
+              <option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
+            </select>
+          </div>
 
-<!-- Step 4: Scenario Style -->
-<div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
-<p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-Choose whether scenario-based and case study questions should include code or focus on strategic decisions
-</p>
-<div class="field">
-<select id="assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-<option value="auto">Auto (Detect from content - includes code for technical topics)</option>
-<option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
-<option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
-</select>
-</div>
+          <!-- Assignment Settings -->
+          <div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
+          <div class="field">
+            <label class="label" for="assign-time-limit">Time limit (minutes)</label>
+            <input type="number" id="assign-time-limit" min="0" placeholder="e.g. 60" />
+          </div>
+          <div class="field">
+            <label class="label" for="assign-due-date">Due date</label>
+            <input type="datetime-local" id="assign-due-date" />
+          </div>
+          <div class="field">
+            <label class="label" for="assign-note">Note to students</label>
+            <textarea id="assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
 
-<!-- Per-assignment settings -->
-<div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
-<div class="field">
-<label class="label" for="assign-time-limit">Time limit (minutes)</label>
-<input type="number" id="assign-time-limit" min="0" placeholder="e.g. 60" />
-</div>
-<div class="field">
-<label class="label" for="assign-due-date">Due date</label>
-<input type="datetime-local" id="assign-due-date" />
-</div>
-<div class="field">
-<label class="label" for="assign-note">Note to students</label>
-<textarea id="assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
-</div>
-</div>
-</div>
-</div>
-
-<!-- ASSIGNMENT BY TOPICS MODAL (with per-assignment settings) -->
-<div id="modal-assign-topics" class="modal" aria-hidden="true">
-<div class="modal-card" style="max-width: 950px;">
-<div class="modal-head">
-<h3>🎓 Generate Assignment by Topics</h3>
-<div class="modal-actions">
-<button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
-<button class="generate-btn" type="button" id="btn-assign-topics-generate">🚀 Generate</button>
-</div>
-</div>
-<div class="modal-body">
-<div class="section-title">1️⃣ Enter Topics</div>
-<div class="field">
-<label for="assign-topics-text">
-<span>Topics (one per line)</span>
-</label>
-<textarea id="assign-topics-text" rows="5"
-placeholder="e.g.&#10;Binary Search Trees&#10;Sorting Algorithms&#10;Machine Learning Fundamentals&#10;Neural Networks"></textarea>
-</div>
-
-<div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
-<p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-Choose how many questions of each type you want to generate
-</p>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">💡</span>
-<div>
-<strong>Conceptual</strong>
-<p>Theory & principles</p>
-</div>
-</div>
-<input type="number" id="topics-conceptual-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🎯</span>
-<div>
-<strong>Scenario-Based</strong>
-<p>Real-world application</p>
-</div>
-</div>
-<input type="number" id="topics-scenario-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🔬</span>
-<div>
-<strong>Research-Based</strong>
-<p>Investigation & analysis</p>
-</div>
-</div>
-<input type="number" id="topics-research-count" min="0" max="10" value="0">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">🛠️</span>
-<div>
-<strong>Project-Based</strong>
-<p>Practical implementation</p>
-</div>
-</div>
-<input type="number" id="topics-project-count" min="0" max="10" value="0">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">📋</span>
-<div>
-<strong>Case Study</strong>
-<p>Complex situation analysis</p>
-</div>
-</div>
-<input type="number" id="topics-case-study-count" min="0" max="10" value="1">
-</div>
-<div class="assignment-type-card">
-<div class="type-header">
-<span class="type-icon">⚖️</span>
-<div>
-<strong>Comparative</strong>
-<p>Compare & contrast</p>
-</div>
-</div>
-<input type="number" id="topics-comparative-count" min="0" max="10" value="1">
-</div>
-</div>
-
-<div id="topics-total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
-Total Tasks: <span id="topics-total-tasks-count">4</span>
-</div>
-
-<div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
-<div class="field">
-<select id="topics-assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-<option value="auto">Auto (AI decides based on content)</option>
-<option value="easy">Easy (Beginner level)</option>
-<option value="medium">Medium (Intermediate level)</option>
-<option value="hard">Hard (Advanced level)</option>
-</select>
-</div>
-
-<div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
-<p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-Choose whether scenario-based and case study questions should include code or focus on strategic decisions
-</p>
-<div class="field">
-<select id="topics-assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-<option value="auto">Auto (Detect from content - includes code for technical topics)</option>
-<option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
-<option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
-</select>
-</div>
-
-<!-- Per-assignment settings -->
-<div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
-<div class="field">
-<label class="label" for="topics-assign-time-limit">Time limit (minutes)</label>
-<input type="number" id="topics-assign-time-limit" min="0" placeholder="e.g. 60" />
-</div>
-<div class="field">
-<label class="label" for="topics-assign-due-date">Due date</label>
-<input type="datetime-local" id="topics-assign-due-date" />
-</div>
-<div class="field">
-<label class="label" for="topics-assign-note">Note to students</label>
-<textarea id="topics-assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
-</div>
-</div>
-</div>
-</div>
-
-<!-- NOTE: Quiz Settings modal REMOVED so settings are local to each quiz/assignment type -->
-</main>
-
-<!-- Scripts (deferred) -->
-<script src="{{ url_for('static', filename='script.js') }}" defer></script>
-<script src="{{ url_for('static', filename='modal.js') }}" defer></script>
-<script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
-<script src="{{ url_for('static', filename='publish.js') }}" defer></script>
-<script src="{{ url_for('static', filename='assignments.js') }}"></script>
-<script src="{{ url_for('static', filename='view_items.js') }}"></script>
-<script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
-
-<!-- Router + Home Rotator -->
-<script defer>
-(function () {
-const $ = (sel) => document.querySelector(sel);
-const id = (s) => document.getElementById(s);
-const fmtScore = (n) => (window.__fmtScore ? window.__fmtScore(n) : Math.ceil(Number(n) || 0));
-const fmtDate = (v) => (window.__fmtDateTime ? window.__fmtDateTime(v) : (v ? new Date(v).toLocaleString() : ''));
-const groupByKind = (items = []) => {
-const out = { quiz: [], assignment: [] };
-items.forEach(it => {
-const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
-out[k].push(it);
-});
-return out;
-};
-
-function showEl(el) { if (!el) return; el.hidden = false; el.style.removeProperty('display'); }
-function hideEl(el) { if (!el) return; el.hidden = true; el.style.display = 'none'; }
-
-const sections = {
-home: id('section-home'),
-generate: id('section-generate'),
-assignments: id('section-assignments'),
-view: id('section-view'),
-grades: id('section-grades'),
-};
-
-function showSection(route) {
-Object.values(sections).forEach(hideEl);
-showEl(sections[route] || sections.home);
-if (route === 'view') {
-document.getElementById('btn-view-quizzes')?.click();
-}
-if (route === 'grades') loadGrades();
-}
-window.showSection = showSection;
-
-document.querySelectorAll('.topnav .link').forEach(btn => {
-btn.addEventListener('click', () => showSection(btn.dataset.route));
-});
-
-const params = new URLSearchParams(location.search);
-showSection(params.get('route') || 'home');
-
-async function loadGrades() {
-const list = id('grades-list');
-if (!list) return;
-list.innerHTML = '<div class="muted">Loading grades…</div>';
-try {
-const email = (id('grades-email')?.value || '').trim();
-const url = new URL('/api/grades', window.location.origin);
-if (email) url.searchParams.set('email', email);
-url.searchParams.set('refresh', '1');
-const res = await fetch(url.toString());
-const data = await res.json();
-const items = (data && data.items) ? data.items : [];
-if (!items.length) {
-list.innerHTML = '<div class="empty-state" style="margin:12px 0;">No grades yet.</div>';
-return;
-}
-const grouped = groupByKind(items);
-
-function renderGroup(kindLabel, arr) {
-if (!arr.length) return '';
-return `
-<div class="grades-group">
-<h3 class="grade-group-title">${kindLabel}</h3>
-${arr.map(g => {
-const s = fmtScore(g.score);
-const m = fmtScore(g.max_score);
-const when = g.date_human || fmtDate(g.date);
-const who = g.student_email || g.student_name || 'Unknown student';
-return `
-<div class="quiz-card grade-card">
-<div class="quiz-title">${g.title || 'Graded item'}</div>
-<div class="quiz-meta">
-<span class="badge">${g.kind || 'quiz'}</span>
-${when ? `<span class="muted">• ${when}</span>` : ''}
-<span class="muted">• ${who}</span>
-</div>
-<div class="grade-line">
-<div class="grade-score">${s}/${m}</div>
-<div class="grade-actions">
-<a class="btn btn-dark" href="/student/grade/${g.id}?origin=teacher" target="_blank" rel="noopener">View details</a>
-</div>
-</div>
-</div>`;
-}).join('')}
-</div>`;
-}
-
-list.innerHTML =
-renderGroup('Quizzes', grouped.quiz) +
-renderGroup('Assignments', grouped.assignment);
-} catch (e) {
-console.error(e);
-list.innerHTML = '<div class="muted">Failed to load grades.</div>';
-}
-}
-window.loadGrades = loadGrades;
-
-const refreshBtn = id('btn-refresh-grades');
-if (refreshBtn) refreshBtn.addEventListener('click', loadGrades);
-
-(function initRotator() {
-const container = id('rotate-text');
-if (!container) return;
-const items = Array.from(container.querySelectorAll('span'));
-if (items.length <= 1) return;
-
-let idx = 0;
-items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
-
-setInterval(() => {
-const cur = items[idx];
-if (!cur) return;
-cur.style.opacity = 0;
-setTimeout(() => {
-cur.style.display = 'none';
-idx = (idx + 1) % items.length;
-const nxt = items[idx];
-nxt.style.display = '';
-requestAnimationFrame(() => { nxt.style.opacity = 1; });
-}, 200);
-}, 2800);
-})();
-
-document.addEventListener("DOMContentLoaded", function () {
-  const detectBtn = document.getElementById("btn-detect-subtopics-assign");
-  const fileInput = document.getElementById("assign-pdf-file");
-  const subtopicsSection = document.getElementById("assign-subtopics-section");
-  const subtopicsList = document.getElementById("assign-subtopics-list");
-
-  if (detectBtn) {
-    detectBtn.addEventListener("click", async function () {
-      try {
-        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-          alert("Please upload a PDF first.");
-          return;
-        }
-
-        detectBtn.disabled = true;
-        detectBtn.innerText = "Detecting...";
-
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
-
-        const res = await fetch("/api/detect-subtopics", {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await res.json();
-
-        if (!data || !data.subtopics || data.subtopics.length === 0) {
-          alert("No subtopics detected.");
-          detectBtn.disabled = false;
-          detectBtn.innerText = "Detect Subtopics";
-          return;
-        }
-
-        subtopicsList.innerHTML = "";
-
-        data.subtopics.forEach((topic, index) => {
-          const div = document.createElement("div");
-          div.className = "subtopic-item";
-
-          div.innerHTML = `
-            <label style="display:flex; gap:10px; align-items:center;">
-              <input type="checkbox" name="assign-subtopic" value="${topic}" checked />
-              <span>${topic}</span>
+    <!-- Topics Assignment Modal -->
+    <div id="modal-assign-topics" class="modal" aria-hidden="true">
+      <div class="modal-card" style="max-width: 950px;">
+        <div class="modal-head">
+          <h3>🎓 Generate Assignment by Topics</h3>
+          <div class="modal-actions">
+            <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
+            <button class="generate-btn" type="button" id="btn-assign-topics-generate">🚀 Generate</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <!-- Topics Input -->
+          <div class="section-title">1️⃣ Enter Topics</div>
+          <div class="field">
+            <label for="assign-topics-text">
+              <span>Topics (one per line)</span>
             </label>
-          `;
+            <textarea id="assign-topics-text" rows="5"
+                      placeholder="e.g.&#10;Binary Search Trees&#10;Sorting Algorithms&#10;Machine Learning Fundamentals&#10;Neural Networks"></textarea>
+          </div>
 
-          subtopicsList.appendChild(div);
+          <!-- Assignment Type Distribution -->
+          <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
+          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+            Choose how many questions of each type you want to generate
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">💡</span>
+                <div>
+                  <strong>Conceptual</strong>
+                  <p>Theory & principles</p>
+                </div>
+              </div>
+              <input type="number" id="topics-conceptual-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🎯</span>
+                <div>
+                  <strong>Scenario-Based</strong>
+                  <p>Real-world application</p>
+                </div>
+              </div>
+              <input type="number" id="topics-scenario-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🔬</span>
+                <div>
+                  <strong>Research-Based</strong>
+                  <p>Investigation & analysis</p>
+                </div>
+              </div>
+              <input type="number" id="topics-research-count" min="0" max="10" value="0">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">🛠️</span>
+                <div>
+                  <strong>Project-Based</strong>
+                  <p>Practical implementation</p>
+                </div>
+              </div>
+              <input type="number" id="topics-project-count" min="0" max="10" value="0">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">📋</span>
+                <div>
+                  <strong>Case Study</strong>
+                  <p>Complex situation analysis</p>
+                </div>
+              </div>
+              <input type="number" id="topics-case-study-count" min="0" max="10" value="1">
+            </div>
+            <div class="assignment-type-card">
+              <div class="type-header">
+                <span class="type-icon">⚖️</span>
+                <div>
+                  <strong>Comparative</strong>
+                  <p>Compare & contrast</p>
+                </div>
+              </div>
+              <input type="number" id="topics-comparative-count" min="0" max="10" value="1">
+            </div>
+          </div>
+
+          <div id="topics-total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
+            Total Tasks: <span id="topics-total-tasks-count">4</span>
+          </div>
+
+          <!-- Difficulty Selection -->
+          <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
+          <div class="field">
+            <select id="topics-assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+              <option value="auto">Auto (AI decides based on content)</option>
+              <option value="easy">Easy (Beginner level)</option>
+              <option value="medium">Medium (Intermediate level)</option>
+              <option value="hard">Hard (Advanced level)</option>
+            </select>
+          </div>
+
+          <!-- Scenario Style Selection -->
+          <div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
+          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
+            Choose whether scenario-based and case study questions should include code or focus on strategic decisions
+          </p>
+          <div class="field">
+            <select id="topics-assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
+              <option value="auto">Auto (Detect from content - includes code for technical topics)</option>
+              <option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
+              <option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
+            </select>
+          </div>
+
+          <!-- Assignment Settings -->
+          <div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
+          <div class="field">
+            <label class="label" for="topics-assign-time-limit">Time limit (minutes)</label>
+            <input type="number" id="topics-assign-time-limit" min="0" placeholder="e.g. 60" />
+          </div>
+          <div class="field">
+            <label class="label" for="topics-assign-due-date">Due date</label>
+            <input type="datetime-local" id="topics-assign-due-date" />
+          </div>
+          <div class="field">
+            <label class="label" for="topics-assign-note">Note to students</label>
+            <textarea id="topics-assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='assignments.js') }}"></script>
+  <script src="{{ url_for('static', filename='view_items.js') }}"></script>
+  <script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
+
+  <!-- Router and Home Rotator -->
+  <script defer>
+    (function () {
+      // DOM Helpers
+      const $ = (sel) => document.querySelector(sel);
+      const id = (s) => document.getElementById(s);
+      const fmtScore = (n) => (window.__fmtScore ? window.__fmtScore(n) : Math.ceil(Number(n) || 0));
+      const fmtDate = (v) => (window.__fmtDateTime ? window.__fmtDateTime(v) : (v ? new Date(v).toLocaleString() : ''));
+      
+      // Group items by kind
+      const groupByKind = (items = []) => {
+        const out = { quiz: [], assignment: [] };
+        items.forEach(it => {
+          const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
+          out[k].push(it);
         });
+        return out;
+      };
 
-        subtopicsSection.style.display = "block";
-        detectBtn.disabled = false;
-        detectBtn.innerText = "Detect Subtopics";
-      } catch (err) {
-        console.error(err);
-        alert("Error detecting subtopics.");
-        detectBtn.disabled = false;
-        detectBtn.innerText = "Detect Subtopics";
+      // Element visibility helpers
+      function showEl(el) { if (!el) return; el.hidden = false; el.style.removeProperty('display'); }
+      function hideEl(el) { if (!el) return; el.hidden = true; el.style.display = 'none'; }
+
+      // Section management
+      const sections = {
+        home: id('section-home'),
+        generate: id('section-generate'),
+        assignments: id('section-assignments'),
+        view: id('section-view'),
+        grades: id('section-grades'),
+      };
+
+      function showSection(route) {
+        Object.values(sections).forEach(hideEl);
+        showEl(sections[route] || sections.home);
+        if (route === 'view') {
+          document.getElementById('btn-view-quizzes')?.click();
+        }
+        if (route === 'grades') loadGrades();
       }
-    });
-  }
-});
+      window.showSection = showSection;
 
-})();
-</script>
-<!-- ✅ Added Publish Function -->
-<script>
-async function publishQuiz(id) {
-  const res = await fetch(`/api/quizzes/${id}/publish`, { method: 'POST' });
-  const data = await res.json();
-  if (data.success) alert('✅ Quiz published successfully!');
-  else alert('❌ ' + data.error);
-}
-</script>
+      // Navigation event listeners
+      document.querySelectorAll('.topnav .link').forEach(btn => {
+        btn.addEventListener('click', () => showSection(btn.dataset.route));
+      });
+
+      // Initial route
+      const params = new URLSearchParams(location.search);
+      showSection(params.get('route') || 'home');
+
+      // Grades loading function
+      async function loadGrades() {
+        const list = id('grades-list');
+        if (!list) return;
+        list.innerHTML = '<div class="muted">Loading grades…</div>';
+        try {
+          const email = (id('grades-email')?.value || '').trim();
+          const url = new URL('/api/grades', window.location.origin);
+          if (email) url.searchParams.set('email', email);
+          url.searchParams.set('refresh', '1');
+          const res = await fetch(url.toString());
+          const data = await res.json();
+          const items = (data && data.items) ? data.items : [];
+          
+          if (!items.length) {
+            list.innerHTML = '<div class="empty-state" style="margin:12px 0;">No grades yet.</div>';
+            return;
+          }
+          
+          const grouped = groupByKind(items);
+
+          function renderGroup(kindLabel, arr) {
+            if (!arr.length) return '';
+            return `
+              <div class="grades-group">
+                <h3 class="grade-group-title">${kindLabel}</h3>
+                ${arr.map(g => {
+                  const s = fmtScore(g.score);
+                  const m = fmtScore(g.max_score);
+                  const when = g.date_human || fmtDate(g.date);
+                  const who = g.student_email || g.student_name || 'Unknown student';
+                  return `
+                    <div class="quiz-card grade-card">
+                      <div class="quiz-title">${g.title || 'Graded item'}</div>
+                      <div class="quiz-meta">
+                        <span class="badge">${g.kind || 'quiz'}</span>
+                        ${when ? `<span class="muted">• ${when}</span>` : ''}
+                        <span class="muted">• ${who}</span>
+                      </div>
+                      <div class="grade-line">
+                        <div class="grade-score">${s}/${m}</div>
+                        <div class="grade-actions">
+                          <a class="btn btn-dark" href="/student/grade/${g.id}?origin=teacher" target="_blank" rel="noopener">View details</a>
+                        </div>
+                      </div>
+                    </div>`;
+                }).join('')}
+              </div>`;
+          }
+
+          list.innerHTML = renderGroup('Quizzes', grouped.quiz) + renderGroup('Assignments', grouped.assignment);
+        } catch (e) {
+          console.error(e);
+          list.innerHTML = '<div class="muted">Failed to load grades.</div>';
+        }
+      }
+      window.loadGrades = loadGrades;
+
+      // Refresh grades button
+      const refreshBtn = id('btn-refresh-grades');
+      if (refreshBtn) refreshBtn.addEventListener('click', loadGrades);
+
+      // Home page text rotator
+      (function initRotator() {
+        const container = id('rotate-text');
+        if (!container) return;
+        const items = Array.from(container.querySelectorAll('span'));
+        if (items.length <= 1) return;
+
+        let idx = 0;
+        items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
+
+        setInterval(() => {
+          const cur = items[idx];
+          if (!cur) return;
+          cur.style.opacity = 0;
+          setTimeout(() => {
+            cur.style.display = 'none';
+            idx = (idx + 1) % items.length;
+            const nxt = items[idx];
+            nxt.style.display = '';
+            requestAnimationFrame(() => { nxt.style.opacity = 1; });
+          }, 200);
+        }, 2800);
+      })();
+
+      // Subtopic detection for assignments
+      document.addEventListener("DOMContentLoaded", function () {
+        const detectBtn = document.getElementById("btn-detect-subtopics-assign");
+        const fileInput = document.getElementById("assign-pdf-file");
+        const subtopicsSection = document.getElementById("assign-subtopics-section");
+        const subtopicsList = document.getElementById("assign-subtopics-list");
+
+        if (detectBtn) {
+          detectBtn.addEventListener("click", async function () {
+            try {
+              if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                alert("Please upload a PDF first.");
+                return;
+              }
+
+              detectBtn.disabled = true;
+              detectBtn.innerText = "Detecting...";
+
+              const formData = new FormData();
+              formData.append("file", fileInput.files[0]);
+
+              const res = await fetch("/api/detect-subtopics", {
+                method: "POST",
+                body: formData
+              });
+
+              const data = await res.json();
+
+              if (!data || !data.subtopics || data.subtopics.length === 0) {
+                alert("No subtopics detected.");
+                detectBtn.disabled = false;
+                detectBtn.innerText = "Detect Subtopics";
+                return;
+              }
+
+              subtopicsList.innerHTML = "";
+
+              data.subtopics.forEach((topic) => {
+                const div = document.createElement("div");
+                div.className = "subtopic-item";
+                div.innerHTML = `
+                  <label style="display:flex; gap:10px; align-items:center;">
+                    <input type="checkbox" name="assign-subtopic" value="${topic}" checked />
+                    <span>${topic}</span>
+                  </label>
+                `;
+                subtopicsList.appendChild(div);
+              });
+
+              subtopicsSection.style.display = "block";
+              detectBtn.disabled = false;
+              detectBtn.innerText = "Detect Subtopics";
+            } catch (err) {
+              console.error(err);
+              alert("Error detecting subtopics.");
+              detectBtn.disabled = false;
+              detectBtn.innerText = "Detect Subtopics";
+            }
+          });
+        }
+      });
+    })();
+  </script>
+
+  <!-- Publish Function -->
+  <script>
+    async function publishQuiz(id) {
+      const res = await fetch(`/api/quizzes/${id}/publish`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) alert('✅ Quiz published successfully!');
+      else alert('❌ ' + data.error);
+    }
+  </script>
 </body>
 </html>
