@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="{{ url_for('CSS', filename='base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('CSS', filename='student.css') }}">
     <style>
         :root {
             --primary-orange: #FF9F1C;
@@ -258,7 +260,7 @@
     <!-- ================= QUIZ INFO ================= -->
     <div class="quiz-info">
         <p><strong>Time Limit:</strong> {% if time_limit and time_limit > 0 %}{{ time_limit }} minutes{% else %}No time limit{% endif %}</p>
-        <p><strong>Due Date:</strong> {{ settings.due_date|default("No due date") }}</p>
+        <p><strong>Due Date:</strong> {{ due_date|default("No due date") }}</p>  <!-- Changed from settings.due_date to due_date -->
         <p><strong>Total Questions:</strong> {{ questions|length }}</p>
     </div>
 

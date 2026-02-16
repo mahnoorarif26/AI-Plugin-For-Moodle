@@ -169,20 +169,8 @@
             <div class="assignment-header" role="banner">
                 <div class="assignment-header-content">
                     <h2 id="assignment-title" class="assignment-title">🎓 Generated Assignment</h2>
-                    <p class="assignment-subtitle" aria-describedby="assignment-title">${questions.length} tasks generated</p>
-                    ${timeLimitText || dueDateText || noteText ? `
-                    <div class="assignment-settings" role="group" aria-label="Assignment settings">
-                        ${timeLimitText ? `<div><strong>Time limit:</strong> ${timeLimitText}</div>` : ''}
-                        ${dueDateText ? `<div><strong>Due date:</strong> ${dueDateText}</div>` : ''}
-                        ${noteText ? `<div><strong>Note:</strong> ${noteText}</div>` : ''}
-                    </div>
-                    ` : ''}
                 </div>
-                <button id="close-assignment-btn" class="btn btn-close-assignment" aria-label="Close assignment view">
-                    <i class='bx bx-x' aria-hidden="true"></i> Close
-                </button>
             </div>`;
-
         const typeIcons = {
             conceptual: '💡',
             scenario: '🎯',
@@ -218,7 +206,6 @@
                     ${text.replace(/\n/g, "<br>")}
                 </div>`;
 
-            // Add optional sections only if they exist
             if (q.context) {
                 html += `
                 <div class="assignment-context" role="region" aria-label="Context">
