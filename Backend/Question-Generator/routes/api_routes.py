@@ -5,7 +5,7 @@ import uuid
 from typing import Dict, Any
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-
+import os
 # These will be imported from the main app
 from config import Config
 from utils.helpers import get_chunk_types_distribution, get_enhanced_fallback_subtopics
@@ -375,6 +375,254 @@ def quiz_from_subtopics():
         print(f"❌ Error in quiz_from_subtopics: {e}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@api_bp.route('/custom/advanced-assignment-topics', methods=['POST'])
+def generate_advanced_assignment_from_topics():
+    """
+    Generate advanced assignment from typed topics (no PDF).
+    """
+    try:
+        payload = request.get_json() or {}
+        topic_text = (payload.get("topic_text") or "").strip()
+        task_distribution = payload.get("task_distribution", {})
+        difficulty = payload.get("difficulty", "auto")
+        scenario_style = payload.get("scenario_style", "auto")
+
+        if not topic_text:
+            return jsonify({"error": "Please enter at least one topic"}), 400
+
+        total_tasks = sum(task_distribution.values())
+        if total_tasks <= 0:
+            return jsonify({"error": "Task distribution must have at least 1 task"}), 400
+
+        topics_list = [t.strip() for t in topic_text.split("\n") if t.strip()]
+        if not topics_list:
+            return jsonify({"error": "No valid topics found"}), 400
+
+        # Get existing context (for duplicate prevention)
+        from services.embedding_service import get_embedding_service
+        embedder = get_embedding_service()
+        existing_context = ""
+        
+        if embedder and embedder.is_available():
+            try:
+                existing_context = embedder.get_existing_context(
+                    topic_keywords=topics_list,
+                    max_results=15
+                )
+            except Exception as e:
+                print(f"⚠️ Could not get existing context: {e}")
+
+        # Generate assignment using LLM
+        from utils.assignment_utils import generate_advanced_assignments_llm
+        
+        result = generate_advanced_assignments_llm(
+            full_text=topic_text,
+            chosen_subtopics=topics_list,
+            task_distribution=task_distribution,
+            api_key=os.getenv("GROQ_API_KEY"),
+            difficulty=difficulty,
+            scenario_style=scenario_style,
+            existing_context=existing_context
+        )
+
+        if not result.get("success") or not result.get("questions"):
+            return jsonify({"error": result.get("error", "Failed to generate assignment")}), 500
+
+        questions = result["questions"]
+
+        assignment_data = {
+            "title": "Topics-Based Assignment",
+            "questions": questions,
+            "metadata": {
+                "source": "advanced-topics",
+                "topics": topics_list,
+                "task_distribution": task_distribution,
+                "difficulty": difficulty,
+                "scenario_style": scenario_style,
+                "kind": "assignment",
+                "total_tasks": len(questions),
+            },
+        }
+
+        # Save to database
+        from services.db import save_quiz as save_quiz_to_store
+        assignment_id = save_quiz_to_store(assignment_data)
+
+        # Index questions (non-critical)
+        if embedder and embedder.is_available():
+            try:
+                embedder.index_quiz_questions(
+                    quiz_id=assignment_id,
+                    questions=questions,
+                    source='assignment_topics'
+                )
+                print(f"✅ Indexed {len(questions)} from topics assignment")
+            except Exception as e:
+                print(f"⚠️ Indexing failed: {e}")
+            
+        return jsonify({
+            "success": True,
+            "assignment_id": assignment_id,
+            "title": assignment_data["title"],
+            "questions": questions,
+            "metadata": assignment_data["metadata"],
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in generate_advanced_assignment_from_topics: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route('/custom/advanced-assignment', methods=['POST'])
+def generate_advanced_assignment():
+    """
+    Generate advanced assignment with multiple question types.
+    Handles both new PDF uploads and previously uploaded PDFs.
+    """
+    try:
+        # Try to get JSON data first (for already-uploaded PDFs)
+        if request.is_json:
+            # Using already-detected subtopics
+            payload = request.get_json() or {}
+            upload_id = payload.get("upload_id")
+            chosen = payload.get("subtopics", [])
+            task_distribution = payload.get("task_distribution", {})
+            difficulty = payload.get("difficulty", "auto")
+            scenario_style = payload.get("scenario_style", "auto")
+        else:
+            # New file upload with options
+            if "file" not in request.files:
+                return jsonify({"error": "Missing file or upload_id"}), 400
+            
+            file = request.files["file"]
+            if not file or file.filename == "":
+                return jsonify({"error": "Empty file"}), 400
+            
+            # Get options from form data
+            options_raw = request.form.get("options")
+            if not options_raw:
+                return jsonify({"error": "Missing options"}), 400
+            
+            try:
+                options = json.loads(options_raw)
+            except Exception:
+                return jsonify({"error": "Invalid JSON in options"}), 400
+            
+            upload_id = options.get("upload_id")
+            chosen = options.get("subtopics", [])
+            task_distribution = options.get("task_distribution", {})
+            difficulty = options.get("difficulty", "auto")
+            scenario_style = options.get("scenario_style", "auto")
+        
+        # Validate
+        if not upload_id or upload_id not in _SUBTOPIC_UPLOADS:
+            return jsonify({"error": "Invalid or expired upload_id. Please detect subtopics again."}), 400
+        
+        if not chosen:
+            return jsonify({"error": "No subtopics selected"}), 400
+        
+        total_tasks = sum(task_distribution.values())
+        if total_tasks <= 0:
+            return jsonify({"error": "Task distribution must have at least 1 task"}), 400
+        
+        uploaded_data = _SUBTOPIC_UPLOADS[upload_id]
+        full_text = uploaded_data["text"]
+        source_file = uploaded_data["file_name"]
+        
+        # Get existing context (for duplicate prevention)
+        from services.embedding_service import get_embedding_service
+        embedder = get_embedding_service()
+        existing_context = ""
+        
+        if embedder and embedder.is_available():
+            try:
+                existing_context = embedder.get_existing_context(
+                    topic_keywords=chosen,
+                    max_results=15
+                )
+            except Exception as e:
+                print(f"⚠️ Could not get existing context: {e}")
+        
+        # Generate assignment
+        from utils.assignment_utils import generate_advanced_assignments_llm
+        
+        result = generate_advanced_assignments_llm(
+            full_text=full_text,
+            chosen_subtopics=chosen,
+            task_distribution=task_distribution,
+            api_key=os.getenv("GROQ_API_KEY"),
+            difficulty=difficulty,
+            scenario_style=scenario_style,
+            existing_context=existing_context
+        )
+        
+        if not result.get("success"):
+            error_detail = result.get("error", "Unknown error")
+            return jsonify({
+                "error": f"Assignment generation failed: {error_detail}"
+            }), 500
+        
+        questions = result.get("questions", [])
+        if not questions:
+            return jsonify({
+                "error": "LLM generated an empty assignment"
+            }), 500
+        
+        assignment_data = {
+            "title": f"{source_file} - Advanced Assignment",
+            "questions": questions,
+            "metadata": {
+                "source": "advanced-assignment",
+                "upload_id": upload_id,
+                "source_file": source_file,
+                "selected_subtopics": chosen,
+                "task_distribution": task_distribution,
+                "difficulty": difficulty,
+                "scenario_style": scenario_style,
+                "kind": "assignment",
+                "total_tasks": len(questions),
+            },
+        }
+        
+        # Save to database
+        from services.db import save_quiz as save_quiz_to_store
+        assignment_id = save_quiz_to_store(assignment_data)
+        
+        if not assignment_id:
+            return jsonify({"error": "Failed to save assignment"}), 500
+        
+        # Index (non-critical)
+        if embedder and embedder.is_available():
+            try:
+                embedder.index_quiz_questions(assignment_id, questions, 'assignment_pdf')
+                print(f"✅ Indexed {len(questions)} assignment tasks")
+            except Exception as e:
+                print(f"⚠️ Indexing failed (non-critical): {e}")
+        
+        # Clean up
+        if upload_id in _SUBTOPIC_UPLOADS:
+            del _SUBTOPIC_UPLOADS[upload_id]
+        
+        return jsonify({
+            "success": True,
+            "assignment_id": assignment_id,
+            "title": assignment_data["title"],
+            "questions": questions,
+            "metadata": assignment_data["metadata"],
+        }), 200
+    
+    except Exception as e:
+        print(f"❌ Error in generate_advanced_assignment: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": str(e),
+            "message": "Internal server error during assignment generation"
+        }), 500
+
+    
 
 @api_bp.route('/quizzes', methods=['POST'])
 def api_create_quiz():
@@ -423,6 +671,48 @@ def api_publish_quiz(quiz_id):
         "published_at": quiz["published_at"]
     }), 200
 
+@api_bp.route('/quizzes/<quiz_id>/settings', methods=['POST'])
+def api_update_quiz_settings(quiz_id):
+    """Save time limit / due date / note for a quiz."""
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        return jsonify({"ok": False, "error": "Quiz not found"}), 404
+
+    data = request.get_json(force=True) or {}
+
+    # Normalize fields
+    time_limit = data.get("time_limit", 0)
+    due_date = data.get("due_date", None)
+    note = data.get("note", "")
+
+    # Store settings in a dedicated object
+    quiz.setdefault("settings", {})
+    quiz["settings"]["time_limit"] = int(time_limit) if time_limit is not None else 0
+    quiz["settings"]["due_date"] = due_date
+    quiz["settings"]["note"] = note
+
+    # keep other flags if you send them
+    for k in ["allow_retakes", "shuffle_questions"]:
+        if k in data:
+            quiz["settings"][k] = data.get(k)
+
+    save_quiz_to_store(quiz)  # must UPDATE same quiz, not create new one
+
+    return jsonify({"ok": True, "quiz_id": quiz_id, "settings": quiz["settings"]}), 200
+
+
+@api_bp.route('/quizzes/<quiz_id>/settings', methods=['GET'])
+def api_get_quiz_settings(quiz_id):
+    """Return saved settings for a quiz."""
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        return jsonify({"ok": False, "error": "Quiz not found"}), 404
+
+    return jsonify({
+        "ok": True,
+        "quiz_id": quiz_id,
+        "settings": quiz.get("settings", {})
+    }), 200
 
 @api_bp.route('/generate-question', methods=['POST'])
 def auto_generate_quiz():

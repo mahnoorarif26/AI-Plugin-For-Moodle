@@ -254,40 +254,51 @@
         const options = safeArray(q.options);
         const showAnswers = viewMode === 'teacher';
 
+        // Check if options already have letters in them
+        const hasLetterPrefix = options.some(opt => 
+            typeof opt === 'string' && /^[A-Z][\.\)]\s/.test(opt)
+        );
+
         const items = options.map((opt, i) => {
             const isCorrect = i === ansIdx;
             const shouldShowAnswer = showAnswers && isCorrect;
             
+            // Extract clean option text (remove any existing letter prefix)
+            let cleanText = opt ?? '';
+            if (hasLetterPrefix && typeof cleanText === 'string') {
+                // Remove common prefixes like "A.", "A)", "A", etc.
+                cleanText = cleanText.replace(/^[A-Z][\.\)]?\s*/, '');
+            }
+            
             return `
-<div class="option ${shouldShowAnswer ? 'correct' : ''}">
-    <span class="option-letter">${letterFrom(i)}.</span>
-    <span class="option-text">${escapeHtml(opt ?? '')}</span>
-    ${shouldShowAnswer ? `<span class="correct-badge" aria-label="Correct answer">✓ Correct</span>` : ''}
-</div>
-`;
+    <div class="option ${shouldShowAnswer ? 'correct' : ''}">
+        <span class="option-letter">${letterFrom(i)}.</span>
+        <span class="option-text">${escapeHtml(cleanText)}</span>
+        ${shouldShowAnswer ? `<span class="correct-badge" aria-label="Correct answer">✓ Correct</span>` : ''}
+    </div>
+    `;
         }).join('');
 
         return `
-<div class="options-container">
-    <div class="options">${items}</div>
-</div>
-`;
+    <div class="options-container">
+        <div class="options">${items}</div>
+    </div>
+    `;
     }
-
     function renderTrueFalse(viewMode = 'teacher') {
         return `
-<div class="options-container">
-    <div class="option">
-        <span class="option-letter">A.</span>
-        <span class="option-text">True</span>
-    </div>
-    <div class="option">
-        <span class="option-letter">B.</span>
-        <span class="option-text">False</span>
-    </div>
-</div>
-`;
-    }
+        <div class="options-container">
+            <div class="option">
+                <span class="option-letter">A.</span>
+                <span class="option-text">True</span>
+            </div>
+            <div class="option">
+                <span class="option-letter">B.</span>
+                <span class="option-text">False</span>
+            </div>
+        </div>
+        `;
+            }
 
     function renderWrittenSpace(lines = 4, viewMode = 'student') {
         const lineElements = Array.from({ length: lines })

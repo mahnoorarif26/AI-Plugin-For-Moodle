@@ -31,7 +31,8 @@ async function saveQuizSettings(quizId, { timeLimit, dueDate, note }) {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[modal] saveQuizSettings failed', res.status, text);
-      alert('Failed to save quiz settings: ' + (text || `HTTP ${res.status}`));
+      // Don't alert here - just log the error
+      console.warn('Failed to save quiz settings, but quiz was generated successfully');
     } else {
       console.log(
         '[modal] Settings saved OK for quiz',
@@ -44,7 +45,7 @@ async function saveQuizSettings(quizId, { timeLimit, dueDate, note }) {
     }
   } catch (e) {
     console.error('[modal] Failed to save quiz settings:', e);
-    alert('Error while saving quiz settings: ' + (e.message || e));
+    // Don't alert - this is a non-critical error
   }
 }
 
@@ -55,6 +56,7 @@ class ModalManager {
     this.btnCancelAuto = document.getElementById('btn-cancel');
     this.btnGenAuto = document.getElementById('btn-generate');
     this.currentPdfName = ''; // Track PDF name
+    this.isGenerating = false; // Prevent multiple submissions
 
     if (typeof API_BASE === 'undefined' || typeof ENDPOINT === 'undefined') {
       console.warn(
@@ -165,11 +167,78 @@ class ModalManager {
       },
     };
 
-    console.log(' Transformed data:', transformed);
+    console.log('✅ Transformed data:', transformed);
     return transformed;
   }
 
+  // Wait for element to be available in DOM
+  waitForElement(selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        resolve(element);
+        return;
+      }
+
+      const observer = new MutationObserver((mutations, obs) => {
+        const element = document.querySelector(selector);
+        if (element) {
+          obs.disconnect();
+          resolve(element);
+        }
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        observer.disconnect();
+        reject(new Error(`Element ${selector} not found within ${timeout}ms`));
+      }, timeout);
+    });
+  }
+
+  // Ensure quiz section is visible and ready
+  async ensureQuizSectionReady() {
+    try {
+      // Wait for quiz section to exist
+      const quizSection = await this.waitForElement('#quiz-section');
+      
+      // Make sure it's visible
+      if (quizSection) {
+        quizSection.style.display = 'block';
+        quizSection.style.visibility = 'visible';
+        quizSection.classList.add('active');
+      }
+
+      // Wait for quiz container
+      const quizContainer = await this.waitForElement('#quiz-container');
+      
+      // Clear any old content
+      if (quizContainer) {
+        quizContainer.innerHTML = '<div class="loading">Loading quiz...</div>';
+      }
+
+      // Wait a tiny bit for DOM to settle
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      return true;
+    } catch (error) {
+      console.warn('[modal] Quiz section not ready:', error);
+      return false;
+    }
+  }
+
   async handleGenerate() {
+    // Prevent multiple simultaneous generations
+    if (this.isGenerating) {
+      notify('Quiz generation already in progress...');
+      return;
+    }
+
     const fileInput = document.getElementById('fileInput');
     const file = fileInput?.files?.[0];
     if (!file) return notify('Please select a PDF.');
@@ -202,15 +271,32 @@ class ModalManager {
     fd.append('file', file);
     fd.append('options', JSON.stringify(options));
 
+    // Set generating flag
+    this.isGenerating = true;
+    
+    // Disable generate button to prevent double-click
+    if (this.btnGenAuto) {
+      this.btnGenAuto.disabled = true;
+      this.btnGenAuto.textContent = 'Generating...';
+    }
+
     try {
       setProgress?.(10);
+      
+      // Prepare quiz section first (but don't show yet)
+      await this.ensureQuizSectionReady();
+
       const url =
         typeof API_BASE !== 'undefined' && typeof ENDPOINT !== 'undefined'
           ? API_BASE + ENDPOINT
           : '/api/quiz/from-pdf';
 
       console.log('📤 Sending request to:', url);
+      
+      setProgress?.(30);
+      
       const res = await fetch(url, { method: 'POST', body: fd });
+      
       setProgress?.(65);
 
       if (!res.ok) {
@@ -219,7 +305,7 @@ class ModalManager {
       }
 
       const data = await res.json();
-      setProgress?.(100);
+      setProgress?.(90);
 
       console.log('📥 Received API response:', data);
 
@@ -232,13 +318,6 @@ class ModalManager {
       // Determine quiz ID for saving settings
       const quizId = data.id || data.quiz_id;
       console.log('[modal] Using quizId for settings:', quizId);
-
-      // Save settings to backend (time_limit, due_date, note)
-      await saveQuizSettings(quizId, {
-        timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
-        dueDate,
-        note,
-      });
 
       // Prepare settings object for renderer/publish.js
       const settingsForRenderer = {
@@ -254,29 +333,64 @@ class ModalManager {
 
       console.log('🎯 Calling renderGeneratedQuiz with:', payloadForRenderer);
 
+      // Show the generate section first
+      if (typeof window.showSection === 'function') {
+        window.showSection('generate');
+      }
+
+      // Small delay to ensure section is visible
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Call the renderer
       if (typeof window.renderGeneratedQuiz === 'function') {
-        if (window.showSection) window.showSection('generate');
         window.renderGeneratedQuiz(payloadForRenderer);
+        
+        // Save settings after successful render (don't wait for it)
+        saveQuizSettings(quizId, {
+          timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
+          dueDate,
+          note,
+        }).catch(err => console.warn('Settings save failed:', err));
+
+        setProgress?.(100);
+        
+        // Success notification
         notify(
-          `AI-powered quiz generated  (${data.questions.length} questions)`,
+          `✅ Quiz generated successfully (${data.questions.length} questions)`
         );
       } else if (typeof window.renderQuiz === 'function') {
         // Fallback to legacy renderer if publish.js is not loaded
-        if (window.showSection) window.showSection('generate');
-        renderQuiz(data.questions, data.metadata || {});
+        window.renderQuiz(data.questions, data.metadata || {});
+        
+        saveQuizSettings(quizId, {
+          timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
+          dueDate,
+          note,
+        }).catch(err => console.warn('Settings save failed:', err));
+
+        setProgress?.(100);
+        
         notify(
-          `AI-powered quiz generated  (${data.questions.length} questions)`,
+          `✅ Quiz generated successfully (${data.questions.length} questions)`
         );
       } else {
         console.error('[modal] No renderer available (renderGeneratedQuiz or renderQuiz).');
         notify('Renderer not available (check publish.js and script.js)');
       }
 
+      // Close modal after successful generation
       this.close();
+      
     } catch (err) {
       console.error('[modal] Generation error:', err);
-      notify('Failed: ' + (err.message || 'Server error'));
+      notify('❌ Failed: ' + (err.message || 'Server error'));
     } finally {
+      // Reset generating flag and button
+      this.isGenerating = false;
+      if (this.btnGenAuto) {
+        this.btnGenAuto.disabled = false;
+        this.btnGenAuto.textContent = 'Generate Quiz';
+      }
       setTimeout(() => resetProgress?.(), 600);
     }
   }
@@ -284,7 +398,10 @@ class ModalManager {
 
 // Initialize modal manager for AI Quiz modal
 document.addEventListener('DOMContentLoaded', function () {
-  new ModalManager();
+  // Small delay to ensure DOM is fully loaded
+  setTimeout(() => {
+    new ModalManager();
+  }, 100);
 });
 
 // Progress utility functions
@@ -292,7 +409,8 @@ function setProgress(percent) {
   const progress = document.getElementById('progress');
   if (progress) {
     progress.style.display = 'block';
-    progress.querySelector('div').style.width = percent + '%';
+    const bar = progress.querySelector('div');
+    if (bar) bar.style.width = percent + '%';
   }
 }
 
@@ -300,6 +418,27 @@ function resetProgress() {
   const progress = document.getElementById('progress');
   if (progress) {
     progress.style.display = 'none';
-    progress.querySelector('div').style.width = '0%';
+    const bar = progress.querySelector('div');
+    if (bar) bar.style.width = '0%';
   }
 }
+
+// Add CSS for loading state if not present
+const style = document.createElement('style');
+style.textContent = `
+  .loading {
+    text-align: center;
+    padding: 2rem;
+    color: #666;
+    font-style: italic;
+  }
+  
+  #quiz-section {
+    transition: opacity 0.3s ease;
+  }
+  
+  #quiz-section.active {
+    opacity: 1;
+  }
+`;
+document.head.appendChild(style);
