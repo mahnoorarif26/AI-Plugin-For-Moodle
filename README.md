@@ -1,4 +1,4 @@
-# 🎓 AI-Powered Smart Assessment System for Moodle
+# 🎓 SMART EVALUATION IN E- LEARNING : A CUSTOMIZED AI : BASED PLUGIN FOR MOODLE
 
 An intelligent AI-driven assessment automation system integrated with Moodle.  
 This system generates quizzes and assignments using Large Language Models (LLMs) and performs automated grading using rubric-based AI evaluation and semantic embeddings.
