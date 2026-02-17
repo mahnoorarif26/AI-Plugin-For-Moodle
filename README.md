@@ -1,4 +1,4 @@
-# 🎓 SMART EVALUATION IN E- LEARNING : A CUSTOMIZED AI : BASED PLUGIN FOR MOODLE
+<img width="1536" height="1024" alt="ChatGPT Image Feb 16, 2026, 04_41_04 PM (1)" src="https://github.com/user-attachments/assets/16c42c9a-0d5a-4038-8fcd-f9f9f25c7433" /># 🎓 SMART EVALUATION IN E- LEARNING : A CUSTOMIZED AI : BASED PLUGIN FOR MOODLE
 
 An intelligent AI-driven assessment automation system integrated with Moodle.  
 This system generates quizzes and assignments using Large Language Models (LLMs) and performs automated grading using rubric-based AI evaluation and semantic embeddings.
@@ -60,13 +60,11 @@ Scenario styles:
 - Prevents repeated or highly similar questions
 
 ### 🐳 Deployment Ready
-- Dockerized architecture
 - Environment-based configuration
 - API-driven backend
 - Cloud-based Firestore integration
+<img width="1536" height="1024" alt="ChatGPT Image Feb 16, 2026, 04_41_04 PM (1)" src="https://github.com/user-attachments/assets/04e6b549-db0a-4bed-83ad-2cd07bc78263" />
 
----
 
-## 🏗 System Architecture
 
-### High-Level Workflow
+
