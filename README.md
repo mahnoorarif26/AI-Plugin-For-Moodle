@@ -1,1 +1,72 @@
-# AI-Plugin-For-Moodle
+# 🎓 AI-Powered Smart Assessment System for Moodle
+
+An intelligent AI-driven assessment automation system integrated with Moodle.  
+This system generates quizzes and assignments using Large Language Models (LLMs) and performs automated grading using rubric-based AI evaluation and semantic embeddings.
+
+---
+
+## 📌 Overview
+
+Traditional assessment creation and grading require significant instructor effort. With increasing student numbers and digital platforms like Moodle, manual assessment becomes inefficient and inconsistent.
+
+This project introduces an **AI-powered Smart Assessment System** that:
+
+- Automatically generates quizzes from uploaded PDFs
+- Creates advanced assignments from selected topics
+- Supports both **code-based** and **decision-based** scenarios
+- Performs intelligent grading for objective and subjective questions
+- Prevents duplicate questions using semantic embeddings
+- Stores data using Google Firestore
+- Supports Dockerized deployment for scalable environments
+
+The system reduces instructor workload, ensures grading consistency, and enhances digital learning experiences.
+
+---
+
+## 🚀 Key Features
+
+### 🧠 Intelligent Quiz Generation
+- Structure-aware PDF processing
+- Adaptive text chunking
+- Difficulty-level control
+- Bloom taxonomy-based question design
+- Strict JSON validation of LLM outputs
+
+### 📚 Advanced Assignment Generator
+Supports:
+- Conceptual tasks
+- Scenario-based tasks
+- Research-based tasks
+- Project-based tasks
+- Case studies
+- Comparative analysis
+
+Scenario styles:
+- **Code-based** (debugging, system design, optimization)
+- **Decision-based** (strategic reasoning, stakeholder analysis)
+
+### 📝 Smart Grading Engine
+- Rule-based grading for MCQs and True/False
+- LLM-based rubric grading for subjective answers
+- Code evaluation with structured criteria
+- Decision-based analytical grading
+- Strict / Balanced / Lenient grading policies
+- Fallback heuristic grading if LLM is unavailable
+
+### 🔍 Embedding-Based Duplicate Prevention
+- Uses `all-MiniLM-L6-v2` SentenceTransformer
+- Stores embeddings in Firestore
+- Uses cosine similarity for semantic comparison
+- Prevents repeated or highly similar questions
+
+### 🐳 Deployment Ready
+- Dockerized architecture
+- Environment-based configuration
+- API-driven backend
+- Cloud-based Firestore integration
+
+---
+
+## 🏗 System Architecture
+
+### High-Level Workflow
