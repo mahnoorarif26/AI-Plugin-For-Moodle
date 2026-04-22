@@ -330,13 +330,13 @@
             {% endif %}
             <h1 class="confirmation-title">Time Limit Exceeded</h1>
             <div class="status-card timeout-warning">
-                {{ confirmation_message }}
+                {{ confirmation_message or "Time limit exceeded. Your submission has been recorded." }}
             </div>
         {% elif is_assignment %}
             <div class="success-icon">📝</div>
             <h1 class="confirmation-title">Assignment Submitted</h1>
             <div class="status-card assignment-pending">
-                {{ confirmation_message }}
+                {{ confirmation_message or "Your assignment has been submitted successfully and is pending review by your instructor." }}
             </div>
             {% if submission_id and submission_id != 'N/A' %}
             <div class="score-display" id="live-score-box">
@@ -346,9 +346,9 @@
             {% endif %}
         {% else %}
             <div class="success-icon" style="color: var(--success-green);">🎉</div>
-            <h1 class="confirmation-title">{{ item_type }} Submitted Successfully</h1>
+            <h1 class="confirmation-title">{{ item_type or "Quiz" }} Submitted Successfully</h1>
             <div class="confirmation-message">
-                {{ confirmation_message }}
+                {{ confirmation_message or "Your submission has been recorded successfully!" }}
             </div>
             
             {% if not is_assignment %}
@@ -366,20 +366,28 @@
         
         <div class="details-grid">
             <div class="detail-item">
-                <div class="detail-label">{{ item_type }} Title</div>
-                <div class="detail-value">{{ quiz_title }}</div>
+                <div class="detail-label">{{ item_type or "Quiz" }} Title</div>
+                <div class="detail-value">{{ quiz_title or "Untitled" }}</div>
             </div>
             <div class="detail-item">
                 <div class="detail-label">Student Name</div>
-                <div class="detail-value">{{ student_name }}</div>
+                <div class="detail-value">{{ student_name or "Student" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Roll Number</div>
+                <div class="detail-value">{{ roll_no or "N/A" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ student_email or "N/A" }}</div>
             </div>
             <div class="detail-item">
                 <div class="detail-label">Submission ID</div>
-                <div class="detail-value">{{ submission_id }}</div>
+                <div class="detail-value">{{ submission_id or "N/A" }}</div>
             </div>
             <div class="detail-item">
                 <div class="detail-label">Submitted At</div>
-                <div class="detail-value">{{ submitted_at or now }}</div>
+                <div class="detail-value">{{ submitted_at or now or "Just now" }}</div>
             </div>
         </div>
         
@@ -394,11 +402,7 @@
             {% endif %}
         </div>
     </div>
-</body>
-</html>
 
-            
-    
     <script>
       (function(){
         try{
@@ -430,40 +434,5 @@
         }catch(e){}
       })();
     </script>
-</html>
-
-    <script>
-      (function(){
-        try{
-          const subId = "{{ submission_id }}";
-          if(!subId || subId === 'N/A') return;
-          const scoreBox = document.getElementById('live-score-box');
-          const scoreNum = document.getElementById('live-score-number');
-          const scoreText = document.getElementById('live-score-text');
-          if(!scoreBox || !scoreText) return;
-          if(scoreNum && scoreNum.style.display !== 'none' && (scoreNum.textContent||'').trim() !== '') return;
-          const ceil = (v)=> Math.ceil(Number(v||0));
-          let attempts = 0; const maxAttempts = 20;
-          async function poll(){
-            attempts++;
-            try{
-              const r = await fetch('/api/grades?refresh=1',{cache:'no-store'});
-              const data = await r.json();
-              const items = (data && data.items) ? data.items : [];
-              const it = items.find(x => String(x.id) === String(subId));
-              if(it && it.max_score != null){
-                const s = ceil(it.score);
-                const m = ceil(it.max_score);
-                if(scoreNum){ scoreNum.textContent = `${s}/${m}`; scoreNum.style.display = 'block'; }
-                if(scoreText){ scoreText.textContent = 'Your Score'; }
-                return;
-              }
-            }catch(e){}
-            if(attempts < maxAttempts){ setTimeout(poll, 1500); }
-          }
-          poll();
-        }catch(e){}
-      })();
-    </script>
-</html>
+</body>
 </html>

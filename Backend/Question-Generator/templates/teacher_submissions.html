@@ -3,173 +3,632 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submissions • {{ quiz_title }}</title>
-    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <title>Submissions: {{ quiz_title }}</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <style>
-        :root{
-            --orange-1:#ffb366;
-            --orange-2:#fb9026;
-            --text:#0f172a;
-            --muted:#475569;
-            --card:#fff;
+        /* Define Orange Colors */
+        :root {
+            --primary-orange: #ff9f1c;
+            --dark-orange: #cc7a00;
+            --light-orange: #fff7ed;
+            --border-orange: #ffcf99;
         }
-        *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter','Segoe UI',sans-serif;}
-        body{
-            background:linear-gradient(180deg,#eef1f6,#f8fafc);
-            color:var(--text);
-            min-height:100vh;
-            padding:24px;
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container{max-width:1100px;margin:0 auto;}
-        .header{
-            display:flex;
-            align-items:center;
-            gap:12px;
-            margin-bottom:16px;
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #f9f9f9, #fff);
+            color: #333;
+            line-height: 1.6;
         }
-        .back-btn{
-            padding:10px 14px;
-            background:#f5f7fb;
-            border:1px solid #e2e8f0;
-            border-radius:10px;
-            cursor:pointer;
-            display:flex;
-            align-items:center;
-            gap:6px;
-            font-weight:600;
-            color:var(--text);
+
+        /* Top Bar */
+        .topbar {
+            height: 72px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .quiz-title{font-size:24px;font-weight:700;}
-        .main-card{
-            background:var(--card);
-            border-radius:14px;
-            padding:20px;
-            box-shadow:0 10px 30px rgba(0,0,0,0.08);
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--primary-orange);
         }
-        .stats{
-            display:grid;
-            grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-            gap:12px;
-            margin-bottom:18px;
+
+        .brand i {
+            font-size: 24px;
         }
-        .stat{
-            padding:14px;
-            border-radius:12px;
-            background:linear-gradient(135deg,var(--orange-1),var(--orange-2));
-            color:var(--text);
-            border:1px solid rgba(255,255,255,0.5);
-            box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
         }
-        .stat-label{font-size:13px;opacity:0.9;}
-        .stat-value{font-size:26px;font-weight:800;}
-        table{
-            width:100%;
-            border-collapse:collapse;
-            margin-top:10px;
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
-        th,td{
-            padding:12px;
-            border-bottom:1px solid #e2e8f0;
-            text-align:left;
+
+        .btn-primary {
+            background: linear-gradient(to right, #ffb366, #fb9026);
+            color: white;
+            box-shadow: 0 4px 6px rgba(251, 144, 38, 0.3);
         }
-        th{background:#f8fafc;font-weight:700;font-size:13px;color:var(--muted);}
-        tr:hover td{background:#f8fafc;}
-        .badge{
-            display:inline-block;
-            padding:4px 8px;
-            border-radius:12px;
-            font-size:12px;
-            background:#eef2f7;
-            color:#475569;
+
+        .btn-primary:hover {
+            background: linear-gradient(to right, #fd9f41, #ffb366);
+            box-shadow: 0 6px 10px rgba(251, 144, 38, 0.4);
+            transform: translateY(-2px);
         }
-        .status-graded{background:#e0f8ea;color:#0f5132;}
-        .status-pending{background:#fff3cd;color:#856404;}
-        .view-btn{
-            padding:8px 12px;
-            background:var(--orange-2);
-            color:#fff;
-            border:none;
-            border-radius:8px;
-            cursor:pointer;
-            font-weight:600;
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary-orange);
+            border: 2px solid var(--primary-orange);
         }
-        .view-btn:hover{background:#f57c00;}
-        .empty{
-            text-align:center;
-            padding:40px 16px;
-            color:var(--muted);
+
+        .btn-secondary:hover {
+            background: var(--light-orange);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        /* Header Section */
+        .preview-header {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .preview-header h1 {
+            color: var(--primary-orange);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .preview-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: var(--light-orange);
+            color: var(--dark-orange);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+
+        .quiz-meta {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .quiz-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quiz-meta-item i {
+            color: var(--primary-orange);
+        }
+
+        /* Total Submissions Card - Narrower */
+        .total-card {
+            background: linear-gradient(135deg, #fff7ed, #fff);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 0 auto 30px auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid var(--border-orange);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            max-width: 350px; /* Reduced width */
+            width: 100%;
+        }
+
+        .total-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #ff9f1c, #ff6b35);
+        }
+
+        .total-label {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .total-value {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--primary-orange);
+            line-height: 1.2;
+            text-shadow: 2px 2px 4px rgba(255, 159, 28, 0.1);
+        }
+
+        .total-sublabel {
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        /* Submissions Table Container */
+        .submissions-container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .submissions-container h2 {
+            margin-bottom: 25px;
+            color: #333;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .submissions-container h2 i {
+            color: var(--primary-orange);
+            font-size: 24px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        .submissions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .submissions-table thead {
+            background: var(--light-orange);
+        }
+
+        .submissions-table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--dark-orange);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .submissions-table td {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+
+        .submissions-table tbody tr {
+            transition: all 0.2s ease;
+        }
+
+        .submissions-table tbody tr:hover {
+            background: #f9f9f9;
+            transform: translateX(2px);
+        }
+
+        /* Student Info */
+        .student-name {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .student-name i {
+            color: var(--primary-orange);
+            font-size: 18px;
+        }
+
+        .roll-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border: 1px solid #81c784;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2e7d32;
+            white-space: nowrap;
+        }
+
+        .email-text {
+            color: #666;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .email-text i {
+            color: var(--primary-orange);
+            font-size: 14px;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 8px 18px;
+            background: linear-gradient(to right, #ffb366, #fb9026);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 4px rgba(251, 144, 38, 0.2);
+        }
+
+        .action-btn:hover {
+            background: linear-gradient(to right, #fd9f41, #ffb366);
+            box-shadow: 0 4px 8px rgba(251, 144, 38, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .action-btn i {
+            font-size: 14px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+            color: var(--primary-orange);
+        }
+
+        .empty-state h2 {
+            margin-bottom: 10px;
+            color: #666;
+            font-size: 20px;
+        }
+
+        .empty-state p {
+            color: #999;
+            font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-orange);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .topbar {
+                flex-direction: column;
+                height: auto;
+                padding: 15px;
+                gap: 10px;
+            }
+
+            .topbar-actions {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .container {
+                margin: 20px;
+                padding: 20px;
+            }
+
+            .preview-header h1 {
+                font-size: 24px;
+            }
+
+            .quiz-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .total-card {
+                max-width: 100%; /* Full width on mobile */
+                padding: 20px;
+            }
+
+            .total-value {
+                font-size: 42px;
+            }
+
+            .submissions-table thead {
+                display: none;
+            }
+
+            .submissions-table tbody tr {
+                display: block;
+                margin-bottom: 15px;
+                border: 1px solid #f0f0f0;
+                border-radius: 10px;
+                padding: 15px;
+            }
+
+            .submissions-table td {
+                display: block;
+                text-align: right;
+                padding: 10px 0;
+                border: none;
+            }
+
+            .submissions-table td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: #666;
+            }
+
+            .student-name, .email-text {
+                justify-content: flex-end;
+            }
         }
     </style>
-    <script>
-        function viewSubmission(id){
-            if(!id) return;
-            window.open(`/student/grade/${id}?origin=teacher`, "_blank");
-        }
-        function goBack(){
-            window.location.href='/teacher/generate';
-        }
-    </script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <button class="back-btn" onclick="goBack()"><i class='bx bx-left-arrow-alt'></i> Back</button>
-            <div class="quiz-title">Submissions for {{ quiz_title }}</div>
+    <!-- Top Bar -->
+    <nav class="topbar">
+        <div class="brand">
+            <i class='bx bx-file-blank'></i>
+            <span>Student Submissions</span>
         </div>
-        <div class="main-card">
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-label">Total Submissions</div>
-                    <div class="stat-value">{{ total_submissions or (submissions|length if submissions else 0) }}</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label">Graded</div>
-                    <div class="stat-value">{{ graded_count or 0 }}</div>
+        <div class="topbar-actions">
+            <a href="/teacher/generate" class="btn btn-secondary">
+                <i class='bx bx-arrow-back'></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <div class="preview-header">
+            <span class="preview-badge">
+                <i class='bx bx-check-circle' style="margin-right: 4px;"></i>
+                Quiz Submissions
+            </span>
+            <h1>{{ quiz_title }}</h1>
+            <div class="quiz-meta">
+                <div class="quiz-meta-item">
+                    <i class='bx bx-file'></i>
+                    <span>Quiz ID: {{ quiz_id }}</span>
                 </div>
             </div>
-            {% if submissions and submissions|length>0 %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Score</th>
-                        <th>Submitted</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in submissions %}
-                    <tr>
-                        <td>{{ s.student_name or 'N/A' }}</td>
-                        <td>{{ s.student_email }}</td>
-                        <td>
-                            <span class="badge {% if s.is_graded %}status-graded{% else %}status-pending{% endif %}">
-                                {% if s.is_graded %}Graded{% else %}Pending{% endif %}
-                            </span>
-                        </td>
-                        <td>
-                            {% if s.max_total %}
-                              {{ s.score }}/{{ s.max_total }}
-                            {% else %}
-                              {{ s.score }}
-                            {% endif %}
-                        </td>
-                        <td>{{ s.submitted_at or 'N/A' }}</td>
-                        <td><button class="view-btn" onclick="viewSubmission('{{ s.id }}')">View</button></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty">
-                <i class='bx bx-spreadsheet' style="font-size:56px;"></i>
-                <div style="font-weight:600;margin-top:8px;">No submissions yet</div>
-                <div style="font-size:14px;">Students have not submitted any attempts.</div>
+        </div>
+
+        <!-- Total Submissions Card - Narrower -->
+        <div class="total-card">
+            <div class="total-label">
+                <i class='bx bx-group' style="margin-right: 4px;"></i>
+                Total Submissions
             </div>
-            {% endif %}
+            <div class="total-value" id="total-submissions">0</div>
+            <div class="total-sublabel">students have submitted</div>
+        </div>
+
+        <!-- Submissions Table -->
+        <div class="submissions-container">
+            <h2>
+                <i class='bx bx-list-ul'></i>
+                Student Submissions
+            </h2>
+            <div id="submissions-content">
+                <!-- Loading state -->
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading submissions...</p>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+        const quizId = "{{ quiz_id }}";
+
+        // Fetch submissions on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSubmissions();
+        });
+
+        async function loadSubmissions() {
+            try {
+                const response = await fetch(`/api/quizzes/${quizId}/submissions`);
+                const data = await response.json();
+
+                if (data.success && data.submissions) {
+                    displaySubmissions(data.submissions);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                showEmptyState();
+            }
+        }
+
+        function displaySubmissions(submissions) {
+            const container = document.getElementById('submissions-content');
+
+            if (!submissions || submissions.length === 0) {
+                showEmptyState();
+                return;
+            }
+
+            // Update total submissions count
+            document.getElementById('total-submissions').textContent = submissions.length;
+
+            let html = `
+                <div class="table-wrapper">
+                    <table class="submissions-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Roll Number</th>
+                                <th>Email</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            submissions.forEach(sub => {
+                // Make sure to escape the submission ID properly
+                const subId = sub.id.replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+                
+                // Get roll number with fallback
+                const rollNo = sub.roll_no || 'N/A';
+                
+                html += `
+                    <tr>
+                        <td data-label="Student">
+                            <div class="student-name">
+                                <i class='bx bx-user-circle'></i>
+                                ${sub.student_name || 'Unknown'}
+                            </div>
+                        </td>
+                        <td data-label="Roll Number">
+                            <span class="roll-badge">
+                                <i class='bx bx-id-card' style="margin-right: 4px;"></i>
+                                ${rollNo}
+                            </span>
+                        </td>
+                        <td data-label="Email">
+                            <div class="email-text">
+                                <i class='bx bx-envelope'></i>
+                                ${sub.student_email || 'N/A'}
+                            </div>
+                        </td>
+                        <td data-label="Actions">
+                            <button class="action-btn" onclick="viewGradeDetail('${subId}')">
+                                <i class='bx bx-show'></i>
+                                View Grade Detail
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function showEmptyState() {
+            const container = document.getElementById('submissions-content');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class='bx bx-inbox'></i>
+                    <h2>No Submissions Yet</h2>
+                    <p>Students haven't submitted this quiz yet. Check back later.</p>
+                </div>
+            `;
+            
+            // Also reset the total count
+            document.getElementById('total-submissions').textContent = '0';
+        }
+
+        function viewGradeDetail(submissionId) {
+            window.open(`/student/grade/${submissionId}?origin=teacher`, '_blank');
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadSubmissions, 30000);
+
+        // Add keyboard shortcut for back (Escape key)
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                window.location.href = '/teacher/generate';
+            }
+        });
+    </script>
 </body>
 </html>

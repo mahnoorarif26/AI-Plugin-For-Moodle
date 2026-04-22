@@ -18,7 +18,7 @@ except Exception:
 
 load_dotenv()
 
-FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "./serviceAccountKey.json")
+FIREBASE_SERVICE_ACCOUNT_PATH = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
 
 # ---------- Local JSON fallback paths ----------
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # .../Question-Generator
@@ -51,17 +51,42 @@ else:
 # ----------------------------------------------------
 #   SAVE QUIZ/ASSIGNMENT
 # ----------------------------------------------------
+
 def save_quiz(quiz: Dict[str, Any]) -> str:
     """
     Save quiz or assignment based on metadata.kind.
     - metadata.kind == 'assignment' → goes to 'assignments'
     - otherwise → goes to 'AIquizzes'
+    This version ensures proper Firestore settings field structure.
     """
-    # id & title
     qid = quiz.get("id") or str(uuid.uuid4())
     quiz["id"] = qid
     quiz["title"] = quiz.get("title") or quiz.get("metadata", {}).get("source_file") or "AI Generated Content"
     quiz["created_at"] = quiz.get("created_at") or datetime.utcnow()
+
+    # ✅ Ensure `settings` dictionary exists and consistent
+    settings = quiz.get('settings', {}) or {}
+
+    # ✅ Map top-level Firestore fields (backward-compatibility)
+    if not settings:
+        # Add fallback if old fields exist
+        settings = {
+            'time_limit': quiz.get('time_limit', 30),
+            'due_date': quiz.get('due_date', None),
+            'note': quiz.get('note', quiz.get('additional note', '')),
+            'allow_retakes': quiz.get('allow_retakes', False),
+            'shuffle_questions': quiz.get('shuffle_questions', True)
+        }
+
+    # Attach back to quiz and sync both directions
+    quiz['settings'] = settings
+    quiz['time_limit'] = settings.get('time_limit')
+    quiz['due_date'] = settings.get('due_date')
+    quiz['note'] = settings.get('note')
+
+    # Add teacher approval flag (False by default — only visible when approved)
+    if 'is_allowed' not in quiz:
+        quiz['is_allowed'] = False
 
     # normalize question IDs
     for q in quiz.get("questions", []):
@@ -70,16 +95,16 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
         if not q.get("prompt") and q.get("question_text"):
             q["prompt"] = q["question_text"]
 
-    # DETECT COLLECTION - FIXED VERSION
+    # DETECT COLLECTION
     metadata = quiz.get("metadata", {})
-    detected_kind = metadata.get("kind", "quiz")  # Default to "quiz"
-    
-    # Set collection based on detected kind
+    detected_kind = metadata.get("kind", "quiz")  # Default to 'quiz'
+
+    # Choose Firestore collection
     if detected_kind == "assignment":
         collection_name = "assignments"
     else:
         collection_name = "AIquizzes"
-    
+
     print(f"💾 DEBUG: Detected kind = '{detected_kind}'")
     print(f"💾 DEBUG: Saving to collection '{collection_name}' with ID: {qid}")
 
@@ -88,21 +113,20 @@ def save_quiz(quiz: Dict[str, Any]) -> str:
         try:
             _db.collection(collection_name).document(qid).set(quiz)
             print(f"✅ Successfully saved to Firestore collection: {collection_name}")
+            print(f"   Time limit: {quiz['time_limit']}, Due: {quiz['due_date']}, Note: {quiz['note']}")
             return qid
         except Exception as e:
             print(f"⚠️ Firestore save failed; fallback to local. Error: {e}")
 
-    # LOCAL JSON SAVE
+    # LOCAL JSON SAVE (fallback)
     if isinstance(quiz.get("created_at"), datetime):
         quiz["created_at"] = quiz["created_at"].isoformat()
 
     with open(_local_path(qid), "w", encoding="utf-8") as f:
         json.dump(quiz, f, ensure_ascii=False, indent=2)
-    
+
     print(f"✅ Saved locally as: {_local_path(qid)}")
     return qid
-
-
 # ----------------------------------------------------
 #   GET QUIZ/ASSIGNMENT
 # ----------------------------------------------------
@@ -145,55 +169,66 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
     print(f"📋 Listing quizzes/assignments. Filter by kind: {kind}")
     items: List[Dict[str, Any]] = []
 
-    # Firestore branch
     if _db:
         try:
-            # Search *both* collections
             collections_to_search = []
             if kind == "assignment":
                 collections_to_search = ["assignments"]
             elif kind == "quiz":
                 collections_to_search = ["AIquizzes"]
             else:
-                collections_to_search = ["AIquizzes", "assignments"]  # All items
+                collections_to_search = ["AIquizzes", "assignments"]
 
             for col in collections_to_search:
                 print(f"🔍 Searching collection: {col}")
                 docs = _db.collection(col).order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-                
+
                 for d in docs:
                     q = d.to_dict() or {}
                     qid = q.get("id") or d.id
                     title = q.get("title") or "Untitled"
-
                     meta = q.get("metadata") or {}
-                    
-                    # Determine kind based on collection
+                    settings = q.get("settings", {}) or {}
+
+                    # 🔧 Ensure fallback to top-level fields
+                    settings.setdefault('time_limit', q.get('time_limit'))
+                    settings.setdefault('due_date', q.get('due_date'))
+                    settings.setdefault('note', q.get('note'))
+
                     if col == "assignments":
                         item_kind = "assignment"
                     else:
                         item_kind = meta.get("kind", "quiz")
 
-                    questions_count = len(q.get("questions", []))
-                    time_limit_min = q.get("time_limit_min", 60)
+                    questions = q.get("questions", [])
+                    counts = {}
+                    for question in questions:
+                        qtype = question.get("type", "unknown")
+                        counts[qtype] = counts.get(qtype, 0) + 1
 
                     items.append({
                         "id": qid,
                         "title": title,
                         "created_at": q.get("created_at"),
-                        "questions_count": questions_count,
-                        "time_limit_min": time_limit_min,
+                        "questions_count": len(questions),
+                        "counts": counts,
+                        "questions": questions,
                         "metadata": meta,
-                        "questions": q.get("questions", []),
-                        "kind": item_kind  # Add kind for filtering
+                        "settings": settings,        # ✅ include full settings
+                        "time_limit": settings.get('time_limit'),
+                        "due_date": settings.get('due_date'),
+                        "note": settings.get('note'),
+                        "kind": item_kind
                     })
-                    print(f"📝 Found item: {title} (Kind: {item_kind}, Questions: {questions_count})")
+                    print(f"📝 Found: {title} ({item_kind}) with time_limit={settings.get('time_limit')} due_date={settings.get('due_date')}")
 
-            print(f"✅ Found {len(items)} items total")
+            print(f"✅ Total items found: {len(items)}")
             return items
-            
+
         except Exception as e:
-            print(f"⚠️ Firestore list failed; falling back to local. Error: {e}")
+            print(f"⚠️ Firestore list failed: {e}")
+
+
 
     # Local JSON branch
     print("🔍 Searching local JSON files...")
@@ -246,8 +281,12 @@ def list_quizzes(kind: Optional[str] = None) -> List[Dict[str, Any]]:
 #   SUBMISSIONS (Firestore only)
 # ----------------------------------------------------
 def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]:
+    """
+    Save a submission to Firestore (or fallback to local).
+    NOW INCLUDES roll_no field.
+    """
     if not _db:
-        print("ℹ️ Submissions require Firestore; skipping (no _db).")
+        print("⚠️ Firestore not available, cannot save submission")
         return None
     try:
         # Determine collection robustly so quiz submissions go under AIquizzes
@@ -276,8 +315,9 @@ def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]
 
         payload = {
             "quiz_id": quiz_id,
-            "student_email": student_data.get("email"),
-            "student_name": student_data.get("name"),
+            "student_email": student_data.get("email") or student_data.get("student_email"),
+            "student_name": student_data.get("name") or student_data.get("student_name"),
+            "roll_no": student_data.get("roll_no", ""),  # NEW FIELD
             "answers": student_data.get("answers", {}),
             "files": student_data.get("files", {}),
             "score": student_data.get("score", 0),
@@ -287,47 +327,56 @@ def save_submission(quiz_id: str, student_data: Dict[str, Any]) -> Optional[str]
             "submitted_at": datetime.utcnow(),
             "kind": student_data.get("kind", "quiz_submission")
         }
+        
         ref = _db.collection(collection_name).document(quiz_id).collection("submissions").add(payload)
         submission_id = ref[1].id
         print(f"✅ Submission saved to {collection_name} with ID: {submission_id}")
+        print(f"   Student: {payload['student_name']} ({payload['student_email']}) - Roll No: {payload['roll_no']}")
         return submission_id
     except Exception as e:
         print(f"❌ save_submission failed: {e}")
         return None
 
-
-def get_submitted_quiz_ids(student_email: str) -> List[str]:
-    """Get list of quiz/assignment IDs that the student has already submitted"""
+def get_submitted_quiz_ids(submission_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Retrieve a submission by ID from Firestore.
+    NOW INCLUDES roll_no field.
+    """
     if not _db:
-        print("ℹ️ Firestore not available for submission check")
-        return []
+        return None
+    
     try:
-        submitted_ids = set()
-        
-        # Check both collections for submissions
-        for collection_name in ["AIquizzes", "assignments"]:
-            print(f"🔍 Checking submissions in {collection_name} for {student_email}")
-            
-            # Get all documents in the collection
-            quizzes_ref = _db.collection(collection_name).stream()
-            
-            for quiz_doc in quizzes_ref:
-                quiz_id = quiz_doc.id
+        for collection_name in ['AIquizzes', 'assignments']:
+            for qdoc in _db.collection(collection_name).stream():
+                qid = qdoc.id
+                subref = _db.collection(collection_name).document(qid).collection('submissions').document(submission_id)
+                sub = subref.get()
+                if not sub.exists:
+                    continue
+                s = sub.to_dict() or {}
                 
-                # Check if this student has submissions for this quiz
-                submissions_ref = _db.collection(collection_name).document(quiz_id).collection("submissions")
-                student_submissions = submissions_ref.where("student_email", "==", student_email).limit(1).stream()
-                
-                if list(student_submissions):
-                    submitted_ids.add(quiz_id)
-                    print(f"📝 Student has submitted: {quiz_id}")
+                # Include roll_no in the returned data
+                return {
+                    "submission_id": submission_id,
+                    "quiz_id": qid,
+                    "collection": collection_name,
+                    "student_email": s.get("student_email") or s.get("email"),
+                    "student_name": s.get("student_name") or s.get("name"),
+                    "roll_no": s.get("roll_no", ""),  # NEW FIELD
+                    "answers": s.get("answers", {}),
+                    "files": s.get("files", {}),
+                    "score": s.get("score", 0),
+                    "max_total": s.get("max_total"),
+                    "total_questions": s.get("total_questions", 0),
+                    "status": s.get("status", "completed"),
+                    "submitted_at": s.get("submitted_at"),
+                    "kind": s.get("kind", "quiz_submission")
+                }
         
-        print(f"✅ Student has submitted {len(submitted_ids)} items")
-        return list(submitted_ids)
-        
+        return None
     except Exception as e:
-        print(f"❌ get_submitted_quiz_ids failed: {e}")
-        return []
+        print(f"❌ get_submission_by_id failed: {e}")
+        return None
 
 
 # ----------------------------------------------------
