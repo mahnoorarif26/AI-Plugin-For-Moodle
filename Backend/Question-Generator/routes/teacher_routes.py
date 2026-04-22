@@ -93,6 +93,13 @@ def update_settings(quiz_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@teacher_bp.route('/quiz-editor/<quiz_id>')
+def quiz_editor(quiz_id):
+    return render_template('teacher_quiz_editor.html', quiz_id=quiz_id)
+ 
+@teacher_bp.route('/quiz-editor')
+def quiz_editor_blank():
+    return render_template('teacher_quiz_editor.html', quiz_id=None)
 
 @teacher_bp.route('/quizzes/<quiz_id>/send', methods=['POST'])
 def send_quiz_to_students(quiz_id):

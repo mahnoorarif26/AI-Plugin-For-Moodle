@@ -1,779 +1,701 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AI Plugin for Moodle</title>
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='assignments.css') }}">
+
+<style>
+:root {
+  --o1: #fb9026;
+  --o2: #ff6b35;
+  --o3: #ffb366;
+  --pale: #fff7ed;
+  --soft: #ffe8cc;
+  --border: #ffd9b2;
+  --white: #ffffff;
+  --surface: #fafaf8;
+  --dark: #1a1207;
+  --body: #4a4035;
+  --muted: #9a8878;
+  --card-r: 20px;
+  --nav-h: 68px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--white); color: var(--dark); min-height: 100vh; overflow-x: hidden; }
+main { padding-top: var(--nav-h); }
+
+/* TOPBAR */
+.topbar { height: var(--nav-h); padding: 0 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--soft); position: fixed; top: 0; left: 0; right: 0; z-index: 100; box-shadow: 0 1px 20px rgba(251,144,38,0.08); }
+.brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.brand-mark { width: 38px; height: 38px; background: linear-gradient(135deg, var(--o1), var(--o2)); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(251,144,38,0.35); }
+.brand-mark i { color: white; font-size: 20px; }
+.brand-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 17px; font-weight: 800; color: var(--dark); letter-spacing: -0.02em; }
+.brand-name span { background: linear-gradient(135deg, var(--o1), var(--o2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.topnav { display: flex; align-items: center; gap: 2px; list-style: none; }
+.topnav .link { background: none; border: none; padding: 8px 16px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: var(--body); border-radius: 8px; cursor: pointer; transition: all .2s; }
+.topnav .link:hover { background: var(--pale); color: var(--o1); }
+.topnav .link.active { background: linear-gradient(135deg, var(--o1), var(--o2)); color: white; box-shadow: 0 3px 10px rgba(251,144,38,0.3); }
+
+/* HERO */
+#section-home { background: var(--white); }
+.hero { min-height: calc(100vh - var(--nav-h)); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 24px 40px; position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; width: 800px; height: 800px; background: radial-gradient(circle, rgba(251,144,38,0.08) 0%, transparent 65%); top: -200px; left: 50%; transform: translateX(-50%); pointer-events: none; }
+.hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; background: var(--pale); border: 1px solid var(--border); border-radius: 999px; padding: 6px 16px; font-size: 12px; font-weight: 700; color: #92400e; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 28px; }
+.hero-eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--o1); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+.hero-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(40px, 6vw, 72px); font-weight: 900; line-height: 1.05; color: var(--dark); letter-spacing: -0.035em; max-width: 780px; margin-bottom: 22px; }
+.hero-title .grad { background: linear-gradient(135deg, var(--o1) 0%, var(--o2) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero-sub { font-size: 17px; line-height: 1.75; color: var(--body); max-width: 540px; margin-bottom: 40px; }
+.hero-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 64px; }
+.btn-cta { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer; transition: all .3s ease; border: none; }
+.btn-cta.primary { background: linear-gradient(135deg, var(--o1), var(--o2)); color: white; box-shadow: 0 8px 24px rgba(251,144,38,0.35); }
+.btn-cta.primary:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(251,144,38,0.45); }
+.btn-cta.secondary { background: white; color: var(--o1); border: 2px solid var(--o1); }
+.btn-cta.secondary:hover { background: var(--pale); transform: translateY(-2px); }
+
+/* STAT BAR */
+.stat-bar { display: flex; align-items: stretch; gap: 0; background: var(--pale); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 72px; }
+.stat-item { padding: 18px 32px; text-align: center; flex: 1; border-right: 1px solid var(--border); }
+.stat-item:last-child { border-right: none; }
+.stat-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 26px; font-weight: 900; color: var(--o1); line-height: 1; }
+.stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+
+/* SECTION LABELS */
+.section-label { text-align: center; margin-bottom: 48px; }
+.section-label .tag { display: inline-block; background: var(--pale); border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #92400e; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
+.section-label h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(26px, 3.5vw, 42px); font-weight: 800; color: var(--dark); letter-spacing: -0.025em; line-height: 1.15; }
+.section-label h2 span { color: var(--o1); }
+.section-label p { color: var(--body); font-size: 16px; margin-top: 12px; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+/* FEATURES GRID */
+.features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.feat-card { background: white; border: 1px solid var(--soft); border-radius: var(--card-r); padding: 28px; transition: all .3s cubic-bezier(.34,1.56,.64,1); position: relative; overflow: hidden; }
+.feat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--o1), var(--o2)); transform: scaleX(0); transform-origin: left; transition: transform .35s ease; }
+.feat-card:hover { transform: translateY(-6px); box-shadow: 0 20px 48px rgba(251,144,38,0.14); border-color: var(--o3); }
+.feat-card:hover::after { transform: scaleX(1); }
+.feat-icon { width: 50px; height: 50px; border-radius: 13px; background: var(--pale); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.feat-icon i { font-size: 24px; color: var(--o1); }
+.feat-card h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+.feat-card p { font-size: 14px; color: var(--body); line-height: 1.65; }
+
+/* MARQUEE */
+.marquee-section { padding: 64px 0; overflow: hidden; }
+.marquee-track { display: flex; gap: 14px; animation: scroll-left 24s linear infinite; width: max-content; }
+.marquee-section:hover .marquee-track { animation-play-state: paused; }
+@keyframes scroll-left { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.q-pill { display: inline-flex; align-items: center; gap: 10px; background: white; border: 1.5px solid var(--soft); border-radius: 999px; padding: 10px 20px; font-size: 13px; font-weight: 700; color: var(--body); white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all .2s; }
+.q-pill:hover { border-color: var(--o1); color: var(--o1); transform: scale(1.04); }
+.q-pill i { font-size: 16px; color: var(--o1); }
+
+/* GRADING SECTION */
+.grading-section { max-width: 1100px; margin: 0 auto; padding: 80px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+.grading-left h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: clamp(26px, 3vw, 38px); font-weight: 800; color: var(--dark); letter-spacing: -0.025em; margin-bottom: 16px; }
+.grading-left h2 span { color: var(--o1); }
+.grading-left > p { color: var(--body); font-size: 15px; line-height: 1.8; margin-bottom: 32px; }
+.grade-steps { display: flex; flex-direction: column; gap: 0; }
+.grade-step { display: flex; gap: 16px; padding: 0 0 24px 32px; border-left: 2px solid var(--soft); margin-left: 9px; position: relative; }
+.grade-step:last-child { border-left-color: transparent; padding-bottom: 0; }
+.step-dot { position: absolute; left: -10px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: white; border: 2px solid var(--o1); display: flex; align-items: center; justify-content: center; }
+.step-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--o1); display: block; }
+.step-body h4 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
+.step-body p { font-size: 13px; color: var(--body); line-height: 1.6; }
+.grading-right { display: flex; flex-direction: column; gap: 14px; }
+.grade-viz-card { background: white; border: 1.5px solid var(--soft); border-radius: 16px; padding: 20px 22px; box-shadow: 0 4px 16px rgba(251,144,38,0.07); }
+.grade-viz-card .gvc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.grade-viz-card .gvc-top span { font-size: 13px; font-weight: 700; color: var(--dark); }
+.score-badge { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 900; color: var(--o1); }
+.grade-bar { height: 8px; background: var(--soft); border-radius: 999px; overflow: hidden; }
+.grade-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--o1), var(--o2)); }
+.grade-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.grade-tag { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.grade-tag.mcq { background: #fef3c7; color: #92400e; }
+.grade-tag.short { background: #dbeafe; color: #1e40af; }
+.grade-tag.long { background: #d1fae5; color: #065f46; }
+.grade-tag.code { background: #ede9fe; color: #5b21b6; }
+.grading-engine-box { background: var(--pale); border: 1.5px solid var(--border); border-radius: 16px; padding: 20px; }
+.engine-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800; color: var(--dark); margin-bottom: 14px; }
+.engine-items { display: flex; flex-direction: column; gap: 8px; }
+.engine-item { display: flex; align-items: center; gap: 10px; background: white; border: 1px solid var(--soft); border-radius: 10px; padding: 10px 14px; }
+.engine-item i { color: var(--o1); font-size: 17px; }
+.engine-item span { font-size: 13px; font-weight: 600; color: var(--body); }
+
+/* WORKFLOW */
+.workflow-section { padding: 80px 24px; background: var(--pale); }
+.workflow-steps { display: flex; gap: 0; max-width: 960px; margin: 48px auto 0; position: relative; }
+.workflow-steps::before { content: ''; position: absolute; top: 34px; left: calc(16.6% + 34px); right: calc(16.6% + 34px); height: 2px; background: linear-gradient(90deg, var(--o1), var(--o2)); }
+.wf-step { flex: 1; text-align: center; padding: 0 12px; }
+.wf-num { width: 68px; height: 68px; border-radius: 50%; background: white; border: 3px solid var(--o1); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; position: relative; z-index: 1; box-shadow: 0 4px 16px rgba(251,144,38,0.2); transition: all .3s ease; }
+.wf-step:hover .wf-num { background: linear-gradient(135deg, var(--o1), var(--o2)); transform: scale(1.1); }
+.wf-num i { font-size: 26px; color: var(--o1); transition: color .3s; }
+.wf-step:hover .wf-num i { color: white; }
+.wf-step h4 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+.wf-step p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* BENTO */
+.bento-section { max-width: 1100px; margin: 0 auto; padding: 72px 24px 80px; }
+.bento-grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: auto; gap: 16px; }
+.bento-cell { background: white; border: 1.5px solid var(--soft); border-radius: 18px; padding: 24px; transition: all .3s ease; }
+.bento-cell:hover { border-color: var(--o3); box-shadow: 0 8px 28px rgba(251,144,38,0.12); transform: translateY(-3px); }
+.bento-cell.wide { grid-column: span 2; }
+.bento-cell .bc-icon { font-size: 28px; color: var(--o1); margin-bottom: 12px; display: block; }
+.bento-cell h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 6px; }
+.bento-cell p { font-size: 13px; color: var(--body); line-height: 1.6; }
+.bento-cell .bento-tag { display: inline-block; margin-top: 10px; background: var(--pale); color: var(--o1); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.bento-big-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 52px; font-weight: 900; color: var(--o1); line-height: 1; margin-bottom: 8px; }
+
+/* CALLOUT */
+.callout-section { max-width: 900px; margin: 0 auto 80px; padding: 0 24px; }
+.callout-box { background: linear-gradient(135deg, var(--o1) 0%, var(--o2) 100%); border-radius: 24px; padding: 56px 48px; text-align: center; color: white; box-shadow: 0 20px 60px rgba(251,144,38,0.35); position: relative; overflow: hidden; }
+.callout-box::before { content: ''; position: absolute; top: -80px; right: -80px; width: 300px; height: 300px; border-radius: 50%; background: rgba(255,255,255,0.08); }
+.callout-box::after { content: ''; position: absolute; bottom: -60px; left: -60px; width: 240px; height: 240px; border-radius: 50%; background: rgba(255,255,255,0.06); }
+.callout-box h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 32px; font-weight: 900; margin-bottom: 14px; letter-spacing: -0.02em; }
+.callout-box p { font-size: 16px; opacity: 0.9; max-width: 500px; margin: 0 auto 32px; line-height: 1.7; }
+.callout-chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.callout-chip { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 999px; padding: 8px 18px; font-size: 13px; font-weight: 700; color: white; }
+
+/* APP SECTIONS */
+.section-header { text-align: center; padding: 48px 24px 8px; }
+.section-header h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 28px; font-weight: 800; color: var(--dark); }
+.section-header p { color: var(--body); margin-top: 8px; font-size: 15px; }
+
+/* CARDS */
+.cards-container { display: grid; grid-template-columns: repeat(3,1fr); gap: 22px; max-width: 1100px; margin: 36px auto 0; padding: 0 24px; }
+.quiz-card { background: white; border-radius: var(--card-r); padding: 26px; box-shadow: 0 3px 16px rgba(0,0,0,0.06); transition: all .3s cubic-bezier(.34,1.56,.64,1); display: flex; flex-direction: column; min-height: 260px; border: 1.5px solid var(--soft); position: relative; overflow: hidden; }
+.quiz-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--o1), var(--o2)); opacity: 0; transition: opacity .3s; }
+.quiz-card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(251,144,38,0.16); border-color: var(--o3); }
+.quiz-card:hover::before { opacity: 1; }
+.quiz-card h2 { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dark); font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+.quiz-card p { color: var(--body); flex-grow: 1; font-size: 14px; line-height: 1.65; margin-bottom: 18px; }
+.quiz-card a { text-decoration: none; }
+.card-icon { width: 50px; height: 50px; background: var(--pale); border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+.card-icon i { font-size: 24px; color: var(--o1); }
+.generate-btn { background: linear-gradient(135deg, var(--o1), var(--o2)); color: white; border: none; padding: 12px 18px; border-radius: 10px; font-weight: 700; font-family: 'Inter', sans-serif; font-size: 14px; cursor: pointer; transition: all .3s; margin-top: auto; text-align: center; display: block; box-shadow: 0 4px 14px rgba(251,144,38,0.28); }
+.generate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(251,144,38,0.38); }
+
+/* MODALS */
+.modal { position: fixed; inset: 0; background: rgba(26,18,7,0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 200; }
+.modal.open { display: flex; }
+.modal-card { background: white; width: min(880px, 96vw); max-height: 88vh; overflow-y: auto; border-radius: 22px; box-shadow: 0 24px 80px rgba(0,0,0,0.18); padding: 28px; border-top: 4px solid var(--o1); animation: modal-in .28s cubic-bezier(.34,1.56,.64,1); }
+@keyframes modal-in { from{opacity:0;transform:scale(.94) translateY(16px)} to{opacity:1;transform:scale(1) translateY(0)} }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1.5px solid var(--soft); }
+.modal-head h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; color: var(--dark); border-left: 4px solid var(--o1); padding-left: 12px; }
+.modal-actions { display: flex; gap: 10px; }
+.btn { padding: 9px 16px; border-radius: 10px; border: 1.5px solid var(--soft); background: white; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 14px; color: var(--body); transition: all .2s; }
+.btn:hover { border-color: var(--o1); color: var(--o1); }
+.btn.primary { background: linear-gradient(135deg, var(--o1), var(--o2)); color: white; border: none; box-shadow: 0 4px 14px rgba(251,144,38,0.3); }
+.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(251,144,38,0.4); }
+.btn.ghost { background: white; }
+.section-title { margin: 18px 0 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; color: var(--dark); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 8px; }
+.section-title::after { content: ''; flex: 1; height: 1.5px; background: var(--soft); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.label { font-size: 13px; color: var(--dark); font-weight: 600; }
+.hint { font-size: 12px; color: var(--muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row + .form-row { margin-top: 14px; }
+input[type="number"], input[type="text"], input[type="datetime-local"], select, textarea { border: 1.5px solid var(--soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; background: white; color: var(--dark); transition: border-color .2s, box-shadow .2s; width: 100%; }
+input:focus, select:focus, textarea:focus { border-color: var(--o1); box-shadow: 0 0 0 3px rgba(251,144,38,0.1); }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--soft); padding: 8px 14px; border-radius: 999px; background: white; cursor: pointer; user-select: none; font-size: 14px; transition: all .2s; }
+.chip:hover { border-color: var(--o1); }
+.chip input { accent-color: var(--o1); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.uploader { border: 2px dashed var(--o3); border-radius: 12px; padding: 22px; text-align: center; color: #92400e; background: var(--pale); cursor: pointer; transition: all .2s; }
+.uploader:hover, .uploader.dragover { background: var(--soft); border-color: var(--o1); }
+.uploader small { display: block; color: var(--muted); margin-top: 6px; font-size: 12px; }
+.file-name, .file-name-display { margin-top: 8px; font-size: 13px; font-weight: 600; color: #92400e; word-break: break-all; }
+.progress { margin-top: 14px; height: 6px; background: var(--soft); border-radius: 999px; overflow: hidden; display: none; }
+.progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--o1), var(--o2)); transition: width .2s ease; }
+.center-btn-wrapper { margin-top: 12px; display: flex; justify-content: center; }
+.detect-btn { border: 1.5px solid var(--soft); padding: 10px 22px; border-radius: 10px; background: white; cursor: pointer; font-weight: 600; font-family: 'Inter', sans-serif; color: var(--body); transition: all .2s; }
+.detect-btn:hover { border-color: var(--o1); color: var(--o1); }
+.subtopics-list { max-height: 200px; overflow-y: auto; border: 1.5px solid var(--soft); border-radius: 10px; padding: 10px; background: var(--surface); }
+.subtopic-row { margin-bottom: 6px; padding: 9px 12px; background: white; border-radius: 8px; border: 1px solid var(--soft); transition: all .2s; }
+.subtopic-row:hover { border-color: var(--o1); background: var(--pale); }
+.subtopic-row label { display: flex; align-items: center; cursor: pointer; font-size: 14px; gap: 10px; }
+.subtopic-row input[type="checkbox"] { accent-color: var(--o1); }
+.counts-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 12px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.2); display: none; z-index: 999; border-left: 4px solid var(--o1); }
+#quiz-section { max-width: 1100px; margin: 40px auto 0; background: white; border: 1.5px solid var(--soft); border-radius: 20px; box-shadow: 0 8px 32px rgba(251,144,38,0.07); padding: 28px; display: none; }
+#view-list-container { max-width: 1100px; margin: 40px auto 0; padding: 0 24px; display: none; }
+#view-list-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; margin: 0 0 16px; color: var(--dark); }
+.quiz-list-card { min-height: auto; margin-bottom: 14px; }
+.quiz-list-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.quiz-list-title { margin: 0 0 4px; font-size: 17px; font-weight: 700; color: var(--dark); }
+.quiz-list-kind { margin: 0; font-size: 13px; color: var(--muted); }
+.quiz-list-meta { margin: 8px 0 16px; font-size: 13px; color: var(--muted); }
+.quiz-list-actions-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.badge-quiz { padding: 4px 12px; border-radius: 999px; font-size: 11px; text-transform: uppercase; background: var(--pale); color: var(--o1); font-weight: 700; }
+.badge-assignment { padding: 4px 12px; border-radius: 999px; font-size: 11px; text-transform: uppercase; background: #e0f2fe; color: #0369a1; font-weight: 700; }
+.generate-btn.small, .btn.small { padding: 8px 16px; font-size: 13px; }
+.assignment-type-card { background: white; border: 1.5px solid var(--soft); border-radius: 14px; padding: 16px; transition: all .3s ease; }
+.assignment-type-card:hover { border-color: var(--o1); box-shadow: 0 4px 16px rgba(251,144,38,0.15); transform: translateY(-2px); }
+.type-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.type-icon { font-size: 2em; line-height: 1; }
+.type-header strong { display: block; color: var(--dark); font-size: 1em; margin-bottom: 2px; }
+.type-header p { color: var(--muted); font-size: 0.85em; margin: 0; }
+.assignment-type-card input[type="number"] { width: 100%; }
+#section-grades .grade-card { min-height: unset; margin-bottom: 12px; }
+#section-grades .badge { display: inline-block; padding: 4px 8px; border-radius: 12px; background: var(--pale); color: var(--muted); font-size: 12px; }
+#section-grades .grade-line { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-weight: 600; }
+#section-grades .grade-score { font-size: 20px; color: var(--o1); }
+#section-grades .btn-dark { background: white; color: var(--dark); border: 1.5px solid var(--dark); }
+.grades-group { margin-bottom: 20px; }
+.grade-group-title { margin: 12px 4px 8px; font-size: 16px; font-weight: 700; color: var(--dark); }
+
+/* RESPONSIVE */
+@media (max-width: 1000px) {
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .grading-section { grid-template-columns: 1fr; gap: 40px; }
+  .bento-grid { grid-template-columns: repeat(2, 1fr); }
+  .bento-cell.wide { grid-column: span 1; }
+}
+@media (max-width: 700px) {
+  .topbar { padding: 0 16px; }
+  .features-grid, .cards-container { grid-template-columns: 1fr; max-width: 500px; margin-left: auto; margin-right: auto; }
+  .stat-bar { flex-direction: column; }
+  .stat-item { border-right: none; border-bottom: 1px solid var(--border); }
+  .workflow-steps { flex-wrap: wrap; gap: 24px; }
+  .workflow-steps::before { display: none; }
+  .bento-grid { grid-template-columns: 1fr; }
+  .counts-grid { grid-template-columns: repeat(2,1fr); }
+  .form-row { grid-template-columns: 1fr; }
+  .callout-box { padding: 36px 24px; }
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--pale); }
+::-webkit-scrollbar-thumb { background: var(--o3); border-radius: 99px; }
+</style>
 </head>
-
 <body>
-  <!-- Top Navigation Bar -->
-  <nav class="topbar" role="navigation" aria-label="Primary">
-    <div class="brand">
-      <i class='bx bx-bulb card-icon'></i>
-      <span>AI Plugin</span>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <div class="brand" onclick="showSection('home')">
+    <div class="brand-mark"><i class='bx bx-brain'></i></div>
+    <div class="brand-name">Quiz<span>Gen AI</span></div>
+  </div>
+  <ul class="topnav">
+    <li><button class="link active" data-route="home">Home</button></li>
+    <li><button class="link" data-route="generate">Quizzes</button></li>
+    <li><button class="link" data-route="assignments">Assignments</button></li>
+    <li><button class="link" data-route="view">View</button></li>
+  </ul>
+</nav>
+
+<main>
+
+<!-- ===== HOME ===== -->
+<section id="section-home">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Moodle LTI 1.3 · Powered by 70B LLM</div>
+    <h1 class="hero-title">Turn Any PDF Into<br><span class="grad">Smart Assessments</span><br>Instantly</h1>
+    <p class="hero-sub">Upload lecture notes, textbooks, or study material — and watch AI generate quizzes, assignments, and grade them end-to-end.</p>
+    <div class="hero-btns">
+      <button class="btn-cta primary" onclick="showSection('generate')"><i class='bx bx-zap'></i> Generate Quiz</button>
+      <button class="btn-cta secondary" onclick="showSection('assignments')"><i class='bx bx-task'></i> Create Assignment</button>
     </div>
-    <ul class="topnav">
-      <li><button class="link" data-route="home">Home</button></li>
-      <li><button class="link" data-route="generate">Quizzes</button></li>
-      <li><button class="link" data-route="assignments">Assignments</button></li>
-      <li><button class="link" data-route="view">View</button></li>
-    </ul>
-  </nav>
+    <div class="stat-bar">
+      <div class="stat-item"><div class="stat-val">12+</div><div class="stat-lbl">Question Types</div></div>
+      <div class="stat-item"><div class="stat-val">70B</div><div class="stat-lbl">LLM Model</div></div>
+      <div class="stat-item"><div class="stat-val">Auto</div><div class="stat-lbl">AI Grading</div></div>
+      <div class="stat-item"><div class="stat-val">LTI</div><div class="stat-lbl">Moodle Ready</div></div>
+      <div class="stat-item"><div class="stat-val">PDF</div><div class="stat-lbl">Smart Parsing</div></div>
+    </div>
+  </div>
 
-  <main>
-    <!-- Home Section -->
-    <section id="section-home">
-      <div class="home-grid">
-        <div class="home-left">
-          <h1 class="headline">Welcome to <span>AI Plugin</span></h1>
-          <p class="subhead">
-            Experience the future of learning with our AI-powered<br/>
-            Moodle plugin. Transform any study material into interactive<br/>
-            quizzes and assignments — automatically, intelligently and grade them.
-          </p>
-        </div>
-        <div class="home-right">
-          <div class="rotate-card has-bg"
-               style="--card-bg: url('{{ url_for('static', filename='card.jpg') }}')"
-               aria-live="polite">
-            <div id="rotate-text" class="rotate-text">
-              <span>AI-Powered PDF Intelligence — Transform textbooks, lecture notes, and study materials into structured, exam-ready quizzes using advanced AI-driven analysis.</span>
-              <span>One-Click Assessment Generation — Instantly convert learning resources into professionally formatted quizzes optimized for clarity and academic rigor.</span>
-              <span>Adaptive & Configurable Assessments — Fine-tune question distribution, difficulty levels, and topic coverage to align with curriculum objectives.</span>
-              <span>Professional Authoring Suite — Design tailored assessments with full control using a robust and intuitive question creation system.</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quiz Generation Section -->
-    <section id="section-generate" style="display:none;">
-      <div class="cards-container">
-        <!-- AI-Powered Quiz Card -->
-        <div class="quiz-card" id="card-auto">
-          <i class='bx bx-brain card-icon'></i>
-          <h2>AI-Powered Quiz</h2>
-          <p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p>
-          <button class="generate-btn" id="btn-open-auto">Generate Quiz</button>
-        </div>
-        <!-- Customize Quiz Card -->
-        <div class="quiz-card">
-          <i class='bx bx-slider-alt card-icon'></i>
-          <h2>Customize Quiz</h2>
-          <p>Upload your study material and adjust settings like question count, difficulty, and topic focus.</p>
-          <button class="generate-btn" id="btn-open-custom">Customize Now</button>
-        </div>
-        <!-- Manual Creation Card -->
-        <div class="quiz-card">
-          <i class='bx bx-edit card-icon'></i>
-          <h2>Manual Creation</h2>
-          <p>Create questions from scratch with full control.</p>
-          <a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a>
-        </div>
-      </div>
-
-      <!-- Generated Quiz Output Section -->
-      <section id="quiz-section" style="display:none">
-        <div class="quiz-out-head">
-          <h2 id="quiz-title" style="margin:0;">Generated Quiz</h2>
-        </div>
-        <div id="quiz-container" class="quiz-out"></div>
-      </section>
-    </section>
-
-    <!-- View Quizzes/Assignments Section -->
-    <section id="section-view" style="display:none;">
-      <div class="cards-container">
-        <!-- View Quizzes Card -->
-        <div class="quiz-card">
-          <i class='bx bx-show card-icon'></i>
-          <h2>View Quizzes</h2>
-          <p>See all quizzes you have generated or created manually.</p>
-          <button class="generate-btn" id="btn-view-quizzes">View Quizzes</button>
-        </div>
-        <!-- View Assignments Card -->
-        <div class="quiz-card">
-          <i class='bx bx-task card-icon'></i>
-          <h2>View Assignments</h2>
-          <p>See all assignments generated from PDFs or topics.</p>
-          <button class="generate-btn" id="btn-view-assignments">View Assignments</button>
-        </div>
-      </div>
-
-      <!-- Shared List Area -->
-      <div id="view-list-container" style="display:none;">
-        <h2 id="view-list-title">Quizzes</h2>
-        <div id="quiz-list"></div>
-      </div>
-    </section>
-
-    <!-- Assignments Section -->
-    <section id="section-assignments" style="display:none;">
-      <div class="cards-container">
-        <!-- PDF Assignment Card -->
-        <div class="quiz-card">
-          <i class='bx bx-slider-alt card-icon'></i>
-          <h2>From PDF (Detect Subtopics)</h2>
-          <p>Upload a PDF. We'll detect subtopics and generate assignment questions per subtopic.</p>
-          <button id="btn-open-assign-pdf" class="generate-btn">Generate</button>
-        </div>
-        <!-- Topics Assignment Card -->
-        <div class="quiz-card">
-          <i class='bx bx-list-ul card-icon'></i>
-          <h2>By Topics</h2>
-          <p>Type topics (one per line) and generate assignment questions from them.</p>
-          <button id="btn-open-assign-topics" class="generate-btn">Generate</button>
-        </div>
-        <!-- Manual Assignment Card -->
-        <div class="quiz-card">
-          <i class='bx bx-edit-alt card-icon'></i>
-          <h2>Manual Creation</h2>
-          <p>Compose your own questions, add marks, and organize into sections.</p>
-          <button id="btn-open-assign-manual" class="generate-btn">Start Creating</button>
-        </div>
-        <div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
-      </div>
-    </section>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
-
-    <!-- AI-Powered Quiz Modal -->
-    <div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h3 id="modalTitleAuto">Generate Quiz from PDF</h3>
-          <div class="modal-actions">
-            <button class="btn ghost" id="btn-cancel">Close</button>
-            <button class="generate-btn" id="btn-generate">Generate</button>
-          </div>
-        </div>
-        <div class="section-title">1) Upload PDF</div>
-        <div id="uploader" class="uploader">
-          <b>Drop PDF here</b> or click to select
-          <small>Accepted: .pdf (max ~25MB)</small>
-          <input id="fileInput" type="file" accept="application/pdf" hidden />
-        </div>
-        <div id="fileNameDisplay" class="file-name"></div>
-        <div class="progress" id="progress"><div></div></div>
-
-        <!-- Quiz Settings -->
-        <div class="section-title" style="margin-top: 16px;">2) Quiz Settings</div>
-        <div class="field">
-          <label class="label" for="auto-time-limit">Time limit (minutes)</label>
-          <input type="number" id="auto-time-limit" min="0" placeholder="e.g. 30" />
-        </div>
-        <div class="field">
-          <label class="label" for="auto-due-date">Due date</label>
-          <input type="datetime-local" id="auto-due-date" />
-        </div>
-        <div class="field">
-          <label class="label" for="auto-note">Note to students</label>
-          <textarea id="auto-note" rows="2" placeholder="Instructions for this quiz"></textarea>
-        </div>
+  <!-- FEATURES -->
+  <div style="padding: 0 0 80px; background: var(--surface);">
+    <div style="max-width:1100px; margin:0 auto; padding-top:72px;">
+      <div class="section-label">
+        <div class="tag">Core Features</div>
+        <h2>Everything You Need to <span>Assess Smarter</span></h2>
+        <p>From PDF upload to auto-graded results — all in one seamless workflow.</p>
       </div>
     </div>
+    <div class="features-grid">
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-file-find'></i></div><h3>PDF Intelligence</h3><p>Upload any study material. AI reads, parses, and extracts key concepts, subtopics, and knowledge points automatically.</p></div>
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-brain'></i></div><h3>AI Quiz Generation</h3><p>One-click generation of professionally structured quizzes with fully customizable question types, counts, and difficulty levels.</p></div>
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-slider-alt'></i></div><h3>Subtopic Detection</h3><p>Automatically detect chapters and subtopics from your PDF, then generate targeted questions per section for precision coverage.</p></div>
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-check-shield'></i></div><h3>Auto Grading Engine</h3><p>Rule-based MCQ grading, LLM-powered evaluation for open-ended answers, and semantic F1 scoring for short responses.</p></div>
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-task'></i></div><h3>Rich Assignments</h3><p>Generate scenario-based, research, project, case study, and comparative assignments — each with rubrics and grading criteria.</p></div>
+      <div class="feat-card"><div class="feat-icon"><i class='bx bx-link-external'></i></div><h3>Moodle LTI 1.3</h3><p>Fully integrated with Moodle's LTI framework. Teachers publish quizzes directly to Moodle courses — grades sync automatically.</p></div>
+    </div>
+  </div>
 
-    <!-- Customize Quiz Modal -->
-    <div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
-      <div class="modal-card">
-        <div class="modal-head">
-          <h3 id="modalTitleCustom">Customize Quiz from PDF</h3>
-          <div class="modal-actions">
-            <button class="btn ghost" id="btn-cancel-custom">Close</button>
-            <button class="generate-btn" id="btn-generate-custom">Generate</button>
-          </div>
-        </div>
-        <div class="section-title">1) Upload PDF</div>
-        <div id="uploader-custom" class="uploader">
-          <b>Drop PDF here</b> or click to select
-          <small>Accepted: .pdf (max ~25MB)</small>
-          <input id="fileInputCustom" type="file" accept="application/pdf" hidden />
-        </div>
-        <div id="fileNameDisplayCustom" class="file-name"></div>
-        <div class="center-btn-wrapper">
-          <button id="btn-detect-subtopics" type="button" class="btn detect-btn">Detect Subtopics</button>
-        </div>
-        <div id="subtopics-section" style="display:none; margin-top:10px;">
-          <p><strong>Select subtopics:</strong></p>
-          <div id="subtopics-list" class="subtopics-list"></div>
-        </div>
-
-        <div class="section-title">2) Question Counts</div>
-        <div class="counts-grid">
-          <div class="field">
-            <label class="label" for="mcqCount">MCQ</label>
-            <input id="mcqCount" type="number" min="0" max="30" value="4" />
-          </div>
-          <div class="field">
-            <label class="label" for="tfCount">True / False</label>
-            <input id="tfCount" type="number" min="0" max="30" value="0" />
-          </div>
-          <div class="field">
-            <label class="label" for="shortCount">Short</label>
-            <input id="shortCount" type="number" min="0" max="20" value="5" />
-          </div>
-          <div class="field">
-            <label class="label" for="longCount">Long</label>
-            <input id="longCount" type="number" min="0" max="20" value="0" />
-          </div>
-        </div>
-
-        <div class="section-title">3) Difficulty level</div>
-        <div class="form-row">
-          <div class="field">
-            <label class="label">Mode</label>
-            <select id="difficultyModeCustom">
-              <option value="auto">Auto (AI decides)</option>
-              <option value="custom">Custom % mix</option>
-            </select>
-            <div class="hint">Use custom only if you want a specific E/M/H distribution.</div>
-          </div>
-          <div class="field">
-            <label class="label">Validate</label>
-            <button class="btn" id="btn-validate-mix" type="button">Sum = 100%</button>
-          </div>
-        </div>
-
-        <div id="diffRowC1" class="form-row" style="display:none">
-          <div class="field">
-            <label class="label">Easy %</label>
-            <input id="easyPctC" type="number" min="0" max="100" value="30" />
-          </div>
-          <div class="field">
-            <label class="label">Medium %</label>
-            <input id="medPctC" type="number" min="0" max="100" value="50" />
-          </div>
-        </div>
-
-        <div id="diffRowC2" class="form-row" style="display:none">
-          <div class="field">
-            <label class="label">Hard %</label>
-            <input id="hardPctC" type="number" min="0" max="100" value="20" />
-          </div>
-        </div>
-
-        <div class="section-title" style="margin-top: 16px;">4) Quiz Settings</div>
-        <div class="field">
-          <label class="label" for="custom-time-limit">Time limit (minutes)</label>
-          <input type="number" id="custom-time-limit" min="0" placeholder="e.g. 30" />
-        </div>
-        <div class="field">
-          <label class="label" for="custom-due-date">Due date</label>
-          <input type="datetime-local" id="custom-due-date" />
-        </div>
-        <div class="field">
-          <label class="label" for="custom-note">Note to students</label>
-          <textarea id="custom-note" rows="2" placeholder="Instructions for this quiz"></textarea>
-        </div>
-
-        <div class="progress" id="progress-custom"><div></div></div>
+  <!-- QUESTION TYPES MARQUEE -->
+  <div class="marquee-section">
+    <div class="section-label"><div class="tag">Question Types</div><h2>12+ <span>Question Formats</span> Supported</h2></div>
+    <div style="overflow:hidden;">
+      <div class="marquee-track">
+        <div class="q-pill"><i class='bx bx-list-check'></i> Multiple Choice</div>
+        <div class="q-pill"><i class='bx bx-toggle-right'></i> True / False</div>
+        <div class="q-pill"><i class='bx bx-message-square-edit'></i> Short Answer</div>
+        <div class="q-pill"><i class='bx bx-file-blank'></i> Long Answer / Essay</div>
+        <div class="q-pill"><i class='bx bx-code-block'></i> Code Writing</div>
+        <div class="q-pill"><i class='bx bx-bug'></i> Debugging</div>
+        <div class="q-pill"><i class='bx bx-transfer'></i> Fill in the Blank</div>
+        <div class="q-pill"><i class='bx bx-sort'></i> Matching</div>
+        <div class="q-pill"><i class='bx bx-sort-up'></i> Ordering / Sequencing</div>
+        <div class="q-pill"><i class='bx bx-calculator'></i> Numerical</div>
+        <div class="q-pill"><i class='bx bx-scatter-chart'></i> Scenario Analysis</div>
+        <div class="q-pill"><i class='bx bx-select-multiple'></i> Multi-Select MCQ</div>
+        <!-- duplicate for loop -->
+        <div class="q-pill"><i class='bx bx-list-check'></i> Multiple Choice</div>
+        <div class="q-pill"><i class='bx bx-toggle-right'></i> True / False</div>
+        <div class="q-pill"><i class='bx bx-message-square-edit'></i> Short Answer</div>
+        <div class="q-pill"><i class='bx bx-file-blank'></i> Long Answer / Essay</div>
+        <div class="q-pill"><i class='bx bx-code-block'></i> Code Writing</div>
+        <div class="q-pill"><i class='bx bx-bug'></i> Debugging</div>
+        <div class="q-pill"><i class='bx bx-transfer'></i> Fill in the Blank</div>
+        <div class="q-pill"><i class='bx bx-sort'></i> Matching</div>
+        <div class="q-pill"><i class='bx bx-sort-up'></i> Ordering / Sequencing</div>
+        <div class="q-pill"><i class='bx bx-calculator'></i> Numerical</div>
+        <div class="q-pill"><i class='bx bx-scatter-chart'></i> Scenario Analysis</div>
+        <div class="q-pill"><i class='bx bx-select-multiple'></i> Multi-Select MCQ</div>
       </div>
     </div>
+  </div>
 
-    <!-- PDF Assignment Modal -->
-    <div id="modal-assign-pdf" class="modal" aria-hidden="true">
-      <div class="modal-card" style="max-width: 950px;">
-        <div class="modal-head">
-          <h3>🎓 Generate Advanced Assignment from PDF</h3>
-          <div class="modal-actions">
-            <button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button>
-            <button class="generate-btn" type="button" id="btn-assign-pdf-detect">Generate</button>
-          </div>
+  <!-- HOW GRADING WORKS -->
+  <div style="background: var(--surface);">
+    <div class="grading-section">
+      <div class="grading-left">
+        <div class="section-label" style="text-align:left; margin-bottom:24px;">
+          <div class="tag" style="margin-bottom:12px;">AI Grading Engine</div>
+          <h2>How <span>Auto-Grading</span> Works</h2>
         </div>
-        <div class="modal-body">
-          <!-- Upload PDF Step -->
-          <div class="section-title">1️⃣ Upload Study Material</div>
-          <div id="assign-uploader" class="uploader">
-            <b>Drop PDF here</b> or click to select
-            <small>Accepted: .pdf (max ~25MB)</small>
-            <input id="assign-pdf-file" type="file" accept="application/pdf" hidden />
-          </div>
-          <div id="assignFileNameDisplay" class="file-name-display"></div>
-
-          <!-- Subtopic Detection -->
-          <div class="center-btn-wrapper">
-            <button id="btn-detect-subtopics-assign" type="button" class="btn detect-btn">Detect Subtopics</button>
-          </div>
-          <div id="assign-subtopics-section" style="display:none; margin-top:10px;">
-            <p><strong>Select subtopics:</strong></p>
-            <div id="assign-subtopics-list" class="subtopics-list"></div>
-          </div>
-
-          <!-- Assignment Type Distribution -->
-          <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
-          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-            Choose how many questions of each type you want to generate
-          </p>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">💡</span>
-                <div>
-                  <strong>Conceptual</strong>
-                  <p>Theory & principles</p>
-                </div>
-              </div>
-              <input type="number" id="conceptual-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🎯</span>
-                <div>
-                  <strong>Scenario-Based</strong>
-                  <p>Real-world application</p>
-                </div>
-              </div>
-              <input type="number" id="scenario-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🔬</span>
-                <div>
-                  <strong>Research-Based</strong>
-                  <p>Investigation & analysis</p>
-                </div>
-              </div>
-              <input type="number" id="research-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🛠️</span>
-                <div>
-                  <strong>Project-Based</strong>
-                  <p>Practical implementation</p>
-                </div>
-              </div>
-              <input type="number" id="project-count" min="0" max="10" value="0">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">📋</span>
-                <div>
-                  <strong>Case Study</strong>
-                  <p>Complex situation analysis</p>
-                </div>
-              </div>
-              <input type="number" id="case-study-count" min="0" max="10" value="0">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">⚖️</span>
-                <div>
-                  <strong>Comparative</strong>
-                  <p>Compare & contrast</p>
-                </div>
-              </div>
-              <input type="number" id="comparative-count" min="0" max="10" value="0">
-            </div>
-          </div>
-
-          <div id="total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
-            Total Tasks: <span id="total-tasks-count">4</span>
-          </div>
-
-          <!-- Difficulty Selection -->
-          <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
-          <div class="field">
-            <select id="assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-              <option value="auto">Auto (AI decides based on content)</option>
-              <option value="easy">Easy (Beginner level)</option>
-              <option value="medium">Medium (Intermediate level)</option>
-              <option value="hard">Hard (Advanced level)</option>
-            </select>
-          </div>
-
-          <!-- Scenario Style Selection -->
-          <div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
-          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-            Choose whether scenario-based and case study questions should include code or focus on strategic decisions
-          </p>
-          <div class="field">
-            <select id="assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-              <option value="auto">Auto (Detect from content - includes code for technical topics)</option>
-              <option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
-              <option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
-            </select>
-          </div>
-
-          <!-- Assignment Settings -->
-          <div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
-          <div class="field">
-            <label class="label" for="assign-time-limit">Time limit (minutes)</label>
-            <input type="number" id="assign-time-limit" min="0" placeholder="e.g. 60" />
-          </div>
-          <div class="field">
-            <label class="label" for="assign-due-date">Due date</label>
-            <input type="datetime-local" id="assign-due-date" />
-          </div>
-          <div class="field">
-            <label class="label" for="assign-note">Note to students</label>
-            <textarea id="assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
+        <p>Our multi-layer grading engine handles every question type intelligently — from instant MCQ checking to nuanced LLM-powered evaluation of essays and code.</p>
+        <div class="grade-steps">
+          <div class="grade-step"><div class="step-dot"></div><div class="step-body"><h4>Student Submits Answer</h4><p>Responses are securely captured and sent for evaluation immediately on submission.</p></div></div>
+          <div class="grade-step"><div class="step-dot"></div><div class="step-body"><h4>Rule-Based Instant Grading</h4><p>MCQ and True/False questions are graded instantly with exact matching. Multi-select uses partial credit logic.</p></div></div>
+          <div class="grade-step"><div class="step-dot"></div><div class="step-body"><h4>LLM Semantic Evaluation</h4><p>Short and long answers are evaluated by a 70B LLM against the expected answer and rubric. F1 overlap acts as a fallback.</p></div></div>
+          <div class="grade-step"><div class="step-dot"></div><div class="step-body"><h4>Code Execution & Sandbox</h4><p>Code questions are run in a sandboxed environment. Output is compared against test cases with detailed feedback.</p></div></div>
+          <div class="grade-step"><div class="step-dot"></div><div class="step-body"><h4>Results & Feedback Delivered</h4><p>Scores, per-question feedback and explanations display instantly on the student's results page.</p></div></div>
+        </div>
+      </div>
+      <div class="grading-right">
+        <div class="grade-viz-card">
+          <div class="gvc-top"><span>📄 Data Structures Quiz</span><div class="score-badge">87%</div></div>
+          <div class="grade-bar"><div class="grade-bar-fill" style="width:87%"></div></div>
+          <div class="grade-tags"><span class="grade-tag mcq">MCQ ✓ Instant</span><span class="grade-tag short">Short → LLM</span><span class="grade-tag long">Essay → Rubric</span><span class="grade-tag code">Code → Sandbox</span></div>
+        </div>
+        <div class="grade-viz-card">
+          <div class="gvc-top"><span>🎯 OS Assignment</span><div class="score-badge">74%</div></div>
+          <div class="grade-bar"><div class="grade-bar-fill" style="width:74%"></div></div>
+          <div class="grade-tags"><span class="grade-tag mcq">Scenario → LLM</span><span class="grade-tag short">Research → Rubric</span><span class="grade-tag long">Project → Criteria</span></div>
+        </div>
+        <div class="grading-engine-box">
+          <div class="engine-title">🔧 Grading Methods Used</div>
+          <div class="engine-items">
+            <div class="engine-item"><i class='bx bx-check-circle'></i><span>Exact match — MCQ, True/False</span></div>
+            <div class="engine-item"><i class='bx bx-brain'></i><span>LLM evaluation — Short & Long answers</span></div>
+            <div class="engine-item"><i class='bx bx-code-alt'></i><span>Sandbox execution — Code questions</span></div>
+            <div class="engine-item"><i class='bx bx-bar-chart-alt-2'></i><span>F1 overlap scoring — Semantic fallback</span></div>
+            <div class="engine-item"><i class='bx bx-star'></i><span>Rubric criteria — Assignments</span></div>
           </div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Topics Assignment Modal -->
-    <div id="modal-assign-topics" class="modal" aria-hidden="true">
-      <div class="modal-card" style="max-width: 950px;">
-        <div class="modal-head">
-          <h3>🎓 Generate Assignment by Topics</h3>
-          <div class="modal-actions">
-            <button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button>
-            <button class="generate-btn" type="button" id="btn-assign-topics-generate">🚀 Generate</button>
-          </div>
-        </div>
-        <div class="modal-body">
-          <!-- Topics Input -->
-          <div class="section-title">1️⃣ Enter Topics</div>
-          <div class="field">
-            <label for="assign-topics-text">
-              <span>Topics (one per line)</span>
-            </label>
-            <textarea id="assign-topics-text" rows="5"
-                      placeholder="e.g.&#10;Binary Search Trees&#10;Sorting Algorithms&#10;Machine Learning Fundamentals&#10;Neural Networks"></textarea>
-          </div>
+  <!-- WORKFLOW STEPS -->
+  <div class="workflow-section">
+    <div class="section-label"><div class="tag">How It Works</div><h2>From <span>Upload to Results</span> in Minutes</h2></div>
+    <div class="workflow-steps">
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-upload'></i></div><h4>Upload PDF</h4><p>Upload any lecture notes or textbook</p></div>
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-brain'></i></div><h4>AI Generates</h4><p>AI reads content & creates questions</p></div>
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-slider-alt'></i></div><h4>Customize</h4><p>Adjust types, difficulty & settings</p></div>
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-share-alt'></i></div><h4>Publish</h4><p>Share with students or push to Moodle</p></div>
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-check-shield'></i></div><h4>Auto-Grade</h4><p>Submissions graded instantly by AI</p></div>
+      <div class="wf-step"><div class="wf-num"><i class='bx bx-bar-chart-alt-2'></i></div><h4>View Results</h4><p>Detailed scores & feedback for all</p></div>
+    </div>
+  </div>
 
-          <!-- Assignment Type Distribution -->
-          <div class="section-title" style="margin-top: 24px;">2️⃣ Select Assignment Types & Quantity</div>
-          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-            Choose how many questions of each type you want to generate
-          </p>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px;">
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">💡</span>
-                <div>
-                  <strong>Conceptual</strong>
-                  <p>Theory & principles</p>
-                </div>
-              </div>
-              <input type="number" id="topics-conceptual-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🎯</span>
-                <div>
-                  <strong>Scenario-Based</strong>
-                  <p>Real-world application</p>
-                </div>
-              </div>
-              <input type="number" id="topics-scenario-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🔬</span>
-                <div>
-                  <strong>Research-Based</strong>
-                  <p>Investigation & analysis</p>
-                </div>
-              </div>
-              <input type="number" id="topics-research-count" min="0" max="10" value="0">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">🛠️</span>
-                <div>
-                  <strong>Project-Based</strong>
-                  <p>Practical implementation</p>
-                </div>
-              </div>
-              <input type="number" id="topics-project-count" min="0" max="10" value="0">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">📋</span>
-                <div>
-                  <strong>Case Study</strong>
-                  <p>Complex situation analysis</p>
-                </div>
-              </div>
-              <input type="number" id="topics-case-study-count" min="0" max="10" value="1">
-            </div>
-            <div class="assignment-type-card">
-              <div class="type-header">
-                <span class="type-icon">⚖️</span>
-                <div>
-                  <strong>Comparative</strong>
-                  <p>Compare & contrast</p>
-                </div>
-              </div>
-              <input type="number" id="topics-comparative-count" min="0" max="10" value="1">
-            </div>
-          </div>
+  <!-- BENTO CAPABILITIES -->
+  <div class="bento-section">
+    <div class="section-label" style="margin-bottom:36px;"><div class="tag">What's Inside</div><h2>Built for <span>Teachers & Students</span></h2></div>
+    <div class="bento-grid">
+      <div class="bento-cell wide"><i class='bx bx-task bc-icon'></i><h3>6 Assignment Types</h3><p>Conceptual, Scenario-Based, Research, Project, Case Study, and Comparative — each with custom rubrics and grading criteria built-in.</p><span class="bento-tag">Auto-generated</span></div>
+      <div class="bento-cell"><div class="bento-big-num">3</div><h3>Quiz Creation Modes</h3><p>Auto, Customize, and Manual creation paths for every workflow.</p></div>
+      <div class="bento-cell"><i class='bx bx-bar-chart-alt-2 bc-icon'></i><h3>Difficulty Control</h3><p>Auto AI mode, or set exact Easy / Medium / Hard % distribution.</p><span class="bento-tag">Custom mix</span></div>
+      <div class="bento-cell"><i class='bx bx-file-find bc-icon'></i><h3>Subtopic Detection</h3><p>Automatically identify chapters from uploaded PDFs for targeted generation.</p></div>
+      <div class="bento-cell"><i class='bx bx-time-five bc-icon'></i><h3>Time Limits & Due Dates</h3><p>Set per-quiz time limits and due dates. Expired quizzes auto-disable for students.</p></div>
+      <div class="bento-cell wide"><i class='bx bx-link-external bc-icon'></i><h3>Moodle LTI 1.3 Integration</h3><p>Publish quizzes and assignments directly into Moodle courses. Students take assessments through Moodle with grades synced back automatically.</p><span class="bento-tag">LTI 1.3 Ready</span></div>
+    </div>
+  </div>
 
-          <div id="topics-total-tasks-display" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%); border-radius: 10px; text-align: center; font-weight: 600; color: #92400e; border: 2px solid #fdba74;">
-            Total Tasks: <span id="topics-total-tasks-count">4</span>
-          </div>
-
-          <!-- Difficulty Selection -->
-          <div class="section-title" style="margin-top: 24px;">3️⃣ Difficulty Level</div>
-          <div class="field">
-            <select id="topics-assign-difficulty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-              <option value="auto">Auto (AI decides based on content)</option>
-              <option value="easy">Easy (Beginner level)</option>
-              <option value="medium">Medium (Intermediate level)</option>
-              <option value="hard">Hard (Advanced level)</option>
-            </select>
-          </div>
-
-          <!-- Scenario Style Selection -->
-          <div class="section-title" style="margin-top: 24px;">4️⃣ Scenario Style (for Scenario & Case Study questions)</div>
-          <p style="color: #666; margin-bottom: 15px; font-size: 0.95em;">
-            Choose whether scenario-based and case study questions should include code or focus on strategic decisions
-          </p>
-          <div class="field">
-            <select id="topics-assign-scenario-style" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1em;">
-              <option value="auto">Auto (Detect from content - includes code for technical topics)</option>
-              <option value="code_based">Code-Based (Include code snippets, debugging, optimization)</option>
-              <option value="decision_based">Decision-Based (Strategy, analysis, no code)</option>
-            </select>
-          </div>
-
-          <!-- Assignment Settings -->
-          <div class="section-title" style="margin-top: 24px;">5️⃣ Assignment Settings</div>
-          <div class="field">
-            <label class="label" for="topics-assign-time-limit">Time limit (minutes)</label>
-            <input type="number" id="topics-assign-time-limit" min="0" placeholder="e.g. 60" />
-          </div>
-          <div class="field">
-            <label class="label" for="topics-assign-due-date">Due date</label>
-            <input type="datetime-local" id="topics-assign-due-date" />
-          </div>
-          <div class="field">
-            <label class="label" for="topics-assign-note">Note to students</label>
-            <textarea id="topics-assign-note" rows="2" placeholder="Instructions for this assignment"></textarea>
-          </div>
-        </div>
+  <!-- CALLOUT -->
+  <div class="callout-section">
+    <div class="callout-box">
+      <h2>Ready to transform your assessments?</h2>
+      <p>Start generating quizzes and assignments from your study material in seconds. No setup. No friction.</p>
+      <div class="callout-chips">
+        <div class="callout-chip">✅ No manual question writing</div>
+        <div class="callout-chip">✅ Instant AI grading</div>
+        <div class="callout-chip">✅ Moodle LTI ready</div>
+        <div class="callout-chip">✅ 12+ question types</div>
+      </div>
+      <div style="margin-top:32px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+        <button class="btn-cta" style="background:white;color:var(--o1);border:none;box-shadow:0 4px 16px rgba(0,0,0,0.12);" onclick="showSection('generate')"><i class='bx bx-zap'></i> Generate Quiz Now</button>
+        <button class="btn-cta" style="background:rgba(255,255,255,0.2);color:white;border:2px solid rgba(255,255,255,0.5);" onclick="showSection('assignments')"><i class='bx bx-task'></i> Make Assignment</button>
       </div>
     </div>
-  </main>
+  </div>
 
-  <!-- Scripts -->
-  <script src="{{ url_for('static', filename='script.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='modal.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='publish.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='assignments.js') }}"></script>
-  <script src="{{ url_for('static', filename='view_items.js') }}"></script>
-  <script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
+</section><!-- /home -->
 
-  <!-- Router and Home Rotator -->
-  <script defer>
-    (function () {
-      // DOM Helpers
-      const $ = (sel) => document.querySelector(sel);
-      const id = (s) => document.getElementById(s);
-      const fmtScore = (n) => (window.__fmtScore ? window.__fmtScore(n) : Math.ceil(Number(n) || 0));
-      const fmtDate = (v) => (window.__fmtDateTime ? window.__fmtDateTime(v) : (v ? new Date(v).toLocaleString() : ''));
-      
-      // Group items by kind
-      const groupByKind = (items = []) => {
-        const out = { quiz: [], assignment: [] };
-        items.forEach(it => {
-          const k = (it.kind || '').toLowerCase() === 'assignment' ? 'assignment' : 'quiz';
-          out[k].push(it);
+
+<!-- ===== GENERATE ===== -->
+<section id="section-generate" style="display:none;">
+  <div class="section-header"><h2>Quiz Generator</h2><p>Choose how you want to create your quiz</p></div>
+  <div class="cards-container">
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-brain'></i></div><h2>AI-Powered Quiz</h2><p>Upload your study material in PDF format and let our AI automatically create a quiz for you.</p><button class="generate-btn" id="btn-open-auto">Generate Quiz</button></div>
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-slider-alt'></i></div><h2>Customize Quiz</h2><p>Upload your study material and adjust settings like question count, difficulty, and topic focus.</p><button class="generate-btn" id="btn-open-custom">Customize Now</button></div>
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-edit'></i></div><h2>Manual Creation</h2><p>Create questions from scratch with full control over every question, option and mark.</p><a class="generate-btn" href="{{ url_for('teacher_manual') }}">Start Creating</a></div>
+  </div>
+  <section id="quiz-section" style="display:none;">
+    <div class="quiz-out-head" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid var(--soft);">
+      <h2 id="quiz-title" style="margin:0;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:22px;color:var(--dark);">Generated Quiz</h2>
+    </div>
+    <div id="quiz-container" class="quiz-out"></div>
+  </section>
+</section>
+
+
+<!-- ===== VIEW ===== -->
+<section id="section-view" style="display:none;">
+  <div class="section-header"><h2>Content Library</h2><p>Browse all quizzes and assignments you have created</p></div>
+  <div class="cards-container" style="max-width:800px;">
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-collection'></i></div><h2>View Quizzes</h2><p>See all quizzes you have generated or created manually. Preview, publish and share with students.</p><button class="generate-btn" id="btn-view-quizzes">View Quizzes</button></div>
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-task'></i></div><h2>View Assignments</h2><p>See all assignments generated from PDFs or topics, with submission tracking and grading.</p><button class="generate-btn" id="btn-view-assignments">View Assignments</button></div>
+  </div>
+  <div id="view-list-container" style="display:none;"><h2 id="view-list-title">Quizzes</h2><div id="quiz-list"></div></div>
+</section>
+
+
+<!-- ===== ASSIGNMENTS ===== -->
+<section id="section-assignments" style="display:none;">
+  <div class="section-header"><h2>Assignment Generator</h2><p>Create rich, multi-type assignments from your study materials</p></div>
+  <div class="cards-container">
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-file-find'></i></div><h2>From PDF</h2><p>Upload a PDF. We'll detect subtopics and generate structured assignment questions per subtopic.</p><button id="btn-open-assign-pdf" class="generate-btn">Generate from PDF</button></div>
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-list-ul'></i></div><h2>By Topics</h2><p>Type topics (one per line) and generate comprehensive assignment questions from them.</p><button id="btn-open-assign-topics" class="generate-btn">Generate by Topics</button></div>
+    <div class="quiz-card"><div class="card-icon"><i class='bx bx-edit-alt'></i></div><h2>Manual Creation</h2><p>Compose your own questions, add marks, and organize into sections manually.</p><button id="btn-open-assign-manual" class="generate-btn">Start Creating</button></div>
+    <div id="assignment-output" class="assignment-output-card" style="margin-top:24px;"></div>
+  </div>
+</section>
+
+<div id="toast" class="toast"></div>
+
+
+<!-- ===== AI QUIZ MODAL ===== -->
+<div id="modal-auto" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleAuto">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="modalTitleAuto">🤖 Generate Quiz from PDF</h3><div class="modal-actions"><button class="btn ghost" id="btn-cancel">Close</button><button class="btn primary" id="btn-generate">Generate</button></div></div>
+    <div class="section-title">1) Upload PDF</div>
+    <div id="uploader" class="uploader"><i class='bx bx-cloud-upload' style="font-size:30px;color:var(--o1);display:block;margin:0 auto 8px;"></i><b>Drop PDF here</b> or click to select<small>Accepted: .pdf · max ~25MB</small><input id="fileInput" type="file" accept="application/pdf" hidden /></div>
+    <div id="fileNameDisplay" class="file-name"></div>
+    <div class="progress" id="progress"><div></div></div>
+    <div class="section-title">2) Quiz Settings</div>
+    <div class="form-row">
+      <div class="field"><label class="label" for="auto-time-limit">Time limit (minutes)</label><input type="number" id="auto-time-limit" min="0" placeholder="e.g. 30" /></div>
+      <div class="field"><label class="label" for="auto-due-date">Due date</label><input type="datetime-local" id="auto-due-date" /></div>
+    </div>
+    <div class="field"><label class="label" for="auto-note">Note to students</label><textarea id="auto-note" rows="2" placeholder="Instructions for this quiz"></textarea></div>
+  </div>
+</div>
+
+<!-- ===== CUSTOMIZE QUIZ MODAL ===== -->
+<div id="modal-custom" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitleCustom">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="modalTitleCustom">⚙️ Customize Quiz from PDF</h3><div class="modal-actions"><button class="btn ghost" id="btn-cancel-custom">Close</button><button class="btn primary" id="btn-generate-custom">Generate</button></div></div>
+    <div class="section-title">1) Upload PDF</div>
+    <div id="uploader-custom" class="uploader"><i class='bx bx-cloud-upload' style="font-size:30px;color:var(--o1);display:block;margin:0 auto 8px;"></i><b>Drop PDF here</b> or click to select<small>Accepted: .pdf · max ~25MB</small><input id="fileInputCustom" type="file" accept="application/pdf" hidden /></div>
+    <div id="fileNameDisplayCustom" class="file-name"></div>
+    <div class="center-btn-wrapper"><button id="btn-detect-subtopics" type="button" class="detect-btn">🔍 Detect Subtopics</button></div>
+    <div id="subtopics-section" style="display:none;margin-top:10px;"><p style="font-weight:600;margin-bottom:8px;font-size:13px;">Select subtopics:</p><div id="subtopics-list" class="subtopics-list"></div></div>
+    <div class="section-title">2) Question Counts</div>
+    <div class="counts-grid">
+      <div class="field"><label class="label" for="mcqCount">MCQ</label><input id="mcqCount" type="number" min="0" max="30" value="4" /></div>
+      <div class="field"><label class="label" for="tfCount">True / False</label><input id="tfCount" type="number" min="0" max="30" value="0" /></div>
+      <div class="field"><label class="label" for="shortCount">Short</label><input id="shortCount" type="number" min="0" max="20" value="5" /></div>
+      <div class="field"><label class="label" for="longCount">Long</label><input id="longCount" type="number" min="0" max="20" value="0" /></div>
+    </div>
+    <div class="section-title">3) Difficulty</div>
+    <div class="form-row">
+      <div class="field"><label class="label">Mode</label><select id="difficultyModeCustom"><option value="auto">Auto (AI decides)</option><option value="custom">Custom % mix</option></select><div class="hint">Use custom only if you want a specific E/M/H distribution.</div></div>
+      <div class="field"><label class="label">Validate</label><button class="btn" id="btn-validate-mix" type="button">Check Sum = 100%</button></div>
+    </div>
+    <div id="diffRowC1" class="form-row" style="display:none"><div class="field"><label class="label">Easy %</label><input id="easyPctC" type="number" min="0" max="100" value="30" /></div><div class="field"><label class="label">Medium %</label><input id="medPctC" type="number" min="0" max="100" value="50" /></div></div>
+    <div id="diffRowC2" class="form-row" style="display:none"><div class="field"><label class="label">Hard %</label><input id="hardPctC" type="number" min="0" max="100" value="20" /></div></div>
+    <div class="section-title">4) Quiz Settings</div>
+    <div class="form-row">
+      <div class="field"><label class="label" for="custom-time-limit">Time limit (minutes)</label><input type="number" id="custom-time-limit" min="0" placeholder="e.g. 30" /></div>
+      <div class="field"><label class="label" for="custom-due-date">Due date</label><input type="datetime-local" id="custom-due-date" /></div>
+    </div>
+    <div class="field"><label class="label" for="custom-note">Note to students</label><textarea id="custom-note" rows="2" placeholder="Instructions for this quiz"></textarea></div>
+    <div class="progress" id="progress-custom"><div></div></div>
+  </div>
+</div>
+
+<!-- ===== PDF ASSIGNMENT MODAL ===== -->
+<div id="modal-assign-pdf" class="modal" aria-hidden="true">
+  <div class="modal-card" style="max-width:950px;">
+    <div class="modal-head"><h3>🎓 Advanced Assignment from PDF</h3><div class="modal-actions"><button class="btn ghost" type="button" id="btn-assign-pdf-close">Close</button><button class="btn primary" type="button" id="btn-assign-pdf-detect">Generate</button></div></div>
+    <div class="section-title">1️⃣ Upload Study Material</div>
+    <div id="assign-uploader" class="uploader"><i class='bx bx-cloud-upload' style="font-size:30px;color:var(--o1);display:block;margin:0 auto 8px;"></i><b>Drop PDF here</b> or click to select<small>Accepted: .pdf · max ~25MB</small><input id="assign-pdf-file" type="file" accept="application/pdf" hidden /></div>
+    <div id="assignFileNameDisplay" class="file-name-display"></div>
+    <div class="center-btn-wrapper"><button id="btn-detect-subtopics-assign" type="button" class="detect-btn">🔍 Detect Subtopics</button></div>
+    <div id="assign-subtopics-section" style="display:none;margin-top:10px;"><p style="font-weight:600;margin-bottom:8px;font-size:13px;">Select subtopics:</p><div id="assign-subtopics-list" class="subtopics-list"></div></div>
+    <div class="section-title">2️⃣ Assignment Types & Quantity</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;">
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">💡</span><div><strong>Conceptual</strong><p>Theory & principles</p></div></div><input type="number" id="conceptual-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🎯</span><div><strong>Scenario-Based</strong><p>Real-world application</p></div></div><input type="number" id="scenario-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🔬</span><div><strong>Research-Based</strong><p>Investigation & analysis</p></div></div><input type="number" id="research-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🛠️</span><div><strong>Project-Based</strong><p>Practical implementation</p></div></div><input type="number" id="project-count" min="0" max="10" value="0"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">📋</span><div><strong>Case Study</strong><p>Complex situation analysis</p></div></div><input type="number" id="case-study-count" min="0" max="10" value="0"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">⚖️</span><div><strong>Comparative</strong><p>Compare & contrast</p></div></div><input type="number" id="comparative-count" min="0" max="10" value="0"></div>
+    </div>
+    <div id="total-tasks-display" style="margin-top:14px;padding:12px;background:var(--pale);border-radius:10px;text-align:center;font-weight:700;color:#92400e;border:1.5px solid var(--border);">Total Tasks: <span id="total-tasks-count">4</span></div>
+    <div class="section-title">3️⃣ Difficulty Level</div>
+    <div class="field"><select id="assign-difficulty" style="width:100%;"><option value="auto">Auto (AI decides based on content)</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+    <div class="section-title">4️⃣ Scenario Style</div>
+    <div class="field"><select id="assign-scenario-style" style="width:100%;"><option value="auto">Auto (Detect from content)</option><option value="code_based">Code-Based</option><option value="decision_based">Decision-Based</option></select></div>
+    <div class="section-title">5️⃣ Assignment Settings</div>
+    <div class="form-row">
+      <div class="field"><label class="label" for="assign-time-limit">Time limit (minutes)</label><input type="number" id="assign-time-limit" min="0" placeholder="e.g. 60" /></div>
+      <div class="field"><label class="label" for="assign-due-date">Due date</label><input type="datetime-local" id="assign-due-date" /></div>
+    </div>
+    <div class="field"><label class="label" for="assign-note">Note to students</label><textarea id="assign-note" rows="2" placeholder="Instructions for this assignment"></textarea></div>
+  </div>
+</div>
+
+<!-- ===== TOPICS ASSIGNMENT MODAL ===== -->
+<div id="modal-assign-topics" class="modal" aria-hidden="true">
+  <div class="modal-card" style="max-width:950px;">
+    <div class="modal-head"><h3>📋 Generate Assignment by Topics</h3><div class="modal-actions"><button class="btn ghost" type="button" id="btn-assign-topics-close">Close</button><button class="btn primary" type="button" id="btn-assign-topics-generate">🚀 Generate</button></div></div>
+    <div class="section-title">1️⃣ Enter Topics</div>
+    <div class="field"><label class="label" for="assign-topics-text">Topics (one per line)</label><textarea id="assign-topics-text" rows="5" placeholder="e.g.&#10;Binary Search Trees&#10;Sorting Algorithms&#10;Machine Learning Fundamentals"></textarea></div>
+    <div class="section-title">2️⃣ Assignment Types & Quantity</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;">
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">💡</span><div><strong>Conceptual</strong><p>Theory & principles</p></div></div><input type="number" id="topics-conceptual-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🎯</span><div><strong>Scenario-Based</strong><p>Real-world application</p></div></div><input type="number" id="topics-scenario-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🔬</span><div><strong>Research-Based</strong><p>Investigation & analysis</p></div></div><input type="number" id="topics-research-count" min="0" max="10" value="0"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">🛠️</span><div><strong>Project-Based</strong><p>Practical implementation</p></div></div><input type="number" id="topics-project-count" min="0" max="10" value="0"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">📋</span><div><strong>Case Study</strong><p>Complex situation analysis</p></div></div><input type="number" id="topics-case-study-count" min="0" max="10" value="1"></div>
+      <div class="assignment-type-card"><div class="type-header"><span class="type-icon">⚖️</span><div><strong>Comparative</strong><p>Compare & contrast</p></div></div><input type="number" id="topics-comparative-count" min="0" max="10" value="1"></div>
+    </div>
+    <div id="topics-total-tasks-display" style="margin-top:14px;padding:12px;background:var(--pale);border-radius:10px;text-align:center;font-weight:700;color:#92400e;border:1.5px solid var(--border);">Total Tasks: <span id="topics-total-tasks-count">4</span></div>
+    <div class="section-title">3️⃣ Difficulty Level</div>
+    <div class="field"><select id="topics-assign-difficulty" style="width:100%;"><option value="auto">Auto (AI decides based on content)</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+    <div class="section-title">4️⃣ Scenario Style</div>
+    <div class="field"><select id="topics-assign-scenario-style" style="width:100%;"><option value="auto">Auto (Detect from content)</option><option value="code_based">Code-Based</option><option value="decision_based">Decision-Based</option></select></div>
+    <div class="section-title">5️⃣ Assignment Settings</div>
+    <div class="form-row">
+      <div class="field"><label class="label" for="topics-assign-time-limit">Time limit (minutes)</label><input type="number" id="topics-assign-time-limit" min="0" placeholder="e.g. 60" /></div>
+      <div class="field"><label class="label" for="topics-assign-due-date">Due date</label><input type="datetime-local" id="topics-assign-due-date" /></div>
+    </div>
+    <div class="field"><label class="label" for="topics-assign-note">Note to students</label><textarea id="topics-assign-note" rows="2" placeholder="Instructions for this assignment"></textarea></div>
+  </div>
+</div>
+
+</main>
+
+<!-- ALL ORIGINAL SCRIPTS UNCHANGED -->
+<script src="{{ url_for('static', filename='script.js') }}" defer></script>
+<script src="{{ url_for('static', filename='modal.js') }}" defer></script>
+<script src="{{ url_for('static', filename='customizeModal.js') }}" defer></script>
+<script src="{{ url_for('static', filename='publish.js') }}" defer></script>
+<script src="{{ url_for('static', filename='assignments.js') }}"></script>
+<script src="{{ url_for('static', filename='view_items.js') }}"></script>
+<script src="{{ url_for('static', filename='duplicate_detector.js') }}" defer></script>
+
+<script defer>
+(function () {
+  const id = (s) => document.getElementById(s);
+  const fmtScore = (n) => (window.__fmtScore ? window.__fmtScore(n) : Math.ceil(Number(n) || 0));
+  const fmtDate = (v) => (window.__fmtDateTime ? window.__fmtDateTime(v) : (v ? new Date(v).toLocaleString() : ''));
+  const groupByKind = (items = []) => {
+    const out = { quiz: [], assignment: [] };
+    items.forEach(it => { const k = (it.kind||'').toLowerCase()==='assignment'?'assignment':'quiz'; out[k].push(it); });
+    return out;
+  };
+  function showEl(el) { if (!el) return; el.hidden = false; el.style.removeProperty('display'); }
+  function hideEl(el) { if (!el) return; el.hidden = true; el.style.display = 'none'; }
+  const sections = { home: id('section-home'), generate: id('section-generate'), assignments: id('section-assignments'), view: id('section-view'), grades: id('section-grades') };
+  function showSection(route) {
+    Object.values(sections).forEach(hideEl);
+    showEl(sections[route] || sections.home);
+    document.querySelectorAll('.topnav .link').forEach(b => b.classList.toggle('active', b.dataset.route === route));
+    if (route === 'view') id('btn-view-quizzes')?.click();
+    if (route === 'grades') loadGrades();
+  }
+  window.showSection = showSection;
+  document.querySelectorAll('.topnav .link').forEach(btn => btn.addEventListener('click', () => showSection(btn.dataset.route)));
+  showSection(new URLSearchParams(location.search).get('route') || 'home');
+
+  async function loadGrades() {
+    const list = id('grades-list');
+    if (!list) return;
+    list.innerHTML = '<div style="color:var(--muted);padding:12px;">Loading…</div>';
+    try {
+      const email = (id('grades-email')?.value || '').trim();
+      const url = new URL('/api/grades', window.location.origin);
+      if (email) url.searchParams.set('email', email);
+      url.searchParams.set('refresh', '1');
+      const data = await (await fetch(url.toString())).json();
+      const items = data?.items || [];
+      if (!items.length) { list.innerHTML = '<div style="color:var(--muted);padding:12px;">No grades yet.</div>'; return; }
+      const g = groupByKind(items);
+      const renderGroup = (lbl, arr) => !arr.length ? '' :
+        `<div class="grades-group"><h3 class="grade-group-title">${lbl}</h3>${arr.map(x =>
+          `<div class="quiz-card grade-card"><div>${x.title||'Graded item'}</div><div style="color:var(--muted);font-size:13px;margin:4px 0;">${x.kind||'quiz'} • ${x.date_human||fmtDate(x.date)} • ${x.student_email||x.student_name||'Unknown'}</div><div class="grade-line"><div class="grade-score">${fmtScore(x.score)}/${fmtScore(x.max_score)}</div><a class="btn btn-dark" href="/student/grade/${x.id}?origin=teacher" target="_blank" rel="noopener">View details</a></div></div>`
+        ).join('')}</div>`;
+      list.innerHTML = renderGroup('Quizzes', g.quiz) + renderGroup('Assignments', g.assignment);
+    } catch(e) { list.innerHTML = '<div style="color:var(--muted);padding:12px;">Failed to load.</div>'; }
+  }
+  window.loadGrades = loadGrades;
+  id('btn-refresh-grades')?.addEventListener('click', loadGrades);
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const detectBtn = id("btn-detect-subtopics-assign");
+    const fileInput = id("assign-pdf-file");
+    const subSection = id("assign-subtopics-section");
+    const subList = id("assign-subtopics-list");
+    if (!detectBtn) return;
+    detectBtn.addEventListener("click", async () => {
+      if (!fileInput?.files?.length) { alert("Please upload a PDF first."); return; }
+      detectBtn.disabled = true; detectBtn.innerText = "Detecting…";
+      try {
+        const fd = new FormData();
+        fd.append("file", fileInput.files[0]);
+        const data = await (await fetch("/api/detect-subtopics", { method:"POST", body:fd })).json();
+        if (!data?.subtopics?.length) { alert("No subtopics detected."); return; }
+        subList.innerHTML = "";
+        data.subtopics.forEach(t => {
+          const d = document.createElement("div");
+          d.className = "subtopic-row";
+          d.innerHTML = `<label><input type="checkbox" name="assign-subtopic" value="${t}" checked /><span>${t}</span></label>`;
+          subList.appendChild(d);
         });
-        return out;
-      };
-
-      // Element visibility helpers
-      function showEl(el) { if (!el) return; el.hidden = false; el.style.removeProperty('display'); }
-      function hideEl(el) { if (!el) return; el.hidden = true; el.style.display = 'none'; }
-
-      // Section management
-      const sections = {
-        home: id('section-home'),
-        generate: id('section-generate'),
-        assignments: id('section-assignments'),
-        view: id('section-view'),
-        grades: id('section-grades'),
-      };
-
-      function showSection(route) {
-        Object.values(sections).forEach(hideEl);
-        showEl(sections[route] || sections.home);
-        if (route === 'view') {
-          document.getElementById('btn-view-quizzes')?.click();
-        }
-        if (route === 'grades') loadGrades();
-      }
-      window.showSection = showSection;
-
-      // Navigation event listeners
-      document.querySelectorAll('.topnav .link').forEach(btn => {
-        btn.addEventListener('click', () => showSection(btn.dataset.route));
-      });
-
-      // Initial route
-      const params = new URLSearchParams(location.search);
-      showSection(params.get('route') || 'home');
-
-      // Grades loading function
-      async function loadGrades() {
-        const list = id('grades-list');
-        if (!list) return;
-        list.innerHTML = '<div class="muted">Loading grades…</div>';
-        try {
-          const email = (id('grades-email')?.value || '').trim();
-          const url = new URL('/api/grades', window.location.origin);
-          if (email) url.searchParams.set('email', email);
-          url.searchParams.set('refresh', '1');
-          const res = await fetch(url.toString());
-          const data = await res.json();
-          const items = (data && data.items) ? data.items : [];
-          
-          if (!items.length) {
-            list.innerHTML = '<div class="empty-state" style="margin:12px 0;">No grades yet.</div>';
-            return;
-          }
-          
-          const grouped = groupByKind(items);
-
-          function renderGroup(kindLabel, arr) {
-            if (!arr.length) return '';
-            return `
-              <div class="grades-group">
-                <h3 class="grade-group-title">${kindLabel}</h3>
-                ${arr.map(g => {
-                  const s = fmtScore(g.score);
-                  const m = fmtScore(g.max_score);
-                  const when = g.date_human || fmtDate(g.date);
-                  const who = g.student_email || g.student_name || 'Unknown student';
-                  return `
-                    <div class="quiz-card grade-card">
-                      <div class="quiz-title">${g.title || 'Graded item'}</div>
-                      <div class="quiz-meta">
-                        <span class="badge">${g.kind || 'quiz'}</span>
-                        ${when ? `<span class="muted">• ${when}</span>` : ''}
-                        <span class="muted">• ${who}</span>
-                      </div>
-                      <div class="grade-line">
-                        <div class="grade-score">${s}/${m}</div>
-                        <div class="grade-actions">
-                          <a class="btn btn-dark" href="/student/grade/${g.id}?origin=teacher" target="_blank" rel="noopener">View details</a>
-                        </div>
-                      </div>
-                    </div>`;
-                }).join('')}
-              </div>`;
-          }
-
-          list.innerHTML = renderGroup('Quizzes', grouped.quiz) + renderGroup('Assignments', grouped.assignment);
-        } catch (e) {
-          console.error(e);
-          list.innerHTML = '<div class="muted">Failed to load grades.</div>';
-        }
-      }
-      window.loadGrades = loadGrades;
-
-      // Refresh grades button
-      const refreshBtn = id('btn-refresh-grades');
-      if (refreshBtn) refreshBtn.addEventListener('click', loadGrades);
-
-      // Home page text rotator
-      (function initRotator() {
-        const container = id('rotate-text');
-        if (!container) return;
-        const items = Array.from(container.querySelectorAll('span'));
-        if (items.length <= 1) return;
-
-        let idx = 0;
-        items.forEach((el, i) => { if (i !== 0) { el.style.display = 'none'; el.style.opacity = 0; } });
-
-        setInterval(() => {
-          const cur = items[idx];
-          if (!cur) return;
-          cur.style.opacity = 0;
-          setTimeout(() => {
-            cur.style.display = 'none';
-            idx = (idx + 1) % items.length;
-            const nxt = items[idx];
-            nxt.style.display = '';
-            requestAnimationFrame(() => { nxt.style.opacity = 1; });
-          }, 200);
-        }, 2800);
-      })();
-
-      // Subtopic detection for assignments
-      document.addEventListener("DOMContentLoaded", function () {
-        const detectBtn = document.getElementById("btn-detect-subtopics-assign");
-        const fileInput = document.getElementById("assign-pdf-file");
-        const subtopicsSection = document.getElementById("assign-subtopics-section");
-        const subtopicsList = document.getElementById("assign-subtopics-list");
-
-        if (detectBtn) {
-          detectBtn.addEventListener("click", async function () {
-            try {
-              if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-                alert("Please upload a PDF first.");
-                return;
-              }
-
-              detectBtn.disabled = true;
-              detectBtn.innerText = "Detecting...";
-
-              const formData = new FormData();
-              formData.append("file", fileInput.files[0]);
-
-              const res = await fetch("/api/detect-subtopics", {
-                method: "POST",
-                body: formData
-              });
-
-              const data = await res.json();
-
-              if (!data || !data.subtopics || data.subtopics.length === 0) {
-                alert("No subtopics detected.");
-                detectBtn.disabled = false;
-                detectBtn.innerText = "Detect Subtopics";
-                return;
-              }
-
-              subtopicsList.innerHTML = "";
-
-              data.subtopics.forEach((topic) => {
-                const div = document.createElement("div");
-                div.className = "subtopic-item";
-                div.innerHTML = `
-                  <label style="display:flex; gap:10px; align-items:center;">
-                    <input type="checkbox" name="assign-subtopic" value="${topic}" checked />
-                    <span>${topic}</span>
-                  </label>
-                `;
-                subtopicsList.appendChild(div);
-              });
-
-              subtopicsSection.style.display = "block";
-              detectBtn.disabled = false;
-              detectBtn.innerText = "Detect Subtopics";
-            } catch (err) {
-              console.error(err);
-              alert("Error detecting subtopics.");
-              detectBtn.disabled = false;
-              detectBtn.innerText = "Detect Subtopics";
-            }
-          });
-        }
-      });
-    })();
-  </script>
-
-  <!-- Publish Function -->
-  <script>
-    async function publishQuiz(id) {
-      const res = await fetch(`/api/quizzes/${id}/publish`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) alert('✅ Quiz published successfully!');
-      else alert('❌ ' + data.error);
-    }
-  </script>
+        subSection.style.display = "block";
+      } catch(e) { alert("Error detecting subtopics."); }
+      finally { detectBtn.disabled = false; detectBtn.innerText = "🔍 Detect Subtopics"; }
+    });
+  });
+})();
+</script>
+<script>
+async function publishQuiz(id) {
+  const res = await fetch(`/api/quizzes/${id}/publish`, { method:'POST' });
+  const data = await res.json();
+  alert(data.success ? '✅ Quiz published successfully!' : '❌ ' + data.error);
+}
+</script>
 </body>
 </html>

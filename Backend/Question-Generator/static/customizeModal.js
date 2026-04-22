@@ -482,260 +482,260 @@
         }
 
         async generateFromSubtopics() {
-            if (!this._uploadId) {
-                throw new Error('Upload ID not found. Please detect subtopics again.');
-            }
-
-            const mcq = +this.mcq?.value || 0;
-            const tf = +this.tf?.value || 0;
-            const short = +this.shortQ?.value || 0;
-            const long = +this.longQ?.value || 0;
-
-            let difficulty = { mode: 'auto' };
-            if (this.diffMode?.value === 'custom') {
-                const easy = +this.easy?.value || 0;
-                const med = +this.med?.value || 0;
-                const hard = +this.hard?.value || 0;
-                difficulty = { mode: 'custom', easy, medium: med, hard };
-            }
-
-            const payload = {
-                upload_id: this._uploadId,
-                subtopics: this._selectedSubtopics,
-                totals: { 
-                    mcq, 
-                    true_false: tf, 
-                    short: short, 
-                    long: long 
-                },
-                difficulty,
-            };
-
-            // Read settings
-            const rawTL = this.customTimeLimit?.value?.trim() || '';
-            const timeLimit = rawTL ? parseInt(rawTL, 10) : 0;
-            
-            if (rawTL && isNaN(timeLimit)) {
-                throw new Error('Time limit must be a valid number');
-            }
-            
-            const dueDate = this.customDueDate?.value || null;
-            const note = this.customNote?.value || '';
-
-            this.setProgress(10);
-            notify('Generating quiz from subtopics...');
-
-            const resp = await fetch(`${window.API_BASE || ''}/api/custom/quiz-from-subtopics`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            
-            this.setProgress(65);
-
-            if (!resp.ok) {
-                let errorMsg = `HTTP ${resp.status}`;
-                try {
-                    const errorData = await resp.json();
-                    errorMsg = errorData.error || errorMsg;
-                } catch {
-                    const text = await resp.text();
-                    if (text) errorMsg = text;
-                }
-                throw new Error(errorMsg);
-            }
-            
-            const data = await resp.json();
-            this.setProgress(100);
-
-            if (!data || !Array.isArray(data.questions)) {
-                throw new Error('Invalid response format from server');
-            }
-
-            if (data.questions.length === 0) {
-                throw new Error('No questions were generated');
-            }
-
-            const quizId = data.quiz_id || data.id;
-            if (!quizId) {
-                throw new Error('No quiz ID returned from server');
-            }
-
-            // Save settings
-            await saveQuizSettings(quizId, {
-                timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
-                dueDate,
-                note,
-            });
-
-            const settingsForRenderer = {
-                time_limit: Number.isFinite(timeLimit) && timeLimit > 0 ? timeLimit : 0,
-                due_date: dueDate,
-                note: note,
-            };
-
-            const payloadForRenderer = {
-                data: {
-                    ...data,
-                    pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
-                    settings: {
-                        ...(data.settings || {}),
-                        ...settingsForRenderer,
-                    },
-                    time_limit: settingsForRenderer.time_limit,
-                    due_date: settingsForRenderer.due_date,
-                    note: settingsForRenderer.note,
-                },
-            };
-
-            // Render the quiz
-            await this.renderQuiz(payloadForRenderer, data);
-
-            this.close();
-            notify(`✓ Custom quiz generated! (${data.questions.length} questions across ${this._selectedSubtopics.length} subtopics)`);
+        if (!this._uploadId) {
+            throw new Error('Upload ID not found. Please detect subtopics again.');
         }
 
+        const mcq = +this.mcq?.value || 0;
+        const tf = +this.tf?.value || 0;
+        const short = +this.shortQ?.value || 0;
+        const long = +this.longQ?.value || 0;
+
+        let difficulty = { mode: 'auto' };
+        if (this.diffMode?.value === 'custom') {
+            const easy = +this.easy?.value || 0;
+            const med = +this.med?.value || 0;
+            const hard = +this.hard?.value || 0;
+            difficulty = { mode: 'custom', easy, medium: med, hard };
+        }
+
+        const payload = {
+            upload_id: this._uploadId,
+            subtopics: this._selectedSubtopics,
+            totals: {
+            mcq,
+            true_false: tf,
+            short: short,
+            long: long,
+            },
+            difficulty,
+        };
+
+        // Settings
+        const rawTL = this.customTimeLimit?.value?.trim() || '';
+        const timeLimit = rawTL ? parseInt(rawTL, 10) : 0;
+
+        if (rawTL && isNaN(timeLimit)) {
+            throw new Error('Time limit must be a valid number');
+        }
+
+        const dueDate = this.customDueDate?.value || null;
+        const note = this.customNote?.value || '';
+
+        this.setProgress(10);
+
+        const resp = await fetch(`${window.API_BASE || ''}/api/custom/quiz-from-subtopics`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        this.setProgress(65);
+
+        if (!resp.ok) {
+            let errorMsg = `HTTP ${resp.status}`;
+            try {
+            const errorData = await resp.json();
+            errorMsg = errorData.error || errorMsg;
+            } catch {
+            const text = await resp.text();
+            if (text) errorMsg = text;
+            }
+            throw new Error(errorMsg);
+        }
+
+        const data = await resp.json();
+        this.setProgress(100);
+
+        if (!data || !Array.isArray(data.questions)) {
+            throw new Error('Invalid response format from server');
+        }
+
+        if (data.questions.length === 0) {
+            throw new Error('No questions were generated');
+        }
+
+        // 🔥 FIXED quizId detection
+        const quizId =
+            data?.quiz_id ||
+            data?.id ||
+            data?.metadata?.quiz_id;
+
+        if (!quizId) {
+            throw new Error('No quiz ID returned from server');
+        }
+
+        // Save settings
+        await saveQuizSettings(quizId, {
+            timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
+            dueDate,
+            note,
+        });
+
+        const settingsForRenderer = {
+            time_limit: Number.isFinite(timeLimit) && timeLimit > 0 ? timeLimit : 0,
+            due_date: dueDate,
+            note: note,
+        };
+
+        const payloadForRenderer = {
+            data: {
+            ...data,
+            pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
+            settings: {
+                ...(data.settings || {}),
+                ...settingsForRenderer,
+            },
+            time_limit: settingsForRenderer.time_limit,
+            due_date: settingsForRenderer.due_date,
+            note: settingsForRenderer.note,
+            },
+        };
+
+        // 🔥 FINAL STEP → redirect to editor
+        await this.renderQuiz(payloadForRenderer, data);
+
+        return; // stop execution after redirect
+        }
         async generateRegularCustom() {
-            const file = this.fileInput?.files?.[0];
+        const file = this.fileInput?.files?.[0];
 
-            const mcq = +this.mcq?.value || 0;
-            const tf = +this.tf?.value || 0;
-            const short = +this.shortQ?.value || 0;
-            const long = +this.longQ?.value || 0;
+        const mcq = +this.mcq?.value || 0;
+        const tf = +this.tf?.value || 0;
+        const short = +this.shortQ?.value || 0;
+        const long = +this.longQ?.value || 0;
 
-            const totals = { mcq, true_false: tf, short: short, long: long };
-            const totalRequested = mcq + tf + short + long;
+        const totals = { mcq, true_false: tf, short: short, long: long };
+        const totalRequested = mcq + tf + short + long;
 
-            let difficulty = { mode: 'auto' };
-            if (this.diffMode?.value === 'custom') {
-                const easy = +this.easy?.value || 0;
-                const med = +this.med?.value || 0;
-                const hard = +this.hard?.value || 0;
-                difficulty = { mode: 'custom', easy, medium: med, hard };
-            }
-
-            const qtypes = [];
-            if (mcq > 0) qtypes.push('mcq');
-            if (tf > 0) qtypes.push('true_false');
-            if (short > 0) qtypes.push('short');
-            if (long > 0) qtypes.push('long');
-
-            const options = {
-                num_questions: totalRequested,
-                question_types: qtypes,
-                difficulty,
-                distribution: totals,
-            };
-
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('options', JSON.stringify(options));
-
-            // Read settings
-            const rawTL = this.customTimeLimit?.value?.trim() || '';
-            const timeLimit = rawTL ? parseInt(rawTL, 10) : 0;
-            
-            if (rawTL && isNaN(timeLimit)) {
-                throw new Error('Time limit must be a valid number');
-            }
-            
-            const dueDate = this.customDueDate?.value || null;
-            const note = this.customNote?.value || '';
-
-            this.setProgress(10);
-            notify('Generating custom quiz...');
-
-            const res = await fetch(`${window.API_BASE || ''}/api/quiz/from-pdf`, {
-                method: 'POST',
-                body: fd,
-            });
-            
-            this.setProgress(65);
-
-            if (!res.ok) {
-                let errorMsg = `HTTP ${res.status}`;
-                try {
-                    const errorData = await res.json();
-                    errorMsg = errorData.error || errorMsg;
-                } catch {
-                    const text = await res.text();
-                    if (text) errorMsg = text;
-                }
-                throw new Error(errorMsg);
-            }
-
-            const data = await res.json();
-            this.setProgress(100);
-
-            if (!data || !Array.isArray(data.questions)) {
-                throw new Error('Invalid response format from server');
-            }
-
-            if (data.questions.length === 0) {
-                throw new Error('No questions were generated');
-            }
-
-            const quizId = data.id || data.quiz_id;
-            if (!quizId) {
-                throw new Error('No quiz ID returned from server');
-            }
-
-            await saveQuizSettings(quizId, {
-                timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
-                dueDate,
-                note,
-            });
-
-            const settingsForRenderer = {
-                time_limit: Number.isFinite(timeLimit) && timeLimit > 0 ? timeLimit : 0,
-                due_date: dueDate,
-                note: note,
-            };
-
-            const payloadForRenderer = {
-                data: {
-                    ...data,
-                    pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
-                    settings: {
-                        ...(data.settings || {}),
-                        ...settingsForRenderer,
-                    },
-                    time_limit: settingsForRenderer.time_limit,
-                    due_date: settingsForRenderer.due_date,
-                    note: settingsForRenderer.note,
-                },
-            };
-
-            // Render the quiz
-            await this.renderQuiz(payloadForRenderer, data);
-
-            this.close();
-            notify(`✓ Custom quiz generated! (${data.questions.length} questions)`);
+        let difficulty = { mode: 'auto' };
+        if (this.diffMode?.value === 'custom') {
+            const easy = +this.easy?.value || 0;
+            const med = +this.med?.value || 0;
+            const hard = +this.hard?.value || 0;
+            difficulty = { mode: 'custom', easy, medium: med, hard };
         }
 
+        const qtypes = [];
+        if (mcq > 0) qtypes.push('mcq');
+        if (tf > 0) qtypes.push('true_false');
+        if (short > 0) qtypes.push('short');
+        if (long > 0) qtypes.push('long');
+
+        const options = {
+            num_questions: totalRequested,
+            question_types: qtypes,
+            difficulty,
+            distribution: totals,
+        };
+
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('options', JSON.stringify(options));
+
+        // Settings
+        const rawTL = this.customTimeLimit?.value?.trim() || '';
+        const timeLimit = rawTL ? parseInt(rawTL, 10) : 0;
+
+        if (rawTL && isNaN(timeLimit)) {
+            throw new Error('Time limit must be a valid number');
+        }
+
+        const dueDate = this.customDueDate?.value || null;
+        const note = this.customNote?.value || '';
+
+        this.setProgress(10);
+
+        const res = await fetch(`${window.API_BASE || ''}/api/quiz/from-pdf`, {
+            method: 'POST',
+            body: fd,
+        });
+
+        this.setProgress(65);
+
+        if (!res.ok) {
+            let errorMsg = `HTTP ${res.status}`;
+            try {
+            const errorData = await res.json();
+            errorMsg = errorData.error || errorMsg;
+            } catch {
+            const text = await res.text();
+            if (text) errorMsg = text;
+            }
+            throw new Error(errorMsg);
+        }
+
+        const data = await res.json();
+        this.setProgress(100);
+
+        if (!data || !Array.isArray(data.questions)) {
+            throw new Error('Invalid response format from server');
+        }
+
+        if (data.questions.length === 0) {
+            throw new Error('No questions were generated');
+        }
+
+        // 🔥 FIXED quizId detection
+        const quizId =
+            data?.quiz_id ||
+            data?.id ||
+            data?.metadata?.quiz_id;
+
+        if (!quizId) {
+            throw new Error('No quiz ID returned from server');
+        }
+
+        // Save settings
+        await saveQuizSettings(quizId, {
+            timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
+            dueDate,
+            note,
+        });
+
+        const settingsForRenderer = {
+            time_limit: Number.isFinite(timeLimit) && timeLimit > 0 ? timeLimit : 0,
+            due_date: dueDate,
+            note: note,
+        };
+
+        const payloadForRenderer = {
+            data: {
+            ...data,
+            pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
+            settings: {
+                ...(data.settings || {}),
+                ...settingsForRenderer,
+            },
+            time_limit: settingsForRenderer.time_limit,
+            due_date: settingsForRenderer.due_date,
+            note: settingsForRenderer.note,
+            },
+        };
+
+        // 🔥 FINAL STEP → redirect to editor
+        await this.renderQuiz(payloadForRenderer, data);
+
+        return; // stop execution after redirect
+        }
         async renderQuiz(payloadForRenderer, data) {
-            // Check if renderer exists
-            if (typeof window.renderGeneratedQuiz !== 'function' && 
-                typeof window.renderQuiz !== 'function') {
-                throw new Error('No quiz renderer available. Check if publish.js is loaded.');
-            }
+        const quizId =
+            data?.quiz_id ||
+            data?.id ||
+            data?.metadata?.quiz_id ||
+            '';
 
-            // Show generate section first
-            if (typeof window.showSection === 'function') {
-                window.showSection('generate');
-            }
+        const stored = {
+            ...(data || {}),
+            id: quizId,
+            settings: payloadForRenderer?.data?.settings || data?.settings || {},
+        };
 
-            // Small delay to ensure DOM is ready
-            await new Promise(resolve => setTimeout(resolve, 100));
+        sessionStorage.setItem('quiz_editor_data', JSON.stringify(stored));
 
-            // Try to render
-            if (typeof window.renderGeneratedQuiz === 'function') {
-                window.renderGeneratedQuiz(payloadForRenderer);
-            } else if (typeof window.renderQuiz === 'function') {
-                window.renderQuiz(data.questions, data.metadata || {});
-            }
+        window.location.href = `/teacher/quiz-editor/${quizId}`;
         }
-    }
+         }
 
     // Initialize the modal when DOM is ready
     document.addEventListener('DOMContentLoaded', function () {

@@ -31,8 +31,9 @@ async function saveQuizSettings(quizId, { timeLimit, dueDate, note }) {
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[modal] saveQuizSettings failed', res.status, text);
-      // Don't alert here - just log the error
-      console.warn('Failed to save quiz settings, but quiz was generated successfully');
+      console.warn(
+        'Failed to save quiz settings, but quiz was generated successfully'
+      );
     } else {
       console.log(
         '[modal] Settings saved OK for quiz',
@@ -40,27 +41,26 @@ async function saveQuizSettings(quizId, { timeLimit, dueDate, note }) {
         'time_limit=',
         safeTimeLimit,
         'due_date=',
-        dueDate,
+        dueDate
       );
     }
   } catch (e) {
     console.error('[modal] Failed to save quiz settings:', e);
-    // Don't alert - this is a non-critical error
   }
 }
 
 class ModalManager {
   constructor() {
-    this.modalAuto = document.getElementById('modal-auto'); // AI Modal
+    this.modalAuto = document.getElementById('modal-auto');
     this.openBtnAuto = document.getElementById('btn-open-auto');
     this.btnCancelAuto = document.getElementById('btn-cancel');
     this.btnGenAuto = document.getElementById('btn-generate');
-    this.currentPdfName = ''; // Track PDF name
-    this.isGenerating = false; // Prevent multiple submissions
+    this.currentPdfName = '';
+    this.isGenerating = false;
 
     if (typeof API_BASE === 'undefined' || typeof ENDPOINT === 'undefined') {
       console.warn(
-        '[modal] API_BASE or ENDPOINT is not defined globally. Falling back to /api/quiz/from-pdf',
+        '[modal] API_BASE or ENDPOINT is not defined globally. Falling back to /api/quiz/from-pdf'
       );
     }
 
@@ -68,17 +68,15 @@ class ModalManager {
   }
 
   initializeEvents() {
-    // Open/close events for AI modal
     this.openBtnAuto?.addEventListener('click', () => this.open());
     this.btnCancelAuto?.addEventListener('click', () => this.close());
+
     this.modalAuto?.addEventListener('click', (e) => {
       if (e.target === this.modalAuto) this.close();
     });
 
-    // Generate quiz button event for AI modal
     this.btnGenAuto?.addEventListener('click', () => this.handleGenerate());
 
-    // Initialize uploader for AI modal
     this.initializeUploader();
   }
 
@@ -101,6 +99,7 @@ class ModalManager {
 
     const updateName = () => {
       if (!fileNameDisplay) return;
+
       if (fileInput.files?.[0]) {
         this.currentPdfName = fileInput.files[0].name;
         fileNameDisplay.textContent = this.currentPdfName;
@@ -124,6 +123,7 @@ class ModalManager {
     uploader.addEventListener('drop', (e) => {
       e.preventDefault();
       uploader.classList.remove('dragover');
+
       if (e.dataTransfer.files?.length) {
         fileInput.files = e.dataTransfer.files;
         updateName();
@@ -137,17 +137,16 @@ class ModalManager {
     });
   }
 
-  // Transform API quiz into the structure expected by renderGeneratedQuiz
+  // Transform API quiz into the structure expected by editor
   transformFirestoreData(apiData, settings) {
     console.log('📄 Transforming Firestore data:', apiData);
 
     const data = apiData?.data || apiData || {};
+
     const transformed = {
       data: {
         ...data,
-        // Attach PDF name
         pdf_name: this.currentPdfName || data.pdf_name || 'Quiz',
-        // Attach settings so publish.js can read time_limit, due_date, note
         settings: {
           ...(data.settings || {}),
           ...(settings || {}),
@@ -171,7 +170,6 @@ class ModalManager {
     return transformed;
   }
 
-  // Wait for element to be available in DOM
   waitForElement(selector, timeout = 5000) {
     return new Promise((resolve, reject) => {
       const element = document.querySelector(selector);
@@ -181,19 +179,18 @@ class ModalManager {
       }
 
       const observer = new MutationObserver((mutations, obs) => {
-        const element = document.querySelector(selector);
-        if (element) {
+        const foundElement = document.querySelector(selector);
+        if (foundElement) {
           obs.disconnect();
-          resolve(element);
+          resolve(foundElement);
         }
       });
 
       observer.observe(document.body, {
         childList: true,
-        subtree: true
+        subtree: true,
       });
 
-      // Timeout after 5 seconds
       setTimeout(() => {
         observer.disconnect();
         reject(new Error(`Element ${selector} not found within ${timeout}ms`));
@@ -201,29 +198,23 @@ class ModalManager {
     });
   }
 
-  // Ensure quiz section is visible and ready
   async ensureQuizSectionReady() {
     try {
-      // Wait for quiz section to exist
       const quizSection = await this.waitForElement('#quiz-section');
-      
-      // Make sure it's visible
+
       if (quizSection) {
         quizSection.style.display = 'block';
         quizSection.style.visibility = 'visible';
         quizSection.classList.add('active');
       }
 
-      // Wait for quiz container
       const quizContainer = await this.waitForElement('#quiz-container');
-      
-      // Clear any old content
+
       if (quizContainer) {
         quizContainer.innerHTML = '<div class="loading">Loading quiz...</div>';
       }
 
-      // Wait a tiny bit for DOM to settle
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       return true;
     } catch (error) {
@@ -233,7 +224,6 @@ class ModalManager {
   }
 
   async handleGenerate() {
-    // Prevent multiple simultaneous generations
     if (this.isGenerating) {
       notify('Quiz generation already in progress...');
       return;
@@ -241,24 +231,30 @@ class ModalManager {
 
     const fileInput = document.getElementById('fileInput');
     const file = fileInput?.files?.[0];
-    if (!file) return notify('Please select a PDF.');
+
+    if (!file) {
+      notify('Please select a PDF.');
+      return;
+    }
 
     const isPdf =
       file.type === 'application/pdf' ||
       file.name.toLowerCase().endsWith('.pdf');
-    if (!isPdf) return notify('Only PDF (.pdf) is accepted.');
 
-    // Store PDF name
+    if (!isPdf) {
+      notify('Only PDF (.pdf) is accepted.');
+      return;
+    }
+
     this.currentPdfName = file.name;
 
-    // Read settings from modal inputs (if present)
     const timeLimitInput = document.getElementById('auto-time-limit');
     const dueDateInput = document.getElementById('auto-due-date');
     const noteInput = document.getElementById('auto-note');
 
     const rawTimeLimit = timeLimitInput?.value?.trim() || '';
     const timeLimit = rawTimeLimit ? parseInt(rawTimeLimit, 10) : 0;
-    const dueDate = dueDateInput?.value || null; // datetime-local string
+    const dueDate = dueDateInput?.value || null;
     const note = noteInput?.value || '';
 
     const options = {
@@ -271,10 +267,8 @@ class ModalManager {
     fd.append('file', file);
     fd.append('options', JSON.stringify(options));
 
-    // Set generating flag
     this.isGenerating = true;
-    
-    // Disable generate button to prevent double-click
+
     if (this.btnGenAuto) {
       this.btnGenAuto.disabled = true;
       this.btnGenAuto.textContent = 'Generating...';
@@ -282,8 +276,7 @@ class ModalManager {
 
     try {
       setProgress?.(10);
-      
-      // Prepare quiz section first (but don't show yet)
+
       await this.ensureQuizSectionReady();
 
       const url =
@@ -292,11 +285,14 @@ class ModalManager {
           : '/api/quiz/from-pdf';
 
       console.log('📤 Sending request to:', url);
-      
+
       setProgress?.(30);
-      
-      const res = await fetch(url, { method: 'POST', body: fd });
-      
+
+      const res = await fetch(url, {
+        method: 'POST',
+        body: fd,
+      });
+
       setProgress?.(65);
 
       if (!res.ok) {
@@ -305,6 +301,7 @@ class ModalManager {
       }
 
       const data = await res.json();
+
       setProgress?.(90);
 
       console.log('📥 Received API response:', data);
@@ -315,11 +312,9 @@ class ModalManager {
         return;
       }
 
-      // Determine quiz ID for saving settings
-      const quizId = data.id || data.quiz_id;
+      const quizId = data.id || data.quiz_id || data?.metadata?.quiz_id;
       console.log('[modal] Using quizId for settings:', quizId);
 
-      // Prepare settings object for renderer/publish.js
       const settingsForRenderer = {
         time_limit: Number.isFinite(timeLimit) && timeLimit > 0 ? timeLimit : 0,
         due_date: dueDate,
@@ -328,77 +323,53 @@ class ModalManager {
 
       const payloadForRenderer = this.transformFirestoreData(
         data,
-        settingsForRenderer,
+        settingsForRenderer
       );
 
-      console.log('🎯 Calling renderGeneratedQuiz with:', payloadForRenderer);
+      console.log('🎯 Prepared payload for editor:', payloadForRenderer);
 
-      // Show the generate section first
       if (typeof window.showSection === 'function') {
         window.showSection('generate');
       }
 
-      // Small delay to ensure section is visible
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Call the renderer
-      if (typeof window.renderGeneratedQuiz === 'function') {
-        window.renderGeneratedQuiz(payloadForRenderer);
-        
-        // Save settings after successful render (don't wait for it)
-        saveQuizSettings(quizId, {
-          timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
-          dueDate,
-          note,
-        }).catch(err => console.warn('Settings save failed:', err));
+      await saveQuizSettings(quizId, {
+        timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
+        dueDate,
+        note,
+      });
 
-        setProgress?.(100);
-        
-        // Success notification
-        notify(
-          `✅ Quiz generated successfully (${data.questions.length} questions)`
-        );
-      } else if (typeof window.renderQuiz === 'function') {
-        // Fallback to legacy renderer if publish.js is not loaded
-        window.renderQuiz(data.questions, data.metadata || {});
-        
-        saveQuizSettings(quizId, {
-          timeLimit: Number.isFinite(timeLimit) ? timeLimit : 0,
-          dueDate,
-          note,
-        }).catch(err => console.warn('Settings save failed:', err));
+      const quizPayload = {
+        ...(data || {}),
+        id: quizId,
+        settings: settingsForRenderer,
+      };
 
-        setProgress?.(100);
-        
-        notify(
-          `✅ Quiz generated successfully (${data.questions.length} questions)`
-        );
-      } else {
-        console.error('[modal] No renderer available (renderGeneratedQuiz or renderQuiz).');
-        notify('Renderer not available (check publish.js and script.js)');
-      }
+      sessionStorage.setItem('quiz_editor_data', JSON.stringify(quizPayload));
 
-      // Close modal after successful generation
+      setProgress?.(100);
       this.close();
-      
+
+      window.location.href = `/teacher/quiz-editor/${quizId || ''}`;
     } catch (err) {
       console.error('[modal] Generation error:', err);
       notify('❌ Failed: ' + (err.message || 'Server error'));
     } finally {
-      // Reset generating flag and button
       this.isGenerating = false;
+
       if (this.btnGenAuto) {
         this.btnGenAuto.disabled = false;
         this.btnGenAuto.textContent = 'Generate Quiz';
       }
+
       setTimeout(() => resetProgress?.(), 600);
     }
   }
 }
 
-// Initialize modal manager for AI Quiz modal
+// Initialize modal manager
 document.addEventListener('DOMContentLoaded', function () {
-  // Small delay to ensure DOM is fully loaded
   setTimeout(() => {
     new ModalManager();
   }, 100);
@@ -422,23 +393,3 @@ function resetProgress() {
     if (bar) bar.style.width = '0%';
   }
 }
-
-// Add CSS for loading state if not present
-const style = document.createElement('style');
-style.textContent = `
-  .loading {
-    text-align: center;
-    padding: 2rem;
-    color: #666;
-    font-style: italic;
-  }
-  
-  #quiz-section {
-    transition: opacity 0.3s ease;
-  }
-  
-  #quiz-section.active {
-    opacity: 1;
-  }
-`;
-document.head.appendChild(style);

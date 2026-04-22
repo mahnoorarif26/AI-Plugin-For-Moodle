@@ -300,6 +300,63 @@ def extract_subtopics():
         print(f"❌ Error in extract_subtopics: {e}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@api_bp.route('/quizzes/<quiz_id>', methods=['GET'])
+def api_get_quiz(quiz_id):
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        return jsonify({'error': 'Quiz not found'}), 404
+    return jsonify(quiz), 200
+ 
+ 
+@api_bp.route('/quizzes/<quiz_id>/update', methods=['POST'])
+def api_update_quiz(quiz_id):
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        return jsonify({'error': 'Quiz not found'}), 404
+ 
+    data = request.get_json(force=True) or {}
+ 
+    # Update title if provided
+    if data.get('title'):
+        quiz['title'] = data['title'].strip()
+ 
+    # Replace questions if provided
+    if 'questions' in data and isinstance(data['questions'], list):
+        qs = []
+        for i, q in enumerate(data['questions']):
+            if not isinstance(q, dict):
+                continue
+            # Normalise required fields
+            if not q.get('id'):
+                q['id'] = f'q{i+1}_{quiz_id[:6]}'
+            if not q.get('prompt') and q.get('question_text'):
+                q['prompt'] = q['question_text']
+            # Keep answer/correct_answer consistent
+            if 'answer' in q:
+                q['correct_answer'] = q['answer']
+            qs.append(q)
+        quiz['questions'] = qs
+ 
+    quiz['updated_at'] = datetime.utcnow().isoformat()
+    save_quiz_to_store(quiz)
+ 
+    return jsonify({'ok': True, 'quiz_id': quiz_id, 'questions_count': len(quiz['questions'])}), 200
+ 
+ 
+@api_bp.route('/quizzes/<quiz_id>/allow', methods=['POST'])
+def api_allow_quiz(quiz_id):
+    quiz = get_quiz_by_id(quiz_id)
+    if not quiz:
+        return jsonify({'error': 'Quiz not found'}), 404
+ 
+    data = request.get_json(force=True) or {}
+    quiz['is_allowed'] = bool(data.get('is_allowed', True))
+    quiz['published']  = quiz['is_allowed']
+    if quiz['is_allowed']:
+        quiz['published_at'] = datetime.utcnow().isoformat()
+ 
+    save_quiz_to_store(quiz)
+    return jsonify({'ok': True, 'quiz_id': quiz_id, 'is_allowed': quiz['is_allowed']}), 200 
 
 @api_bp.route('/custom/quiz-from-subtopics', methods=['POST'])
 def quiz_from_subtopics():
