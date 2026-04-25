@@ -42,9 +42,10 @@ class Config:
     CORS_ORIGINS = "*"
     
     # Application Settings
-    HOST = "127.0.0.1"
-    PORT = 5000
-    DEBUG = True
+    HOST = os.getenv("HOST", "0.0.0.0")
+    PORT = int(os.getenv("PORT", "5000"))
+    DEBUG = os.getenv("DEBUG", "1") == "1"
+
     
     # Upload Settings
     UPLOAD_FOLDER = "student_uploads"

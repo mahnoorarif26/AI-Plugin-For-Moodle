@@ -1388,304 +1388,276 @@ Return JSON:
                 feedback=f"Error during decision grading: {e}",
             )
 
-    def grade_quiz(
-        self,
-        *,
-        quiz: Dict[str, Any],
-        responses: Dict[str, Any],
-        policy: Optional[str] = None,
-        rubric_weighting: Optional[Dict[str, float]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Grade a quiz with comprehensive validation and support for all types.
-        """
-        start_time = datetime.now()
-        quiz_id = quiz.get("id")
-        logger.info("Starting grading for quiz %s", quiz_id)
+    # quiz grading/grader.py
 
-        # Quiz structure validation
-        is_valid, errors = validate_quiz_structure(quiz)
-        if not is_valid:
-            logger.error("Invalid quiz structure for %s: %s", quiz_id, errors)
-            return {
-                "quiz_id": quiz_id,
-                "error": "Invalid quiz structure",
-                "details": errors,
-                "total_score": 0.0,
-                "max_total": 0.0,
-                "percentage": 0.0,
-                "items": [],
-            }
+ASSIGNMENT_TYPES = {
+    "assignment_task", "conceptual", "scenario", "research",
+    "project", "case_study", "comparative"
+}
 
-        # Responses validation (warnings only)
-        _, warnings = validate_responses(responses, quiz)
+def grade_quiz(
+    self,
+    *,
+    quiz: Dict[str, Any],
+    responses: Dict[str, Any],
+    policy: Optional[str] = None,
+    rubric_weighting: Optional[Dict[str, float]] = None,
+) -> Dict[str, Any]:
+    """
+    Grade a quiz with comprehensive validation and support for all types
+    including open-ended assignment tasks with no fixed correct answer.
+    """
+    start_time = datetime.now()
+    quiz_id = quiz.get("id")
+    logger.info("Starting grading for quiz %s", quiz_id)
 
-        policy = (policy or self.default_policy).lower()
-        if policy not in {"strict", "balanced", "lenient"}:
-            warnings.append(f"Unknown policy '{policy}', using 'balanced'")
-            policy = "balanced"
-
-        results: List[GradeResult] = []
-
-        qlist = list(quiz.get("questions") or [])
-        for q in qlist:
-            qid = q.get("id")
-            if not qid:
-                logger.warning("Question without ID encountered; skipping")
-                continue
-
-            qtype = (q.get("type") or "").strip().lower() or "mcq"
-            ans = responses.get(qid)
-
-            try:
-                if qtype == "mcq":
-                    res = self._grade_mcq(q, ans)
-                elif qtype in {"true_false", "truefalse", "tf"}:
-                    res = self._grade_true_false(q, ans)
-                elif qtype in {"short", "long", "conceptual"}:
-                    res = self._grade_freeform(
-                        q,
-                        ans,
-                        policy=policy,
-                        rubric_weights=rubric_weighting,
-                    )
-                # Code-based types
-                elif qtype in {
-                    "code_writing",
-                    "code_completion",
-                    "code_debugging",
-                }:
-                    if q.get("test_cases"):
-                        res = self._grade_code_with_tests(
-                            q,
-                            ans,
-                            policy=policy,
-                        )
-                    elif q.get("requirements"):
-                        res = self._grade_code_static(
-                            q,
-                            ans,
-                            policy=policy,
-                        )
-                    else:
-                        res = self._grade_code_with_llm(
-                            q,
-                            ans,
-                            policy=policy,
-                        )
-                elif qtype in {"code_output", "code_explanation"}:
-                    res = self._grade_code_with_llm(
-                        q,
-                        ans,
-                        policy=policy,
-                    )
-                # Decision-based types
-                elif qtype in {"decision", "case_study", "scenario"}:
-                    res = self._grade_decision(
-                        q,
-                        ans,
-                        policy=policy,
-                        rubric_weights=rubric_weighting,
-                    )
-                else:
-                    logger.warning(
-                        "Unknown question type '%s' for %s; treating as free-form",
-                        qtype,
-                        qid,
-                    )
-                    res = self._grade_freeform(
-                        q,
-                        ans,
-                        policy=policy,
-                        rubric_weights=rubric_weighting,
-                    )
-            except Exception as e:
-                logger.error("Error grading %s: %s", qid, e)
-                max_score = float(
-                    q.get("max_score") or _default_max_score(qtype)
-                )
-                res = GradeResult(
-                    question_id=qid,
-                    type=qtype,
-                    score=0.0,
-                    max_score=max_score,
-                    verdict="error",
-                    feedback=f"Grading failed: {e}",
-                )
-
-            results.append(res)
-
-        total = sum(r.score for r in results)
-        max_total = sum(r.max_score for r in results)
-        percentage = (total / max_total * 100.0) if max_total > 0 else 0.0
-
-        duration = (datetime.now() - start_time).total_seconds()
-        logger.info(
-            "Completed grading quiz %s in %.2fs - %.1f/%.1f (%.1f%%)",
-            quiz_id,
-            duration,
-            total,
-            max_total,
-            percentage,
-        )
-
-        result: Dict[str, Any] = {
+    # Quiz structure validation
+    is_valid, errors = validate_quiz_structure(quiz)
+    if not is_valid:
+        logger.error("Invalid quiz structure for %s: %s", quiz_id, errors)
+        return {
             "quiz_id": quiz_id,
-            "total_score": round(total, 2),
-            "max_total": round(max_total, 2),
-            "percentage": round(percentage, 1),
-            "items": [
-                {
-                    "question_id": r.question_id,
-                    "type": r.type,
-                    "score": r.score,
-                    "max_score": r.max_score,
-                    **(
-                        {"is_correct": r.is_correct}
-                        if r.is_correct is not None
-                        else {}
-                    ),
-                    **({"verdict": r.verdict} if r.verdict is not None else {}),
-                    **({"feedback": r.feedback} if r.feedback else {}),
-                    **({"criteria": r.criteria} if r.criteria else {}),
-                    **({"expected": r.expected} if r.expected is not None else {}),
-                }
-                for r in results
-            ],
+            "error": "Invalid quiz structure",
+            "details": errors,
+            "total_score": 0.0,
+            "max_total": 0.0,
+            "percentage": 0.0,
+            "items": [],
         }
 
-        if warnings:
-            result["warnings"] = warnings
+    # Responses validation (warnings only)
+    _, warnings = validate_responses(responses, quiz)
 
-        return result
+    policy = (policy or self.default_policy).lower()
+    if policy not in {"strict", "balanced", "lenient"}:
+        warnings.append(f"Unknown policy '{policy}', using 'balanced'")
+        policy = "balanced"
 
-    def grade_quiz_parallel(
-        self,
-        *,
-        quiz: Dict[str, Any],
-        responses: Dict[str, Any],
-        policy: Optional[str] = None,
-        rubric_weighting: Optional[Dict[str, float]] = None,
-        max_workers: int = 3,
-    ) -> Dict[str, Any]:
-        """
-        Grade a quiz using parallel LLM calls for slower free-form/code questions.
-        Fast types (MCQ/True-False) are graded sequentially.
-        """
-        start_time = datetime.now()
-        quiz_id = quiz.get("id")
-        logger.info("Starting parallel grading for quiz %s", quiz_id)
+    results: List[GradeResult] = []
 
-        is_valid, errors = validate_quiz_structure(quiz)
-        if not is_valid:
-            logger.error("Invalid quiz structure for %s: %s", quiz_id, errors)
-            return {
-                "quiz_id": quiz_id,
-                "error": "Invalid quiz structure",
-                "details": errors,
-                "total_score": 0.0,
-                "max_total": 0.0,
-                "percentage": 0.0,
-                "items": [],
-            }
+    qlist = list(quiz.get("questions") or [])
+    for q in qlist:
+        qid = q.get("id")
+        if not qid:
+            logger.warning("Question without ID encountered; skipping")
+            continue
 
-        _, warnings = validate_responses(responses, quiz)
+        qtype = (q.get("type") or "").strip().lower() or "mcq"
+        ans = responses.get(qid)
 
-        policy = (policy or self.default_policy).lower()
-        if policy not in {"strict", "balanced", "lenient"}:
-            warnings.append(f"Unknown policy '{policy}', using 'balanced'")
-            policy = "balanced"
+        try:
+            if qtype == "mcq":
+                res = self._grade_mcq(q, ans)
 
-        qlist = list(quiz.get("questions") or [])
+            elif qtype in {"true_false", "truefalse", "tf"}:
+                res = self._grade_true_false(q, ans)
 
-        fast_questions: List[Dict[str, Any]] = []
-        slow_questions: List[Dict[str, Any]] = []
-
-        for q in qlist:
-            qtype = (q.get("type") or "").strip().lower()
-            if qtype in {"mcq", "true_false", "truefalse", "tf"}:
-                fast_questions.append(q)
-            else:
-                slow_questions.append(q)
-
-        results: List[GradeResult] = []
-
-        # Grade fast questions
-        for q in fast_questions:
-            qid = q.get("id")
-            if not qid:
-                logger.warning("Question without ID encountered; skipping")
-                continue
-            qtype = (q.get("type") or "").strip().lower() or "mcq"
-            ans = responses.get(qid)
-            try:
-                if qtype == "mcq":
-                    res = self._grade_mcq(q, ans)
-                else:
-                    res = self._grade_true_false(q, ans)
-            except Exception as e:
-                logger.error("Error grading %s: %s", qid, e)
-                max_score = float(
-                    q.get("max_score") or _default_max_score(qtype)
-                )
-                res = GradeResult(
-                    question_id=qid,
-                    type=qtype,
-                    score=0.0,
-                    max_score=max_score,
-                    verdict="error",
-                    feedback=f"Grading failed: {e}",
-                )
-            results.append(res)
-
-        # Grade slow questions in parallel
-        def _grade_one(q: Dict[str, Any]) -> GradeResult:
-            qid_inner = q.get("id")
-            qtype_inner = (q.get("type") or "").strip().lower() or "short"
-            ans_inner = responses.get(qid_inner)
-            if qtype_inner in {"short", "long", "conceptual"}:
-                return self._grade_freeform(
+            elif qtype in {"short", "long"}:
+                res = self._grade_freeform(
                     q,
-                    ans_inner,
+                    ans,
                     policy=policy,
                     rubric_weights=rubric_weighting,
                 )
-            if qtype_inner in {
-                "code_writing",
-                "code_completion",
-                "code_debugging",
-            }:
+
+            # ── NEW: open-ended assignment tasks ──────────────────────────
+            elif qtype in ASSIGNMENT_TYPES:
+                res = self._grade_assignment_task(q, ans, policy=policy)
+
+            # Also catch assignment_task whose assignment_type is set
+            # but qtype was stored as something else (e.g. "long")
+            elif q.get("assignment_type") and q.get("grading_criteria"):
+                res = self._grade_assignment_task(q, ans, policy=policy)
+            # ─────────────────────────────────────────────────────────────
+
+            # Code-based types
+            elif qtype in {"code_writing", "code_completion", "code_debugging"}:
                 if q.get("test_cases"):
-                    return self._grade_code_with_tests(
-                        q,
-                        ans_inner,
-                        policy=policy,
-                    )
-                if q.get("requirements"):
-                    return self._grade_code_static(
-                        q,
-                        ans_inner,
-                        policy=policy,
-                    )
-                return self._grade_code_with_llm(
+                    res = self._grade_code_with_tests(q, ans, policy=policy)
+                elif q.get("requirements"):
+                    res = self._grade_code_static(q, ans, policy=policy)
+                else:
+                    res = self._grade_code_with_llm(q, ans, policy=policy)
+
+            elif qtype in {"code_output", "code_explanation"}:
+                res = self._grade_code_with_llm(q, ans, policy=policy)
+
+            # Decision-based types
+            elif qtype in {"decision", "scenario", "case_study"}:
+                res = self._grade_decision(
                     q,
-                    ans_inner,
-                    policy=policy,
-                )
-            if qtype_inner in {"code_output", "code_explanation"}:
-                return self._grade_code_with_llm(
-                    q,
-                    ans_inner,
-                    policy=policy,
-                )
-            if qtype_inner in {"decision", "case_study", "scenario"}:
-                return self._grade_decision(
-                    q,
-                    ans_inner,
+                    ans,
                     policy=policy,
                     rubric_weights=rubric_weighting,
                 )
-            # Fallback to freeform for unknown types
+
+            else:
+                logger.warning(
+                    "Unknown question type '%s' for %s; treating as free-form",
+                    qtype,
+                    qid,
+                )
+                # Last-ditch: if it has assignment metadata, use assignment grader
+                if q.get("assignment_type") or q.get("grading_criteria"):
+                    res = self._grade_assignment_task(q, ans, policy=policy)
+                else:
+                    res = self._grade_freeform(
+                        q,
+                        ans,
+                        policy=policy,
+                        rubric_weights=rubric_weighting,
+                    )
+
+        except Exception as e:
+            logger.error("Error grading %s: %s", qid, e)
+            max_score = float(
+                q.get("max_score") or q.get("marks") or _default_max_score(qtype)
+            )
+            res = GradeResult(
+                question_id=qid,
+                type=qtype,
+                score=0.0,
+                max_score=max_score,
+                verdict="error",
+                feedback=f"Grading failed: {e}",
+            )
+
+        results.append(res)
+
+    total = sum(r.score for r in results)
+    max_total = sum(r.max_score for r in results)
+    percentage = (total / max_total * 100.0) if max_total > 0 else 0.0
+
+    duration = (datetime.now() - start_time).total_seconds()
+    logger.info(
+        "Completed grading quiz %s in %.2fs - %.1f/%.1f (%.1f%%)",
+        quiz_id,
+        duration,
+        total,
+        max_total,
+        percentage,
+    )
+
+    result: Dict[str, Any] = {
+        "quiz_id": quiz_id,
+        "total_score": round(total, 2),
+        "max_total": round(max_total, 2),
+        "percentage": round(percentage, 1),
+        "items": [
+            {
+                "question_id": r.question_id,
+                "type": r.type,
+                "score": r.score,
+                "max_score": r.max_score,
+                **(
+                    {"is_correct": r.is_correct}
+                    if r.is_correct is not None
+                    else {}
+                ),
+                **({"verdict": r.verdict} if r.verdict is not None else {}),
+                **({"feedback": r.feedback} if r.feedback else {}),
+                **({"criteria": r.criteria} if r.criteria else {}),
+                **({"expected": r.expected} if r.expected is not None else {}),
+            }
+            for r in results
+        ],
+    }
+
+    if warnings:
+        result["warnings"] = warnings
+
+    return result
+
+
+def grade_quiz_parallel(
+    self,
+    *,
+    quiz: Dict[str, Any],
+    responses: Dict[str, Any],
+    policy: Optional[str] = None,
+    rubric_weighting: Optional[Dict[str, float]] = None,
+    max_workers: int = 3,
+) -> Dict[str, Any]:
+    """
+    Grade a quiz using parallel LLM calls for slower free-form/code/assignment
+    questions. Fast types (MCQ/True-False) are graded sequentially.
+    """
+    start_time = datetime.now()
+    quiz_id = quiz.get("id")
+    logger.info("Starting parallel grading for quiz %s", quiz_id)
+
+    is_valid, errors = validate_quiz_structure(quiz)
+    if not is_valid:
+        logger.error("Invalid quiz structure for %s: %s", quiz_id, errors)
+        return {
+            "quiz_id": quiz_id,
+            "error": "Invalid quiz structure",
+            "details": errors,
+            "total_score": 0.0,
+            "max_total": 0.0,
+            "percentage": 0.0,
+            "items": [],
+        }
+
+    _, warnings = validate_responses(responses, quiz)
+
+    policy = (policy or self.default_policy).lower()
+    if policy not in {"strict", "balanced", "lenient"}:
+        warnings.append(f"Unknown policy '{policy}', using 'balanced'")
+        policy = "balanced"
+
+    qlist = list(quiz.get("questions") or [])
+
+    fast_questions: List[Dict[str, Any]] = []
+    slow_questions: List[Dict[str, Any]] = []
+
+    for q in qlist:
+        qtype = (q.get("type") or "").strip().lower()
+        if qtype in {"mcq", "true_false", "truefalse", "tf"}:
+            fast_questions.append(q)
+        else:
+            # Everything else (short, long, assignment types, code, decision)
+            # goes to the parallel pool
+            slow_questions.append(q)
+
+    results: List[GradeResult] = []
+
+    # ── Grade fast questions sequentially ────────────────────────────────
+    for q in fast_questions:
+        qid = q.get("id")
+        if not qid:
+            logger.warning("Question without ID encountered; skipping")
+            continue
+        qtype = (q.get("type") or "").strip().lower() or "mcq"
+        ans = responses.get(qid)
+        try:
+            if qtype == "mcq":
+                res = self._grade_mcq(q, ans)
+            else:
+                res = self._grade_true_false(q, ans)
+        except Exception as e:
+            logger.error("Error grading %s: %s", qid, e)
+            max_score = float(
+                q.get("max_score") or q.get("marks") or _default_max_score(qtype)
+            )
+            res = GradeResult(
+                question_id=qid,
+                type=qtype,
+                score=0.0,
+                max_score=max_score,
+                verdict="error",
+                feedback=f"Grading failed: {e}",
+            )
+        results.append(res)
+
+    # ── Grade slow questions in parallel ─────────────────────────────────
+    def _grade_one(q: Dict[str, Any]) -> GradeResult:
+        qid_inner = q.get("id")
+        qtype_inner = (q.get("type") or "").strip().lower() or "short"
+        ans_inner = responses.get(qid_inner)
+
+        # Short / Long answers with a reference answer
+        if qtype_inner in {"short", "long"}:
             return self._grade_freeform(
                 q,
                 ans_inner,
@@ -1693,76 +1665,381 @@ Return JSON:
                 rubric_weights=rubric_weighting,
             )
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_map = {
-                executor.submit(_grade_one, q): q for q in slow_questions
-            }
-            for future in as_completed(future_map):
-                q = future_map[future]
-                qid = q.get("id")
-                qtype = (q.get("type") or "").strip().lower() or "short"
-                try:
-                    res = future.result()
-                except Exception as e:
-                    logger.error("Error grading %s in parallel: %s", qid, e)
-                    max_score = float(
-                        q.get("max_score") or _default_max_score(qtype)
-                    )
-                    res = GradeResult(
-                        question_id=qid,
-                        type=qtype,
-                        score=0.0,
-                        max_score=max_score,
-                        verdict="error",
-                        feedback=f"Grading failed: {e}",
-                    )
-                results.append(res)
+        # ── NEW: open-ended assignment tasks ──────────────────────────────
+        if qtype_inner in ASSIGNMENT_TYPES:
+            return self._grade_assignment_task(q, ans_inner, policy=policy)
 
-        # Preserve original question order
-        order = {q.get("id"): idx for idx, q in enumerate(qlist)}
-        results.sort(key=lambda r: order.get(r.question_id, 1_000_000))
+        # Catch questions whose qtype is anything but have assignment metadata
+        if q.get("assignment_type") and q.get("grading_criteria"):
+            return self._grade_assignment_task(q, ans_inner, policy=policy)
+        # ─────────────────────────────────────────────────────────────────
 
-        total = sum(r.score for r in results)
-        max_total = sum(r.max_score for r in results)
-        percentage = (total / max_total * 100.0) if max_total > 0 else 0.0
+        # Code-based types
+        if qtype_inner in {"code_writing", "code_completion", "code_debugging"}:
+            if q.get("test_cases"):
+                return self._grade_code_with_tests(q, ans_inner, policy=policy)
+            if q.get("requirements"):
+                return self._grade_code_static(q, ans_inner, policy=policy)
+            return self._grade_code_with_llm(q, ans_inner, policy=policy)
 
-        duration = (datetime.now() - start_time).total_seconds()
-        logger.info(
-            "Completed parallel grading quiz %s in %.2fs - %.1f/%.1f (%.1f%%)",
-            quiz_id,
-            duration,
-            total,
-            max_total,
-            percentage,
+        if qtype_inner in {"code_output", "code_explanation"}:
+            return self._grade_code_with_llm(q, ans_inner, policy=policy)
+
+        # Decision-based types
+        if qtype_inner in {"decision", "scenario", "case_study"}:
+            return self._grade_decision(
+                q,
+                ans_inner,
+                policy=policy,
+                rubric_weights=rubric_weighting,
+            )
+
+        # Final fallback: if it has assignment metadata use assignment grader,
+        # otherwise use generic freeform
+        if q.get("assignment_type") or q.get("grading_criteria"):
+            return self._grade_assignment_task(q, ans_inner, policy=policy)
+
+        return self._grade_freeform(
+            q,
+            ans_inner,
+            policy=policy,
+            rubric_weights=rubric_weighting,
         )
 
-        result: Dict[str, Any] = {
-            "quiz_id": quiz_id,
-            "total_score": round(total, 2),
-            "max_total": round(max_total, 2),
-            "percentage": round(percentage, 1),
-            "items": [
-                {
-                    "question_id": r.question_id,
-                    "type": r.type,
-                    "score": r.score,
-                    "max_score": r.max_score,
-                    **(
-                        {"is_correct": r.is_correct}
-                        if r.is_correct is not None
-                        else {}
-                    ),
-                    **({"verdict": r.verdict} if r.verdict is not None else {}),
-                    **({"feedback": r.feedback} if r.feedback else {}),
-                    **({"criteria": r.criteria} if r.criteria else {}),
-                    **({"expected": r.expected} if r.expected is not None else {}),
-                }
-                for r in results
-            ],
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {
+            executor.submit(_grade_one, q): q for q in slow_questions
         }
+        for future in as_completed(future_map):
+            q = future_map[future]
+            qid = q.get("id")
+            qtype = (q.get("type") or "").strip().lower() or "short"
+            try:
+                res = future.result()
+            except Exception as e:
+                logger.error("Error grading %s in parallel: %s", qid, e)
+                max_score = float(
+                    q.get("max_score") or q.get("marks") or _default_max_score(qtype)
+                )
+                res = GradeResult(
+                    question_id=qid,
+                    type=qtype,
+                    score=0.0,
+                    max_score=max_score,
+                    verdict="error",
+                    feedback=f"Grading failed: {e}",
+                )
+            results.append(res)
 
-        if warnings:
-            result["warnings"] = warnings
+    # Preserve original question order
+    order = {q.get("id"): idx for idx, q in enumerate(qlist)}
+    results.sort(key=lambda r: order.get(r.question_id, 1_000_000))
 
-        return result
+    total = sum(r.score for r in results)
+    max_total = sum(r.max_score for r in results)
+    percentage = (total / max_total * 100.0) if max_total > 0 else 0.0
 
+    duration = (datetime.now() - start_time).total_seconds()
+    logger.info(
+        "Completed parallel grading quiz %s in %.2fs - %.1f/%.1f (%.1f%%)",
+        quiz_id,
+        duration,
+        total,
+        max_total,
+        percentage,
+    )
+
+    result: Dict[str, Any] = {
+        "quiz_id": quiz_id,
+        "total_score": round(total, 2),
+        "max_total": round(max_total, 2),
+        "percentage": round(percentage, 1),
+        "items": [
+            {
+                "question_id": r.question_id,
+                "type": r.type,
+                "score": r.score,
+                "max_score": r.max_score,
+                **(
+                    {"is_correct": r.is_correct}
+                    if r.is_correct is not None
+                    else {}
+                ),
+                **({"verdict": r.verdict} if r.verdict is not None else {}),
+                **({"feedback": r.feedback} if r.feedback else {}),
+                **({"criteria": r.criteria} if r.criteria else {}),
+                **({"expected": r.expected} if r.expected is not None else {}),
+            }
+            for r in results
+        ],
+    }
+
+    if warnings:
+        result["warnings"] = warnings
+
+    return result
+
+
+
+    def _grade_assignment_task(
+        self,
+        q: Dict[str, Any],
+        ans: Any,
+        *,
+        policy: str,
+    ) -> GradeResult:
+        """
+        Grade open-ended assignment tasks (conceptual, scenario, research, 
+        project, case_study, comparative) where no fixed answer exists.
+        Uses the question's own metadata as the grading rubric.
+        """
+        qid = q.get("id") or ""
+        assignment_type = (q.get("assignment_type") or "conceptual").lower()
+        max_score = float(q.get("max_score") or q.get("marks") or 10.0)
+
+        prompt_text = (q.get("prompt") or q.get("question_text") or "").strip()
+        student_answer = (str(ans) if ans is not None else "").strip()
+        
+        # Pull all available metadata to build the rubric
+        context = (q.get("context") or "").strip()
+        requirements = q.get("requirements") or []
+        grading_criteria = (q.get("grading_criteria") or "").strip()
+        learning_objectives = q.get("learning_objectives") or []
+        deliverables = q.get("deliverables") or []
+        word_count_hint = (q.get("word_count") or "").strip()
+        difficulty = (q.get("difficulty") or "medium").lower()
+        has_code = bool(q.get("code_snippet"))
+
+        if not student_answer:
+            return GradeResult(
+                question_id=qid, type=assignment_type,
+                score=0.0, max_score=max_score,
+                verdict="incorrect",
+                feedback="No answer provided.",
+                criteria=[
+                    {"name": c, "score": 0.0,
+                    "max": round(max_score * w, 2), "feedback": "No answer."}
+                    for c, w in self._assignment_weights(assignment_type, policy).items()
+                ]
+            )
+
+        if not self.api_key:
+            # Heuristic fallback: at least check length vs word_count hint
+            score = self._heuristic_assignment_score(
+                student_answer, word_count_hint, max_score
+            )
+            return GradeResult(
+                question_id=qid, type=assignment_type,
+                score=score, max_score=max_score,
+                verdict="partially_correct" if score > 0 else "incorrect",
+                feedback="Graded heuristically (no LLM). Check answer length and completeness.",
+            )
+
+        weights = self._assignment_weights(assignment_type, policy)
+        user_prompt = self._build_assignment_grading_prompt(
+            prompt_text=prompt_text,
+            student_answer=student_answer,
+            context=context,
+            requirements=requirements,
+            grading_criteria=grading_criteria,
+            learning_objectives=learning_objectives,
+            deliverables=deliverables,
+            word_count_hint=word_count_hint,
+            difficulty=difficulty,
+            has_code=has_code,
+            assignment_type=assignment_type,
+            max_score=max_score,
+            weights=weights,
+            policy=policy,
+        )
+
+        system_prompt = self._assignment_system_prompt(assignment_type)
+
+        try:
+            from llm import chat_json
+            raw = chat_json(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                api_key=self.api_key,
+                model=self.model,
+                temperature=0.1,
+                max_tokens=1800,
+            )
+            validated = _validate_and_fix_llm_response(raw, max_score, qid)
+            return GradeResult(
+                question_id=qid, type=assignment_type,
+                score=validated["score"], max_score=max_score,
+                verdict=validated["verdict"],
+                feedback=validated["feedback"],
+                criteria=validated["criteria"],
+            )
+        except Exception as e:
+            logger.error("Assignment grading failed for %s: %s", qid, e)
+            score = self._heuristic_assignment_score(
+                student_answer, word_count_hint, max_score
+            )
+            return GradeResult(
+                question_id=qid, type=assignment_type,
+                score=score, max_score=max_score,
+                verdict="partially_correct",
+                feedback=f"LLM grading failed ({e}). Heuristic used.",
+            )
+
+
+    def _assignment_weights(
+        self, assignment_type: str, policy: str
+    ) -> Dict[str, float]:
+        """
+        Return per-criterion weights based on assignment type and policy.
+        These reflect what each task type actually tests.
+        """
+        base = {
+            "conceptual":   {"understanding": 0.5, "completeness": 0.3, "clarity": 0.2},
+            "scenario":     {"analysis": 0.4,      "reasoning": 0.4,    "communication": 0.2},
+            "research":     {"depth": 0.4,         "accuracy": 0.35,    "structure": 0.25},
+            "project":      {"feasibility": 0.35,  "completeness": 0.4, "clarity": 0.25},
+            "case_study":   {"analysis": 0.45,     "reasoning": 0.35,   "communication": 0.2},
+            "comparative":  {"comparison": 0.4,    "reasoning": 0.35,   "clarity": 0.25},
+        }.get(assignment_type, {"accuracy": 0.5, "completeness": 0.3, "clarity": 0.2})
+
+        # Lenient policy: shift weight toward communication/clarity
+        if policy == "lenient":
+            keys = list(base.keys())
+            base[keys[-1]] = min(0.4, base[keys[-1]] + 0.1)
+            base[keys[0]]  = max(0.25, base[keys[0]] - 0.1)
+        return base
+
+
+    def _assignment_system_prompt(self, assignment_type: str) -> str:
+        type_guidance = {
+            "conceptual":  "Focus on depth of understanding. Accept paraphrased explanations.",
+            "scenario":    "Reward structured reasoning and trade-off awareness.",
+            "research":    "Check evidence quality, not opinion. Depth > breadth.",
+            "project":     "Assess feasibility and completeness of proposed solution.",
+            "case_study":  "Look for multi-stakeholder thinking and justified conclusions.",
+            "comparative": "Require explicit criteria for comparison, not just description.",
+        }.get(assignment_type, "Assess quality of reasoning and communication.")
+
+        return f"""You are an expert academic examiner grading open-ended assignment tasks.
+
+    IMPORTANT: There is NO single correct answer. You must assess quality of thinking.
+
+    Assignment type: {assignment_type.upper()}
+    Specific guidance: {type_guidance}
+
+    GRADING PRINCIPLES:
+    - A strong answer demonstrates deep understanding, not memorised facts
+    - Partial credit is normal — most real answers are partially correct
+    - Reward original thinking when it is sound
+    - Do not penalise alternative valid approaches
+    - Assess whether requirements are met, not whether a specific answer appears
+
+    VERDICT SCALE:
+    - "correct"           → score ≥ 80% of max (strong, meets all requirements)
+    - "partially_correct" → score 30–79% of max (shows understanding, gaps remain)
+    - "incorrect"         → score < 30% of max (does not demonstrate understanding)
+
+    Return ONLY valid JSON with keys: score, max_score, verdict, feedback, criteria."""
+
+
+    def _build_assignment_grading_prompt(
+        self, *, prompt_text, student_answer, context, requirements,
+        grading_criteria, learning_objectives, deliverables, word_count_hint,
+        difficulty, has_code, assignment_type, max_score, weights, policy,
+    ) -> str:
+        req_block = ""
+        if requirements:
+            req_block = "REQUIREMENTS:\n" + "\n".join(
+                f"  - {r}" for r in requirements
+            )
+
+        gc_block = ""
+        if grading_criteria:
+            gc_block = f"GRADING CRITERIA (from question author):\n{grading_criteria}"
+
+        obj_block = ""
+        if learning_objectives:
+            obj_block = "LEARNING OBJECTIVES:\n" + "\n".join(
+                f"  - {o}" for o in learning_objectives
+            )
+
+        del_block = ""
+        if deliverables:
+            del_block = "EXPECTED DELIVERABLES:\n" + "\n".join(
+                f"  - {d}" for d in deliverables
+            )
+
+        wc_block = (
+            f"EXPECTED LENGTH: {word_count_hint}\n"
+            f"Note: Significantly shorter answers may indicate incomplete coverage."
+            if word_count_hint else ""
+        )
+
+        code_note = (
+            "Note: The question included a code snippet. "
+            "Check whether the student's answer addresses the code."
+            if has_code else ""
+        )
+
+        criteria_section = "\n".join(
+            f"  {name.upper()} ({round(w*100)}% = {round(max_score * w, 2)} pts): "
+            f"{'How well does the answer demonstrate ' + name}?"
+            for name, w in weights.items()
+        )
+
+        return f"""GRADE THIS OPEN-ENDED ASSIGNMENT ANSWER
+
+    QUESTION TYPE: {assignment_type.upper()}
+    DIFFICULTY: {difficulty}
+    POLICY: {policy.upper()}
+    MAX SCORE: {max_score}
+
+    QUESTION:
+    {prompt_text}
+
+    {f"CONTEXT: {context}" if context else ""}
+    {req_block}
+    {gc_block}
+    {obj_block}
+    {del_block}
+    {wc_block}
+    {code_note}
+
+    GRADING RUBRIC (no single correct answer exists — grade reasoning quality):
+    {criteria_section}
+
+    STUDENT ANSWER:
+    {student_answer}
+
+    Return JSON with EXACTLY these keys:
+    {{
+    "score": <number 0 to {max_score}>,
+    "max_score": {max_score},
+    "verdict": "correct|partially_correct|incorrect",
+    "feedback": "2-4 sentences of specific, constructive feedback",
+    "criteria": [
+        {{"name": "<criterion>", "score": <number>, "max": <max_for_criterion>, "feedback": "<what was good/missing>"}}
+    ]
+    }}
+    Criterion scores must sum to the total score."""
+
+
+    def _heuristic_assignment_score(
+        self, answer: str, word_count_hint: str, max_score: float
+    ) -> float:
+        """
+        Minimal heuristic when no LLM is available.
+        Checks answer length against word_count hint.
+        """
+        word_count = len(answer.split())
+        
+        # Try to parse expected minimum from hint like "500-750 words"
+        import re
+        nums = re.findall(r"\d+", word_count_hint or "")
+        expected_min = int(nums[0]) if nums else 150  # default 150 words
+
+        if word_count < 20:
+            return 0.0
+        ratio = min(1.0, word_count / expected_min)
+        # Scale to 60% max — heuristic cannot verify content quality
+        return round(max_score * ratio * 0.6, 2)

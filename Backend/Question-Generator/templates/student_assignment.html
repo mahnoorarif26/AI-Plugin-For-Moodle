@@ -1,667 +1,435 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }}</title>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <style>
-        :root {
-            --primary-orange: #FF9F1C;
-            --dark-orange: #E07B00;
-            --light-orange: #FFBB5C;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --o1: #fb9026; --o2: #ff6b35; --o3: #ffb366;
+      --pale: #fff7ed; --soft: #ffe8cc; --border: #ffd9b2;
+      --white: #ffffff; --surface: #fafaf8;
+      --dark: #1a1207; --body: #4a4035; --muted: #9a8878;
+      --card-r: 18px; --nav-h: 60px;
+      --green: #059669; --green-soft: #d1fae5; --green-border: #a7f3d0;
+      --blue: #2563eb; --blue-soft: #dbeafe; --blue-border: #bfdbfe;
+      --purple: #7c3aed; --purple-soft: #ede9fe;
+      --red: #dc2626; --red-soft: #fee2e2;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--surface); color: var(--dark); min-height: 100vh; padding-top: var(--nav-h); }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    /* TIMER / NAV BAR */
+    .timer-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: var(--nav-h);
+      background: linear-gradient(135deg, var(--o1), var(--o2));
+      color: white; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; z-index: 100; box-shadow: 0 4px 20px rgba(251,144,38,0.35);
+    }
+    .timer-brand { display: flex; align-items: center; gap: 10px; }
+    .timer-brand-mark { width: 32px; height: 32px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .timer-brand-mark i { font-size: 18px; }
+    .timer-brand-name { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+    .timer-center { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; opacity: 0.92; }
+    .timer-display { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 0.04em; background: rgba(255,255,255,0.2); padding: 4px 16px; border-radius: 8px; }
+    .timer-display.urgent { background: rgba(255,255,255,0.35); animation: urgentPulse 1s infinite; }
+    @keyframes urgentPulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+    .timer-right { font-size: 13px; font-weight: 600; opacity: 0.85; }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background:#ffffff;
-            min-height: 100vh;
-            padding: 20px;
-        }
+    /* MAIN */
+    main { max-width: 860px; margin: 0 auto; padding: 36px 24px 80px; }
 
-        .timer-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: var(--dark-orange);
-            color: white;
-            text-align: center;
-            padding: 12px;
-            font-weight: bold;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
+    /* ASSIGNMENT HEADER */
+    .assign-header { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); padding: 28px 32px; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .assign-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--o1), var(--o2)); }
+    .assign-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-soft); border: 1px solid var(--blue-border); border-radius: 999px; padding: 5px 12px; font-size: 11px; font-weight: 700; color: var(--blue); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+    .assign-header h1 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 22px; font-weight: 800; color: var(--dark); letter-spacing: -0.025em; margin-bottom: 14px; }
+    .assign-meta { display: flex; flex-wrap: wrap; gap: 10px; }
+    .meta-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--soft); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--body); font-weight: 500; }
+    .meta-chip i { color: var(--o1); font-size: 14px; }
 
-        .countdown {
-            font-size: 1.2em;
-            margin-left: 10px;
-        }
+    /* STUDENT INFO */
+    .info-card { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); padding: 24px 28px; margin-bottom: 24px; }
+    .info-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1.5px solid var(--soft); }
+    .info-card-head i { font-size: 22px; color: var(--o1); }
+    .info-card-head h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; font-weight: 800; color: var(--dark); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-row.single { grid-template-columns: 1fr; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .field label .req { color: var(--o2); }
+    .field input { border: 1.5px solid var(--soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; color: var(--dark); background: var(--surface); transition: border-color .2s, box-shadow .2s; }
+    .field input:focus { border-color: var(--o1); box-shadow: 0 0 0 3px rgba(251,144,38,0.1); background: white; }
+    .field input.valid { border-color: var(--green); }
+    .field input.invalid { border-color: var(--red); }
+    .field-error { font-size: 12px; color: var(--red); display: none; }
+    .field-error.show { display: block; }
 
-        .container {
-            max-width: 900px;
-            margin: 60px auto 20px;
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-        }
+    /* WARNING */
+    .warning-box { background: var(--pale); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #92400e; line-height: 1.5; }
+    .warning-box i { font-size: 18px; color: var(--o1); flex-shrink: 0; margin-top: 1px; }
 
-        h1 {
-            color: var(--primary-orange);
-            margin-bottom: 20px;
-            text-align: center;
-        }
+    /* PROGRESS */
+    .assign-progress { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; }
+    .progress-label { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+    .progress-bar { flex: 1; height: 8px; background: var(--soft); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--o1), var(--o2)); border-radius: 999px; transition: width .4s ease; }
+    .progress-count { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800; color: var(--o1); white-space: nowrap; }
 
-        /* Student Information Section */
-        .student-info-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid var(--primary-orange);
-            margin-bottom: 25px;
-        }
+    /* QUESTION CARD */
+    .question-card { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); margin-bottom: 20px; overflow: hidden; transition: border-color .2s; position: relative; }
+    .question-card.answered { border-color: var(--green); }
+    .question-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(180deg, var(--o1), var(--o2)); opacity: 0; transition: opacity .3s; }
+    .question-card:hover::before { opacity: 1; }
 
-        .student-info-section h2 {
-            color: var(--dark-orange);
-            font-size: 18px;
-            margin-bottom: 15px;
-        }
+    .question-header { display: flex; align-items: center; gap: 10px; padding: 16px 24px; background: var(--surface); border-bottom: 1px solid var(--soft); flex-wrap: wrap; }
+    .q-num { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 800; color: var(--o1); background: var(--pale); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; }
+    .q-type-badge { padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .type-conceptual { background: var(--pale); color: #92400e; border: 1px solid var(--border); }
+    .type-scenario { background: var(--blue-soft); color: var(--blue); border: 1px solid var(--blue-border); }
+    .type-research { background: var(--green-soft); color: var(--green); border: 1px solid var(--green-border); }
+    .type-project { background: var(--purple-soft); color: var(--purple); border: 1px solid #c4b5fd; }
+    .type-case_study { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .type-comparative { background: #f0fdf4; color: var(--green); border: 1px solid var(--green-border); }
+    .q-marks { font-size: 12px; font-weight: 700; color: var(--muted); background: var(--surface); border: 1px solid var(--soft); border-radius: 8px; padding: 4px 10px; }
+    .diff-badge { padding: 3px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+    .diff-easy { background: var(--green-soft); color: var(--green); }
+    .diff-medium { background: #fef3c7; color: #92400e; }
+    .diff-hard { background: var(--red-soft); color: var(--red); }
+    .q-answered-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: none; }
+    .question-card.answered .q-answered-dot { display: block; }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
+    .question-body { padding: 20px 24px; }
+    .question-text { font-size: 15px; font-weight: 600; color: var(--dark); line-height: 1.65; margin-bottom: 18px; }
 
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
-        }
+    /* DETAIL SECTIONS */
+    .detail-section { background: var(--surface); border: 1px solid var(--soft); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .detail-section-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .detail-section-head i { font-size: 16px; color: var(--o1); }
+    .detail-section p { font-size: 14px; color: var(--body); line-height: 1.7; }
+    .detail-section ul { margin-left: 20px; }
+    .detail-section li { font-size: 14px; color: var(--body); margin-bottom: 5px; line-height: 1.55; }
 
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
+    .context-box { background: var(--blue-soft); border: 1px solid var(--blue-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .context-box .detail-section-head { color: var(--blue); }
+    .context-box .detail-section-head i { color: var(--blue); }
+    .context-box p { font-size: 14px; color: #1e3a8a; line-height: 1.7; }
 
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary-orange);
-        }
+    .code-box { background: #1e1e2e; border-radius: 10px; padding: 16px; margin-bottom: 12px; overflow-x: auto; }
+    .code-box pre { margin: 0; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 13px; color: #cdd6f4; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .code-box-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #89b4fa; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
 
-        .form-group input:required:valid {
-            border-color: #10b981;
-        }
+    .word-hint { display: inline-flex; align-items: center; gap: 6px; background: var(--pale); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: #92400e; font-weight: 600; margin-bottom: 12px; }
 
-        .assignment-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
+    /* ANSWER */
+    .answer-section label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    textarea.answer-area { width: 100%; border: 1.5px solid var(--soft); border-radius: 10px; padding: 12px 14px; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--dark); background: var(--surface); outline: none; resize: vertical; min-height: 160px; line-height: 1.65; transition: border-color .2s, box-shadow .2s; }
+    textarea.answer-area:focus { border-color: var(--o1); box-shadow: 0 0 0 3px rgba(251,144,38,0.1); background: white; }
+    .char-counter { text-align: right; font-size: 12px; color: var(--muted); margin-top: 5px; }
 
-        .assignment-info p {
-            margin: 5px 0;
-            color: #666;
-        }
+    /* SUBMIT */
+    .submit-area { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); padding: 24px 28px; margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .submit-status { font-size: 14px; color: var(--muted); font-weight: 500; }
+    .submit-status strong { color: var(--o1); font-weight: 800; }
+    .submit-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px; background: linear-gradient(135deg, var(--o1), var(--o2)); color: white; border: none; border-radius: 12px; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all .3s; box-shadow: 0 6px 20px rgba(251,144,38,0.35); }
+    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(251,144,38,0.45); }
+    .submit-btn:disabled { background: var(--soft); color: var(--muted); box-shadow: none; transform: none; cursor: not-allowed; }
 
-        .warning-box {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
+    @media (max-width: 640px) {
+      .timer-bar { padding: 0 16px; }
+      .timer-center { display: none; }
+      main { padding: 24px 16px 60px; }
+      .assign-header { padding: 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .submit-area { flex-direction: column; }
+      .submit-btn { width: 100%; justify-content: center; }
+    }
 
-        /* Question Block - Matching Quiz Style */
-        .question-block {
-            border: 1px solid #eee;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            background: #fafafa;
-        }
-
-        .question-prompt {
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 16px;
-            color: #2c3e50;
-        }
-
-        .question-meta {
-            margin-bottom: 15px;
-        }
-
-        .question-meta span {
-            background: #eee;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-right: 8px;
-            font-size: 0.85em;
-        }
-
-        /* Question Details Sections */
-        .question-details {
-            margin: 15px 0;
-        }
-
-        .detail-section {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            border-left: 3px solid var(--primary-orange);
-        }
-
-        .detail-section h4 {
-            color: var(--dark-orange);
-            font-size: 14px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .detail-section ul {
-            margin-left: 20px;
-            margin-top: 8px;
-        }
-
-        .detail-section li {
-            margin-bottom: 5px;
-            color: #555;
-        }
-
-        .detail-section p {
-            color: #555;
-            line-height: 1.6;
-        }
-
-        /* Code Snippet Display */
-        .code-snippet-box {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 15px;
-            margin: 10px 0;
-            overflow-x: auto;
-        }
-
-        .code-snippet-box pre {
-            margin: 0;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            color: #2c3e50;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .code-snippet-box code {
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Context/Background Section */
-        .context-section {
-            background: #e8f4f8;
-            border-left: 3px solid #3498db;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 6px;
-        }
-
-        .context-section p {
-            color: #2c3e50;
-            line-height: 1.6;
-        }
-
-        /* Answer Textarea */
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border-radius: 6px;
-            border: 2px solid #ddd;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 150px;
-            line-height: 1.6;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary-orange);
-        }
-
-        .char-count {
-            text-align: right;
-            font-size: 12px;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
-
-        .word-count-hint {
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 8px;
-            font-style: italic;
-        }
-
-        .submit-btn {
-            background: var(--primary-orange);
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 20px;
-            transition: background 0.3s;
-        }
-
-        .submit-btn:hover {
-            background: var(--dark-orange);
-        }
-
-        .submit-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .error-message {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
-            display: none;
-        }
-
-        /* Icons for different sections */
-        .icon-requirements { color: #e74c3c; }
-        .icon-deliverables { color: #3498db; }
-        .icon-grading { color: #f39c12; }
-        .icon-objectives { color: #27ae60; }
-        .icon-code { color: #9b59b6; }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-                margin-top: 40px;
-            }
-
-            .question-block {
-                padding: 15px;
-            }
-
-            h1 {
-                font-size: 22px;
-            }
-        }
-    </style>
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--pale); }
+    ::-webkit-scrollbar-thumb { background: var(--o3); border-radius: 99px; }
+  </style>
 </head>
-
 <body>
 
-<!-- ================= TIMER BAR ================= -->
-<div class="timer-bar" id="timer-bar" style="display: none;">
+<!-- NAV / TIMER BAR -->
+<div class="timer-bar" id="timer-bar">
+  <div class="timer-brand">
+    <div class="timer-brand-mark"><i class='bx bx-task'></i></div>
+    <div class="timer-brand-name">QuizGen AI</div>
+  </div>
+  <div class="timer-center" id="timer-center">
+    <i class='bx bx-time'></i>
     Time Remaining:
-    <span class="countdown" id="timer-countdown">--:--</span>
+    <span class="timer-display" id="timer-countdown">--:--</span>
+  </div>
+  <div class="timer-right">{{ title }}</div>
 </div>
 
-<!-- ================= MAIN ================= -->
-<div class="container"
-     data-time-limit="{{ time_limit if time_limit else 0 }}"
-     data-due-date="{{ due_date }}">
+<main>
+  <div id="assign-data"
+       data-time-limit="{{ time_limit if time_limit else 0 }}"
+       data-due-date="{{ due_date }}"
+       data-total-q="{{ questions|length }}">
 
-    <h1>{{ title }}</h1>
-
-    <!-- ================= STUDENT INFORMATION FORM ================= -->
-    <div class="student-info-section">
-        <h2>📝 Student Information (Required)</h2>
-        <div class="form-group">
-            <label for="student_name">Full Name <span style="color: red;">*</span></label>
-            <input type="text" 
-                   id="student_name" 
-                   name="student_name" 
-                   placeholder="Enter your full name"
-                   required
-                   minlength="2"
-                   maxlength="100">
-            <span class="error-message" id="name-error">Please enter your full name</span>
+    <!-- ASSIGNMENT HEADER -->
+    <div class="assign-header">
+      <div class="assign-badge"><i class='bx bx-task'></i> Assignment</div>
+      <h1>{{ title }}</h1>
+      <div class="assign-meta">
+        <div class="meta-chip"><i class='bx bx-list-ul'></i> {{ questions|length }} Tasks</div>
+        <div class="meta-chip"><i class='bx bx-time'></i>
+          {% if time_limit and time_limit > 0 %}{{ time_limit }} minutes{% else %}No time limit{% endif %}
         </div>
-
-        <div class="form-group">
-            <label for="student_email">Email Address <span style="color: red;">*</span></label>
-            <input type="email" 
-                   id="student_email" 
-                   name="student_email" 
-                   placeholder="Enter your email address"
-                   required
-                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
-            <span class="error-message" id="email-error">Please enter a valid email address</span>
-        </div>
-
-        <div class="form-group">
-            <label for="roll_no">Roll Number <span style="color: red;">*</span></label>
-            <input type="text" 
-                   id="roll_no" 
-                   name="roll_no" 
-                   placeholder="Enter your roll number"
-                   required
-                   maxlength="50">
-            <span class="error-message" id="roll-error">Please enter your roll number</span>
-        </div>
-    </div>
-
-    <!-- ================= ASSIGNMENT INFO ================= -->
-    <div class="assignment-info">
-        <p><strong>Total Questions:</strong> {{ questions|length }}</p>
-        {% if time_limit and time_limit > 0 %}
-        <p><strong>Time Limit:</strong> {{ time_limit }} minutes</p>
-        {% endif %}
-        {% if due_date %}  <!-- Add this section -->
-        <p><strong>Due Date:</strong> {{ due_date }}</p>
+        {% if due_date %}
+        <div class="meta-chip"><i class='bx bx-calendar'></i> Due: {{ due_date }}</div>
         {% endif %}
         {% if note %}
-        <p><strong>Note:</strong> {{ note }}</p>
+        <div class="meta-chip"><i class='bx bx-info-circle'></i> {{ note }}</div>
         {% endif %}
+      </div>
     </div>
 
-    <div class="warning-box">
-        <i class='bx bx-error-circle'></i>
-        <span>Please fill in your details above before starting. Read all question requirements carefully before answering.</span>
-    </div>
-
-    <!-- ================= ASSIGNMENT FORM ================= -->
-    <form method="POST" action="{{ url_for('student.submit_assignment') }}" id="assignment-form">
-
-        <input type="hidden" name="assignment_id" value="{{ assignment_id }}">
-        <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
-
-        {% for question in questions %}
-        <div class="question-block">
-            <div class="question-prompt">
-                {{ loop.index }}. {{ question.prompt }}
-            </div>
-
-            <div class="question-meta">
-                <span>{{ question.assignment_type|upper if question.assignment_type else 'ASSIGNMENT' }}</span>
-                <span>{{ question.marks }} marks</span>
-                {% if question.difficulty %}
-                <span>{{ question.difficulty|upper }}</span>
-                {% endif %}
-            </div>
-
-            <!-- ================= QUESTION DETAILS ================= -->
-            <div class="question-details">
-                
-                <!-- Context/Background -->
-                {% if question.context %}
-                <div class="context-section">
-                    <p><strong>📖 Background:</strong></p>
-                    <p>{{ question.context }}</p>
-                </div>
-                {% endif %}
-
-                <!-- Code Snippet (for code-based questions) -->
-                {% if question.code_snippet %}
-                <div class="detail-section">
-                    <h4><i class='bx bx-code-alt icon-code'></i> Code to Analyze:</h4>
-                    <div class="code-snippet-box">
-                        <pre><code>{{ question.code_snippet }}</code></pre>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Requirements -->
-                {% if question.requirements %}
-                <div class="detail-section">
-                    <h4><i class='bx bx-list-check icon-requirements'></i> Requirements:</h4>
-                    <ul>
-                        {% for req in question.requirements %}
-                        <li>{{ req }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                <!-- Deliverables -->
-                {% if question.deliverables %}
-                <div class="detail-section">
-                    <h4><i class='bx bx-package icon-deliverables'></i> Expected Deliverables:</h4>
-                    <ul>
-                        {% for del in question.deliverables %}
-                        <li>{{ del }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                <!-- Grading Criteria -->
-                {% if question.grading_criteria %}
-                <div class="detail-section">
-                    <h4><i class='bx bx-bar-chart icon-grading'></i> Grading Criteria:</h4>
-                    <p>{{ question.grading_criteria }}</p>
-                </div>
-                {% endif %}
-
-                <!-- Learning Objectives -->
-                {% if question.learning_objectives %}
-                <div class="detail-section">
-                    <h4><i class='bx bx-target-lock icon-objectives'></i> Learning Objectives:</h4>
-                    <ul>
-                        {% for obj in question.learning_objectives %}
-                        <li>{{ obj }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                <!-- Word Count Hint -->
-                {% if question.word_count %}
-                <div class="word-count-hint">
-                    📝 Suggested length: {{ question.word_count }}
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- ================= ANSWER SECTION ================= -->
-            <div class="answer-section">
-                <label for="{{ question.id }}" style="font-weight: 600; display: block; margin-bottom: 8px;">
-                    Your Answer:
-                </label>
-                <textarea 
-                    id="{{ question.id }}"
-                    name="{{ question.id }}" 
-                    placeholder="Write your detailed answer here..."
-                    oninput="updateCharCount(this)"
-                    required></textarea>
-                <div class="char-count">
-                    <span class="char-count-display">0</span> characters
-                </div>
-            </div>
+    <!-- STUDENT INFO -->
+    <div class="info-card">
+      <div class="info-card-head">
+        <i class='bx bx-user-circle'></i>
+        <h2>Student Information</h2>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Full Name <span class="req">*</span></label>
+          <input type="text" id="student_name" placeholder="Enter your full name" required minlength="2" maxlength="100">
+          <span class="field-error" id="name-error">Please enter your full name</span>
         </div>
-        {% endfor %}
+        <div class="field">
+          <label>Roll Number <span class="req">*</span></label>
+          <input type="text" id="roll_no" placeholder="Enter your roll number" required maxlength="50">
+          <span class="field-error" id="roll-error">Please enter your roll number</span>
+        </div>
+      </div>
+      <div class="form-row single" style="margin-top: 12px;">
+        <div class="field">
+          <label>Email Address <span class="req">*</span></label>
+          <input type="email" id="student_email" placeholder="Enter your email address" required>
+          <span class="field-error" id="email-error">Please enter a valid email address</span>
+        </div>
+      </div>
+    </div>
 
+    <!-- WARNING -->
+    <div class="warning-box">
+      <i class='bx bx-info-circle'></i>
+      Fill in your information above before submitting. Read all question requirements carefully. Your progress is not saved automatically — submit when complete.
+    </div>
+
+    <!-- PROGRESS -->
+    <div class="assign-progress">
+      <span class="progress-label">Tasks completed</span>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <span class="progress-count" id="progress-count">0 / {{ questions|length }}</span>
+    </div>
+
+    <!-- ASSIGNMENT FORM -->
+    <form method="POST" action="{{ url_for('student.submit_assignment') }}" id="assignment-form">
+      <input type="hidden" name="assignment_id" value="{{ assignment_id }}">
+      <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
+      <input type="hidden" name="student_name" id="hidden_student_name">
+      <input type="hidden" name="student_email" id="hidden_student_email">
+      <input type="hidden" name="roll_no" id="hidden_roll_no">
+      <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
+
+      {% for question in questions %}
+      <div class="question-card" id="qcard-{{ loop.index }}">
+        <div class="question-header">
+          <span class="q-num">Task {{ loop.index }}</span>
+          <span class="q-type-badge type-{{ question.assignment_type|lower|replace(' ','_') if question.assignment_type else 'conceptual' }}">
+            {{ question.assignment_type or 'Assignment' }}
+          </span>
+          <span class="q-marks">{{ question.marks }} marks</span>
+          {% if question.difficulty %}
+          <span class="diff-badge diff-{{ question.difficulty|lower }}">{{ question.difficulty|capitalize }}</span>
+          {% endif %}
+          <div class="q-answered-dot"></div>
+        </div>
+
+        <div class="question-body">
+          <div class="question-text">{{ question.prompt }}</div>
+
+          <!-- CONTEXT -->
+          {% if question.context %}
+          <div class="context-box">
+            <div class="detail-section-head"><i class='bx bx-book-open'></i> Background / Context</div>
+            <p>{{ question.context }}</p>
+          </div>
+          {% endif %}
+
+          <!-- CODE SNIPPET -->
+          {% if question.code_snippet %}
+          <div class="code-box">
+            <div class="code-box-head"><i class='bx bx-code-alt'></i> Code to Analyze</div>
+            <pre><code>{{ question.code_snippet }}</code></pre>
+          </div>
+          {% endif %}
+
+          <!-- REQUIREMENTS -->
+          {% if question.requirements %}
+          <div class="detail-section">
+            <div class="detail-section-head"><i class='bx bx-list-check'></i> Requirements</div>
+            <ul>{% for req in question.requirements %}<li>{{ req }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+
+          <!-- DELIVERABLES -->
+          {% if question.deliverables %}
+          <div class="detail-section">
+            <div class="detail-section-head"><i class='bx bx-package'></i> Expected Deliverables</div>
+            <ul>{% for del in question.deliverables %}<li>{{ del }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+
+          <!-- GRADING CRITERIA -->
+          {% if question.grading_criteria %}
+          <div class="detail-section">
+            <div class="detail-section-head"><i class='bx bx-bar-chart-alt-2'></i> Grading Criteria</div>
+            <p>{{ question.grading_criteria }}</p>
+          </div>
+          {% endif %}
+
+          <!-- LEARNING OBJECTIVES -->
+          {% if question.learning_objectives %}
+          <div class="detail-section">
+            <div class="detail-section-head"><i class='bx bx-target-lock'></i> Learning Objectives</div>
+            <ul>{% for obj in question.learning_objectives %}<li>{{ obj }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+
+          <!-- WORD COUNT HINT -->
+          {% if question.word_count %}
+          <div class="word-hint"><i class='bx bx-edit'></i> Suggested length: {{ question.word_count }}</div>
+          {% endif %}
+
+          <!-- ANSWER -->
+          <div class="answer-section">
+            <label for="{{ question.id }}">Your Answer <span style="color:var(--o2)">*</span></label>
+            <textarea
+              class="answer-area"
+              id="{{ question.id }}"
+              name="{{ question.id }}"
+              placeholder="Write your detailed answer here…"
+              oninput="handleInput(this)"
+              required></textarea>
+            <div class="char-counter"><span class="char-val">0</span> characters</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- SUBMIT -->
+      <div class="submit-area">
+        <div class="submit-status">
+          <span id="answered-count">0</span> of <strong>{{ questions|length }}</strong> tasks answered
+        </div>
         <button class="submit-btn" id="submit-btn" type="submit">
-            <i class='bx bx-send'></i> Submit Assignment
+          <i class='bx bx-send'></i> Submit Assignment
         </button>
-
+      </div>
     </form>
-</div>
 
-<!-- ================= JAVASCRIPT ================= -->
+  </div>
+</main>
+
 <script>
-    const container = document.querySelector(".container");
-    const timeLimitRaw = container.dataset.timeLimit;
-    const timerBar = document.getElementById("timer-bar");
-    const timerText = document.getElementById("timer-countdown");
-    const form = document.getElementById("assignment-form");
-    const submitBtn = document.getElementById("submit-btn");
+  const assignData = document.getElementById('assign-data');
+  const timeLimitRaw = assignData.dataset.timeLimit;
+  const form = document.getElementById('assignment-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const totalQ = parseInt(assignData.dataset.totalQ);
+  let answeredCount = 0;
 
-    // Student info fields
-    const studentNameInput = document.getElementById("student_name");
-    const studentEmailInput = document.getElementById("student_email");
-    const rollNoInput = document.getElementById("roll_no");
+  // Track answered state per card
+  function handleInput(textarea) {
+    const card = textarea.closest('.question-card');
+    const charVal = textarea.closest('.answer-section').querySelector('.char-val');
+    if (charVal) charVal.textContent = textarea.value.length;
+    if (card && textarea.value.trim().length > 0 && !card.classList.contains('answered')) {
+      card.classList.add('answered');
+      answeredCount++;
+      document.getElementById('answered-count').textContent = answeredCount;
+      const pct = answeredCount / totalQ * 100;
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-count').textContent = answeredCount + ' / ' + totalQ;
+    }
+  }
 
-    // Character count update
-    function updateCharCount(textarea) {
-        const charCount = textarea.value.length;
-        const display = textarea.closest('.answer-section').querySelector('.char-count-display');
-        if (display) {
-            display.textContent = charCount;
-        }
+  // Validation
+  form.addEventListener('submit', function(e) {
+    const nameInput = document.getElementById('student_name');
+    const emailInput = document.getElementById('student_email');
+    const rollInput = document.getElementById('roll_no');
+    const emailRe = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+    let valid = true;
+
+    function setV(input, errId, ok) {
+      input.classList.toggle('valid', ok);
+      input.classList.toggle('invalid', !ok);
+      document.getElementById(errId).classList.toggle('show', !ok);
+      if (!ok) valid = false;
     }
 
-    // Validate student information before submission
-    form.addEventListener("submit", function(e) {
-        let isValid = true;
+    setV(nameInput, 'name-error', nameInput.value.trim().length >= 2);
+    setV(emailInput, 'email-error', emailRe.test(emailInput.value.trim()));
+    setV(rollInput, 'roll-error', rollInput.value.trim().length > 0);
 
-        // Validate name
-        if (!studentNameInput.value.trim() || studentNameInput.value.trim().length < 2) {
-            document.getElementById("name-error").style.display = "block";
-            studentNameInput.style.borderColor = "#dc3545";
-            isValid = false;
-        } else {
-            document.getElementById("name-error").style.display = "none";
-            studentNameInput.style.borderColor = "#10b981";
-        }
-
-        // Validate email
-        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
-        if (!emailPattern.test(studentEmailInput.value.trim())) {
-            document.getElementById("email-error").style.display = "block";
-            studentEmailInput.style.borderColor = "#dc3545";
-            isValid = false;
-        } else {
-            document.getElementById("email-error").style.display = "none";
-            studentEmailInput.style.borderColor = "#10b981";
-        }
-
-        // Validate roll number
-        if (!rollNoInput.value.trim()) {
-            document.getElementById("roll-error").style.display = "block";
-            rollNoInput.style.borderColor = "#dc3545";
-            isValid = false;
-        } else {
-            document.getElementById("roll-error").style.display = "none";
-            rollNoInput.style.borderColor = "#10b981";
-        }
-
-        if (!isValid) {
-            e.preventDefault();
-            alert("⚠️ Please fill in all student information fields correctly before submitting.");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return false;
-        }
-
-        // Add student info to form data as hidden fields
-        const nameField = document.createElement("input");
-        nameField.type = "hidden";
-        nameField.name = "student_name";
-        nameField.value = studentNameInput.value.trim();
-        form.appendChild(nameField);
-
-        const emailField = document.createElement("input");
-        emailField.type = "hidden";
-        emailField.name = "student_email";
-        emailField.value = studentEmailInput.value.trim();
-        form.appendChild(emailField);
-
-        const rollField = document.createElement("input");
-        rollField.type = "hidden";
-        rollField.name = "roll_no";
-        rollField.value = rollNoInput.value.trim();
-        form.appendChild(rollField);
-
-        // Disable submit button to prevent double submission
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Submitting...';
-
-        return true;
-    });
-
-    // Real-time validation feedback
-    studentNameInput.addEventListener("input", function() {
-        if (this.value.trim().length >= 2) {
-            document.getElementById("name-error").style.display = "none";
-            this.style.borderColor = "#10b981";
-        }
-    });
-
-    studentEmailInput.addEventListener("input", function() {
-        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
-        if (emailPattern.test(this.value.trim())) {
-            document.getElementById("email-error").style.display = "none";
-            this.style.borderColor = "#10b981";
-        }
-    });
-
-    rollNoInput.addEventListener("input", function() {
-        if (this.value.trim()) {
-            document.getElementById("roll-error").style.display = "none";
-            this.style.borderColor = "#10b981";
-        }
-    });
-
-    // Timer functionality (if time limit exists)
-    if (timeLimitRaw && timeLimitRaw !== "None" && timeLimitRaw !== "" && parseInt(timeLimitRaw) > 0) {
-        timerBar.style.display = "block";
-        let timeRemaining = parseInt(timeLimitRaw) * 60;
-
-        function formatTime(sec) {
-            const m = Math.floor(sec / 60);
-            const s = sec % 60;
-            return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
-        }
-
-        function tick() {
-            timerText.textContent = formatTime(timeRemaining);
-
-            if (timeRemaining <= 0) {
-                alert("⏰ Time is up! Assignment is submitting.");
-                form.submit();
-            }
-            timeRemaining--;
-        }
-
-        tick();
-        setInterval(tick, 1000);
+    if (!valid) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
 
-    // Initialize character counts
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('textarea').forEach(textarea => {
-            updateCharCount(textarea);
-        });
-    });
+    // Copy values into hidden form fields so they are submitted
+    document.getElementById('hidden_student_name').value = nameInput.value.trim();
+    document.getElementById('hidden_student_email').value = emailInput.value.trim();
+    document.getElementById('hidden_roll_no').value = rollInput.value.trim();
 
-    // Warn before leaving with unsaved work
-    window.addEventListener('beforeunload', function (e) {
-        const hasAnswers = Array.from(document.querySelectorAll('textarea'))
-            .some(textarea => textarea.value.trim() !== '');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Submitting…';
+  });
 
-        if (hasAnswers && !submitBtn.disabled) {
-            e.preventDefault();
-            e.returnValue = 'You have unsaved work. Are you sure you want to leave?';
-        }
+  // Realtime validation clear
+  ['student_name','student_email','roll_no'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', function() {
+      this.classList.remove('invalid');
+      document.getElementById(id === 'student_name' ? 'name-error' : id === 'student_email' ? 'email-error' : 'roll-error')?.classList.remove('show');
     });
+  });
+
+  // Timer
+  if (!timeLimitRaw || timeLimitRaw === '0' || timeLimitRaw === 'None' || timeLimitRaw === '') {
+    document.getElementById('timer-center').style.display = 'none';
+  } else {
+    let remaining = parseInt(timeLimitRaw) * 60;
+    const timerText = document.getElementById('timer-countdown');
+    function fmt(s) {
+      return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+    }
+    function tick() {
+      timerText.textContent = fmt(remaining);
+      timerText.classList.toggle('urgent', remaining <= 60);
+      if (remaining <= 0) { form.submit(); return; }
+      remaining--;
+    }
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  // Warn on leave
+  window.addEventListener('beforeunload', function(e) {
+    const hasData = Array.from(document.querySelectorAll('textarea.answer-area')).some(t => t.value.trim());
+    if (hasData && !submitBtn.disabled) { e.preventDefault(); e.returnValue = ''; }
+  });
 </script>
-
 </body>
 </html>

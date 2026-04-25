@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Editor — Review & Edit</title>
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+<style>
+  /* ─── Design tokens ─── */
+  :root {
+    --orange:     #FF8C00;
+    --orange-2:   #FF6B00;
+    --orange-soft:#FFF3E0;
+    --orange-mid: #FFD580;
+    --green:      #16A34A;
+    --green-soft: #DCFCE7;
+    --red:        #DC2626;
+    --red-soft:   #FEE2E2;
+    --blue:       #2563EB;
+    --blue-soft:  #DBEAFE;
+    --surface:    #FAFAFA;
+    --card:       #FFFFFF;
+    --border:     #E5E7EB;
+    --text:       #111827;
+    --muted:      #6B7280;
+    --radius:     12px;
+    --shadow:     0 2px 12px rgba(0,0,0,.08);
+    --shadow-lg:  0 8px 32px rgba(0,0,0,.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--surface);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ─── Top bar ─── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+
+  .topbar-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800; font-size: 18px; color: var(--orange);
+  }
+
+  .topbar-brand i { font-size: 24px; }
+
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: 8px; font-weight: 600;
+    font-size: 14px; border: none; cursor: pointer;
+    transition: all .18s ease;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--orange), var(--orange-2));
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(255,140,0,.3);
+  }
+  .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    background: #fff; color: var(--orange);
+    border: 2px solid var(--orange);
+  }
+  .btn-secondary:hover { background: var(--orange-soft); }
+
+  .btn-danger  { background: var(--red-soft);  color: var(--red);   border: 1.5px solid #FCA5A5; }
+  .btn-danger:hover { background: #FCA5A5; }
+
+  .btn-success { background: var(--green-soft); color: var(--green); border: 1.5px solid #86EFAC; }
+  .btn-success:hover { background: #86EFAC; }
+
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* ─── Page layout ─── */
+  .page-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+
+  /* ─── Header card ─── */
+  .quiz-header-card {
+    background: linear-gradient(135deg, var(--orange-soft), #fff8ef);
+    border: 1.5px solid var(--orange-mid);
+    border-radius: var(--radius);
+    padding: 22px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .quiz-title-row {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+
+  .quiz-title-input {
+    flex: 1; min-width: 220px;
+    font-size: 20px; font-weight: 700;
+    border: 2px solid transparent;
+    background: transparent;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: border-color .2s, background .2s;
+  }
+  .quiz-title-input:focus {
+    outline: none;
+    border-color: var(--orange);
+    background: #fff;
+  }
+
+  .quiz-meta-row {
+    display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+    font-size: 14px; color: var(--muted);
+  }
+
+  .meta-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #fff; border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; color: var(--muted);
+  }
+  .meta-chip i { font-size: 15px; color: var(--orange); }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+  }
+  .badge-orange { background: var(--orange-soft); color: var(--orange-2); }
+  .badge-green  { background: var(--green-soft);  color: var(--green); }
+  .badge-blue   { background: var(--blue-soft);   color: var(--blue); }
+  .badge-red    { background: var(--red-soft);    color: var(--red); }
+
+  /* ─── Stats bar ─── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 4px;
+    box-shadow: var(--shadow);
+  }
+  .stat-value { font-size: 26px; font-weight: 800; color: var(--orange); }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ─── Toolbar ─── */
+  .editor-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+
+  .toolbar-left { display: flex; gap: 8px; }
+
+  /* ─── Question cards ─── */
+  .question-list { display: flex; flex-direction: column; gap: 16px; }
+
+  .q-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: box-shadow .2s, border-color .2s;
+  }
+  .q-card:hover { box-shadow: var(--shadow-lg); }
+
+  .q-card.is-edited   { border-left: 4px solid var(--orange); }
+  .q-card.is-approved { border-left: 4px solid var(--green); }
+  .q-card.is-flagged  { border-left: 4px solid var(--red); }
+
+  /* Card header */
+  .q-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px;
+    background: #FAFAFA;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .q-number {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange), var(--orange-2));
+    color: #fff; font-weight: 800; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .q-header-meta { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .q-actions {
+    display: flex; gap: 6px; align-items: center;
+    margin-left: auto;
+  }
+
+  /* Card body */
+  .q-body { padding: 18px; }
+
+  .field-group {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 16px;
+  }
+  .field-group:last-child { margin-bottom: 0; }
+
+  .field-label {
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .field-label i { font-size: 15px; }
+
+  .q-textarea, .q-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 13px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    background: #FEFEFE;
+    transition: border-color .2s, background .2s;
+    resize: vertical;
+  }
+  .q-textarea:focus, .q-input:focus {
+    outline: none;
+    border-color: var(--orange);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(255,140,0,.12);
+  }
+
+  /* Options grid for MCQ */
+  .options-grid { display: flex; flex-direction: column; gap: 8px; }
+
+  .option-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .option-letter {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--orange-soft); color: var(--orange-2);
+    font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--orange-mid);
+  }
+
+  .option-letter.is-correct {
+    background: var(--green-soft); color: var(--green);
+    border-color: #86EFAC;
+  }
+
+  .option-row .q-input { flex: 1; margin: 0; }
+
+  .correct-radio {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    cursor: pointer; flex-shrink: 0;
+    padding: 4px 8px; border-radius: 6px;
+    border: 1.5px solid var(--border);
+    transition: all .15s;
+  }
+  .correct-radio input { display: none; }
+  .correct-radio.selected {
+    background: var(--green-soft); color: var(--green);
+    border-color: #86EFAC;
+  }
+
+  /* True/False toggle */
+  .tf-toggle {
+    display: flex; gap: 10px;
+  }
+  .tf-btn {
+    flex: 1; padding: 10px;
+    border-radius: 8px; font-weight: 700; font-size: 14px;
+    border: 2px solid var(--border);
+    background: #fff; cursor: pointer;
+    transition: all .15s;
+  }
+  .tf-btn.selected-true  { background: var(--green-soft);  border-color: #86EFAC;  color: var(--green); }
+  .tf-btn.selected-false { background: var(--red-soft);    border-color: #FCA5A5;  color: var(--red); }
+  .tf-btn:not(.selected-true):not(.selected-false):hover { border-color: var(--orange); }
+
+  /* Difficulty picker */
+  .diff-pills { display: flex; gap: 8px; }
+  .diff-pill {
+    padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    border: 2px solid var(--border); cursor: pointer;
+    transition: all .15s; background: #fff; color: var(--muted);
+  }
+  .diff-pill[data-diff="easy"].active   { background: var(--green-soft);  border-color: #86EFAC;  color: var(--green); }
+  .diff-pill[data-diff="medium"].active { background: #FFF7ED; border-color: var(--orange-mid); color: var(--orange); }
+  .diff-pill[data-diff="hard"].active   { background: var(--red-soft);    border-color: #FCA5A5;  color: var(--red); }
+
+  /* Status indicator */
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .status-dot.pending  { background: var(--orange); box-shadow: 0 0 0 2px rgba(255,140,0,.3); }
+  .status-dot.approved { background: var(--green);  box-shadow: 0 0 0 2px rgba(22,163,74,.3); }
+  .status-dot.flagged  { background: var(--red);    box-shadow: 0 0 0 2px rgba(220,38,38,.3); }
+
+  /* ─── Add question panel ─── */
+  .add-q-panel {
+    background: var(--card);
+    border: 2px dashed var(--orange-mid);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-top: 16px;
+    display: none;
+    gap: 14px;
+    flex-direction: column;
+  }
+  .add-q-panel.open { display: flex; }
+
+  .type-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .type-btn {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: 2px solid var(--border); cursor: pointer;
+    background: #fff; color: var(--muted);
+    transition: all .15s;
+  }
+  .type-btn.selected { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-2); }
+
+  /* ─── Publish modal ─── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    display: none; align-items: center; justify-content: center;
+    z-index: 200; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal-box {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    width: min(500px, 96vw);
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .modal-sub   { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+
+  .modal-field { margin-bottom: 16px; }
+  .modal-label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--muted); }
+  .modal-input {
+    width: 100%; padding: 10px 13px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit;
+    transition: border-color .2s;
+  }
+  .modal-input:focus { outline: none; border-color: var(--orange); }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #111827; color: #fff;
+    padding: 12px 22px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transition: transform .3s ease, opacity .3s ease;
+    z-index: 999; white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .toast.success { background: #15803D; }
+  .toast.error   { background: var(--red); }
+
+  /* ─── Empty / loading state ─── */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state i { font-size: 52px; opacity: .25; margin-bottom: 12px; display: block; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 680px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .quiz-title-row { flex-direction: column; align-items: stretch; }
+    .q-actions { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ TOP BAR ═══════════════════════ -->
+<nav class="topbar">
+  <div class="topbar-brand">
+    <i class='bx bx-edit-alt'></i>
+    Quiz Editor
+  </div>
+  <div class="topbar-actions">
+    <a href="/teacher/generate" class="btn btn-secondary btn-sm">
+      <i class='bx bx-arrow-back'></i> Back
+    </a>
+    <button class="btn btn-primary btn-sm" onclick="openPublishModal()">
+      <i class='bx bx-send'></i> Send to Students
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════ PAGE BODY ═══════════════════════ -->
+<div class="page-wrap">
+
+  <!-- Quiz header card -->
+  <div class="quiz-header-card">
+    <div class="quiz-title-row">
+      <input class="quiz-title-input" id="quiz-title-input" placeholder="Quiz Title…" value="">
+      <span class="badge badge-orange" id="quiz-kind-badge">Quiz</span>
+    </div>
+    <div class="quiz-meta-row">
+      <span class="meta-chip" id="source-chip">
+        <i class='bx bx-file'></i>
+        <span id="source-file-name">—</span>
+      </span>
+      <span class="meta-chip">
+        <i class='bx bx-calendar'></i>
+        <span id="generated-at-text">Generated just now</span>
+      </span>
+      <span class="meta-chip" id="status-summary-chip">
+        <span class="status-dot pending" id="global-status-dot"></span>
+        <span id="global-status-text">Pending review</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">0</div>
+      <div class="stat-label">Total Questions</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--green)" id="stat-approved">0</div>
+      <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--red)" id="stat-flagged">0</div>
+      <div class="stat-label">Flagged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--muted)" id="stat-pending">0</div>
+      <div class="stat-label">Pending</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="editor-toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-success btn-sm" onclick="approveAll()">
+        <i class='bx bx-check-double'></i> Approve All
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleAddPanel()">
+        <i class='bx bx-plus'></i> Add Question
+      </button>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <select id="filter-select" onchange="renderQuestions()" style="border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted);">
+        <option value="all">All Questions</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="flagged">Flagged</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="saveQuiz()">
+        <i class='bx bx-save'></i> Save Changes
+      </button>
+    </div>
+  </div>
+
+  <!-- Add question panel -->
+  <div class="add-q-panel" id="add-q-panel">
+    <strong style="font-size:15px;">➕ New Question</strong>
+    <div>
+      <div class="field-label" style="margin-bottom:8px;"><i class='bx bx-category'></i> Type</div>
+      <div class="type-selector" id="new-q-type-selector">
+        <button class="type-btn selected" data-type="mcq" onclick="selectNewType('mcq',this)">Multiple Choice</button>
+        <button class="type-btn" data-type="true_false" onclick="selectNewType('true_false',this)">True / False</button>
+        <button class="type-btn" data-type="short" onclick="selectNewType('short',this)">Short Answer</button>
+        <button class="type-btn" data-type="long" onclick="selectNewType('long',this)">Long Answer</button>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label"><i class='bx bx-question-mark'></i> Question Text</div>
+      <textarea class="q-textarea" id="new-q-prompt" rows="3" placeholder="Enter your question…"></textarea>
+    </div>
+    <div id="new-q-options-area"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-secondary btn-sm" onclick="toggleAddPanel()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="addNewQuestion()"><i class='bx bx-plus'></i> Add</button>
+    </div>
+  </div>
+
+  <!-- Question list -->
+  <div class="question-list" id="question-list">
+    <div class="empty-state">
+      <i class='bx bx-loader-alt bx-spin'></i>
+      <p>Loading quiz…</p>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<!-- ═══════════════════════ PUBLISH MODAL ═══════════════════════ -->
+<div class="modal-overlay" id="publish-modal">
+  <div class="modal-box">
+    <div class="modal-title">📤 Send Quiz to Students</div>
+    <div class="modal-sub">Configure settings before sending. Students won't see it until you confirm.</div>
+
+    <div class="modal-field">
+      <label class="modal-label">Time Limit (minutes)</label>
+      <input class="modal-input" type="number" id="pub-time-limit" min="0" placeholder="e.g. 30 — leave blank for no limit">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Due Date</label>
+      <input class="modal-input" type="datetime-local" id="pub-due-date">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Note to Students</label>
+      <textarea class="modal-input" id="pub-note" rows="3" placeholder="Any instructions or notes for students…" style="resize:vertical;"></textarea>
+    </div>
+
+    <div id="pub-warnings" style="display:none;" class="badge badge-red" style="margin-top:10px; padding:10px; border-radius:8px; width:100%; display:flex; gap:6px; align-items:center;">
+      <i class='bx bx-error-circle'></i>
+      <span id="pub-warning-text"></span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closePublishModal()">Cancel</button>
+      <button class="btn btn-primary" id="pub-confirm-btn" onclick="publishQuiz()">
+        <i class='bx bx-send'></i> Send Now
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════ JAVASCRIPT ═══════════════════════ -->
+<script>
+// ────────────────────────────────────────────────────────────
+// STATE
+// ────────────────────────────────────────────────────────────
+let quizData   = null;   // full quiz object from server
+let quizId     = null;
+let questions  = [];     // working copy
+let newQType   = 'mcq';
+let newQOptions = ['','','',''];
+let newQCorrect = 0;
+let newQTFAnswer = null;
+
+// ── Read quiz ID from URL: /teacher/quiz-editor/<id>
+const pathParts = window.location.pathname.split('/');
+quizId = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+
+// ────────────────────────────────────────────────────────────
+// INIT: load quiz from server
+// ────────────────────────────────────────────────────────────
+async function init() {
+  if (!quizId || quizId === 'quiz-editor') {
+    // Try sessionStorage (passed from generate page)
+    const stored = sessionStorage.getItem('quiz_editor_data');
+    if (stored) {
+      try {
+        quizData = JSON.parse(stored);
+        quizId   = quizData.id || quizData.quiz_id || quizData.metadata?.quiz_id;
+      } catch(e) {}
+    }
+  } else {
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}`);
+      if (res.ok) quizData = await res.json();
+    } catch(e) {}
+  }
+
+  if (!quizData) {
+    document.getElementById('question-list').innerHTML = `
+      <div class="empty-state">
+        <i class='bx bx-error-circle'></i>
+        <p>Quiz not found. Please go back and generate a quiz first.</p>
+      </div>`;
+    return;
+  }
+
+  // Populate header
+  const title = quizData.title || quizData.metadata?.source_file || 'Untitled Quiz';
+  document.getElementById('quiz-title-input').value = title;
+  document.getElementById('source-file-name').textContent = quizData.metadata?.source_file || title;
+
+  const kind = (quizData.metadata?.kind || 'quiz');
+  document.getElementById('quiz-kind-badge').textContent = kind.charAt(0).toUpperCase()+kind.slice(1);
+
+  if (quizData.metadata?.generated_at || quizData.created_at) {
+    const d = new Date(quizData.metadata?.generated_at || quizData.created_at);
+    if (!isNaN(d)) {
+      document.getElementById('generated-at-text').textContent = d.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+  }
+
+  // Build working copy — add _status field
+  questions = (quizData.questions || []).map((q, i) => ({
+    ...q,
+    id: q.id || `q${i+1}`,
+    _status: 'pending', // pending | approved | flagged
+  }));
+
+  renderQuestions();
+  updateStats();
+}
+
+// ────────────────────────────────────────────────────────────
+// RENDER
+// ────────────────────────────────────────────────────────────
+function renderQuestions() {
+  const filter = document.getElementById('filter-select').value;
+  const list   = document.getElementById('question-list');
+
+  const visible = questions.filter(q => filter === 'all' || q._status === filter);
+
+  if (!visible.length) {
+    list.innerHTML = `<div class="empty-state"><i class='bx bx-search-alt'></i><p>No ${filter} questions.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = visible.map((q, vi) => {
+    const realIdx = questions.indexOf(q);
+    return renderQuestionCard(q, realIdx+1, realIdx);
+  }).join('');
+
+  // Wire option correct-radio clicks
+  list.querySelectorAll('.correct-radio').forEach(el => {
+    el.addEventListener('click', function() {
+      const idx  = +this.dataset.qidx;
+      const oidx = +this.dataset.oidx;
+      setCorrectOption(idx, oidx);
+    });
+  });
+
+  // Wire T/F buttons
+  list.querySelectorAll('.tf-btn').forEach(el => {
+    el.addEventListener('click', function() {
+      const idx = +this.dataset.qidx;
+      const val = this.dataset.val;
+      setTFAnswer(idx, val);
+    });
+  });
+
+  // Wire diff pills
+  list.querySelectorAll('.diff-pill').forEach(el => {
+    el.addEventListener('click', function() {
+      const idx  = +this.dataset.qidx;
+      const diff = this.dataset.diff;
+      questions[idx].difficulty = diff;
+      markEdited(idx);
+      // Update sibling pills
+      const siblings = document.querySelectorAll(`.diff-pill[data-qidx="${idx}"]`);
+      siblings.forEach(s => s.classList.toggle('active', s.dataset.diff === diff));
+    });
+  });
+}
+
+function renderQuestionCard(q, displayNum, idx) {
+  const statusClass = q._status === 'approved' ? 'is-approved' : q._status === 'flagged' ? 'is-flagged' : q._status === 'edited' ? 'is-edited' : '';
+
+  const typeLabel = { mcq:'Multiple Choice', true_false:'True / False', short:'Short Answer', long:'Long Answer' }[q.type] || q.type;
+  const diffColor = { easy:'badge-green', medium:'badge-orange', hard:'badge-red' }[q.difficulty] || 'badge-orange';
+
+  let bodyHtml = '';
+
+  // ── Prompt ──
+  bodyHtml += `
+    <div class="field-group">
+      <div class="field-label"><i class='bx bx-question-mark'></i> Question</div>
+      <textarea class="q-textarea" rows="2"
+        oninput="updateField(${idx},'prompt',this.value)"
+        data-qidx="${idx}">${escHtml(q.prompt || q.question_text || '')}</textarea>
+    </div>`;
+
+  // ── MCQ options ──
+  if (q.type === 'mcq') {
+    const opts   = Array.isArray(q.options) ? q.options : ['','','',''];
+    const corrIdx = getCorrectIndex(q);
+    const letters = ['A','B','C','D','E','F'];
+    const optRows = opts.map((opt, oi) => {
+      const isCorr = oi === corrIdx;
+      return `
+        <div class="option-row">
+          <div class="option-letter ${isCorr?'is-correct':''}" id="opt-letter-${idx}-${oi}">${letters[oi]}</div>
+          <input class="q-input" value="${escHtml(opt)}" placeholder="Option ${letters[oi]}"
+            oninput="updateOption(${idx},${oi},this.value)" data-qidx="${idx}" data-oidx="${oi}">
+          <label class="correct-radio ${isCorr?'selected':''}" data-qidx="${idx}" data-oidx="${oi}">
+            <input type="radio" name="correct-${idx}" ${isCorr?'checked':''}>
+            ✓ Correct
+          </label>
+        </div>`;
+    }).join('');
+
+    bodyHtml += `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-list-ul'></i> Options <small style="font-weight:normal;text-transform:none;">(click ✓ Correct to mark answer)</small></div>
+        <div class="options-grid">${optRows}</div>
+      </div>`;
+  }
+
+  // ── True/False ──
+  if (q.type === 'true_false') {
+    const ans = normBool(q.answer ?? q.correct_answer);
+    bodyHtml += `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-toggle-right'></i> Correct Answer</div>
+        <div class="tf-toggle">
+          <button class="tf-btn ${ans===true?'selected-true':''}" data-qidx="${idx}" data-val="true">✅ True</button>
+          <button class="tf-btn ${ans===false?'selected-false':''}" data-qidx="${idx}" data-val="false">❌ False</button>
+        </div>
+      </div>`;
+  }
+
+  // ── Short / Long answer ──
+  if (q.type === 'short' || q.type === 'long') {
+    const ans = q.answer ?? q.correct_answer ?? '';
+    bodyHtml += `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-check-circle'></i> Expected Answer / Model Answer</div>
+        <textarea class="q-textarea" rows="${q.type==='long'?5:3}"
+          oninput="updateField(${idx},'answer',this.value)">${escHtml(String(ans))}</textarea>
+      </div>`;
+
+    if (q.type === 'long' && q.grading_criteria !== undefined) {
+      bodyHtml += `
+        <div class="field-group">
+          <div class="field-label"><i class='bx bx-bar-chart'></i> Grading Criteria</div>
+          <textarea class="q-textarea" rows="2"
+            oninput="updateField(${idx},'grading_criteria',this.value)">${escHtml(q.grading_criteria||'')}</textarea>
+        </div>`;
+    }
+  }
+
+  // ── Explanation ──
+  const explanation = q.explanation || '';
+  bodyHtml += `
+    <div class="field-group">
+      <div class="field-label"><i class='bx bx-info-circle'></i> Explanation <small style="font-weight:normal;text-transform:none;">(optional — shown to students after submission)</small></div>
+      <textarea class="q-textarea" rows="2"
+        oninput="updateField(${idx},'explanation',this.value)">${escHtml(explanation)}</textarea>
+    </div>`;
+
+  // ── Difficulty ──
+  const diff = q.difficulty || 'medium';
+  const diffPills = ['easy','medium','hard'].map(d =>
+    `<button class="diff-pill ${d===diff?'active':''}" data-qidx="${idx}" data-diff="${d}">${d.charAt(0).toUpperCase()+d.slice(1)}</button>`
+  ).join('');
+  bodyHtml += `
+    <div class="field-group">
+      <div class="field-label"><i class='bx bx-signal-5'></i> Difficulty</div>
+      <div class="diff-pills">${diffPills}</div>
+    </div>`;
+
+  // status dot
+  const sdot = `<span class="status-dot ${q._status==='edited'?'pending':q._status}"></span>`;
+  const statusText = { pending:'Pending', approved:'✓ Approved', flagged:'⚑ Flagged', edited:'Edited' }[q._status] || 'Pending';
+
+  return `
+    <div class="q-card ${statusClass}" id="qcard-${idx}">
+      <div class="q-header">
+        <div class="q-number">${displayNum}</div>
+        <div class="q-header-meta">
+          <span class="badge ${diffColor}">${diff}</span>
+          <span class="badge badge-blue">${typeLabel}</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);">${sdot} ${statusText}</span>
+        </div>
+        <div class="q-actions">
+          <button class="btn btn-success btn-sm" onclick="setStatus(${idx},'approved')" title="Approve">
+            <i class='bx bx-check'></i> Approve
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="setStatus(${idx},'flagged')" title="Flag as problematic">
+            <i class='bx bx-flag'></i> Flag
+          </button>
+          <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--border);color:var(--red);" onclick="deleteQuestion(${idx})" title="Delete">
+            <i class='bx bx-trash'></i>
+          </button>
+        </div>
+      </div>
+      <div class="q-body">${bodyHtml}</div>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────────────────
+// MUTATIONS
+// ────────────────────────────────────────────────────────────
+function updateField(idx, field, val) {
+  questions[idx][field] = val;
+  markEdited(idx);
+}
+
+function updateOption(idx, oidx, val) {
+  if (!Array.isArray(questions[idx].options)) questions[idx].options = ['','','',''];
+  questions[idx].options[oidx] = val;
+  markEdited(idx);
+}
+
+function setCorrectOption(idx, oidx) {
+  questions[idx].answer = oidx;
+  markEdited(idx);
+
+  // Update UI
+  const letters = document.querySelectorAll(`[id^="opt-letter-${idx}-"]`);
+  letters.forEach((l,i) => l.classList.toggle('is-correct', i===oidx));
+  const radios = document.querySelectorAll(`.correct-radio[data-qidx="${idx}"]`);
+  radios.forEach((r,i) => r.classList.toggle('selected', i===oidx));
+}
+
+function setTFAnswer(idx, val) {
+  questions[idx].answer = val === 'true';
+  markEdited(idx);
+
+  const btns = document.querySelectorAll(`.tf-btn[data-qidx="${idx}"]`);
+  btns.forEach(b => {
+    b.classList.remove('selected-true','selected-false');
+    if (b.dataset.val === val) {
+      b.classList.add(val==='true'?'selected-true':'selected-false');
+    }
+  });
+}
+
+function setStatus(idx, status) {
+  questions[idx]._status = status;
+  updateStats();
+  renderQuestions();
+}
+
+function markEdited(idx) {
+  if (questions[idx]._status === 'pending') questions[idx]._status = 'edited';
+  updateStats();
+  const card = document.getElementById(`qcard-${idx}`);
+  if (card) { card.classList.add('is-edited'); }
+}
+
+function deleteQuestion(idx) {
+  if (!confirm('Delete this question?')) return;
+  questions.splice(idx, 1);
+  renderQuestions();
+  updateStats();
+  toast('Question deleted');
+}
+
+function approveAll() {
+  questions.forEach(q => q._status = 'approved');
+  updateStats();
+  renderQuestions();
+  toast('All questions approved ✓', 'success');
+}
+
+// ────────────────────────────────────────────────────────────
+// ADD NEW QUESTION
+// ────────────────────────────────────────────────────────────
+function toggleAddPanel() {
+  const panel = document.getElementById('add-q-panel');
+  const open  = panel.classList.toggle('open');
+  if (open) { renderNewQOptions(); document.getElementById('new-q-prompt').focus(); }
+}
+
+function selectNewType(type, el) {
+  newQType = type;
+  newQOptions  = ['','','',''];
+  newQCorrect  = 0;
+  newQTFAnswer = null;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.toggle('selected', b===el));
+  renderNewQOptions();
+}
+
+function renderNewQOptions() {
+  const area = document.getElementById('new-q-options-area');
+  if (newQType === 'mcq') {
+    const letters = ['A','B','C','D'];
+    area.innerHTML = `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-list-ul'></i> Options</div>
+        <div class="options-grid" id="new-opts-grid">
+          ${newQOptions.map((opt,i) => `
+            <div class="option-row">
+              <div class="option-letter ${i===newQCorrect?'is-correct':''}" id="new-opt-letter-${i}">${letters[i]}</div>
+              <input class="q-input" value="${escHtml(opt)}" placeholder="Option ${letters[i]}"
+                oninput="newQOptions[${i}]=this.value">
+              <label class="correct-radio ${i===newQCorrect?'selected':''}" id="new-opt-radio-${i}"
+                onclick="setNewCorrect(${i})">
+                ✓ Correct
+              </label>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  } else if (newQType === 'true_false') {
+    area.innerHTML = `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-toggle-right'></i> Correct Answer</div>
+        <div class="tf-toggle">
+          <button class="tf-btn ${newQTFAnswer===true?'selected-true':''}" onclick="newQTFAnswer=true;renderNewQOptions()">✅ True</button>
+          <button class="tf-btn ${newQTFAnswer===false?'selected-false':''}" onclick="newQTFAnswer=false;renderNewQOptions()">❌ False</button>
+        </div>
+      </div>`;
+  } else {
+    area.innerHTML = `
+      <div class="field-group">
+        <div class="field-label"><i class='bx bx-check-circle'></i> Expected Answer</div>
+        <textarea class="q-textarea" id="new-q-answer" rows="${newQType==='long'?4:2}" placeholder="Model answer…"></textarea>
+      </div>`;
+  }
+}
+
+function setNewCorrect(oi) {
+  newQCorrect = oi;
+  ['A','B','C','D'].forEach((_,i) => {
+    document.getElementById(`new-opt-letter-${i}`)?.classList.toggle('is-correct', i===oi);
+    document.getElementById(`new-opt-radio-${i}`)?.classList.toggle('selected', i===oi);
+  });
+}
+
+function addNewQuestion() {
+  const prompt = document.getElementById('new-q-prompt').value.trim();
+  if (!prompt) { toast('Please enter a question.','error'); return; }
+
+  const q = {
+    id: `q_new_${Date.now()}`,
+    type: newQType,
+    prompt,
+    difficulty: 'medium',
+    _status: 'approved',
+  };
+
+  if (newQType === 'mcq') {
+    q.options = [...newQOptions];
+    q.answer  = newQCorrect;
+  } else if (newQType === 'true_false') {
+    if (newQTFAnswer === null) { toast('Please select True or False.','error'); return; }
+    q.answer = newQTFAnswer;
+    q.options = ['True','False'];
+  } else {
+    q.answer = document.getElementById('new-q-answer')?.value.trim() || '';
+  }
+
+  questions.push(q);
+  renderQuestions();
+  updateStats();
+
+  // Reset panel
+  document.getElementById('new-q-prompt').value = '';
+  newQOptions = ['','','','']; newQCorrect = 0; newQTFAnswer = null;
+  renderNewQOptions();
+  toast('Question added ✓','success');
+}
+
+// ────────────────────────────────────────────────────────────
+// SAVE QUIZ
+// ────────────────────────────────────────────────────────────
+async function saveQuiz() {
+  if (!quizId) { toast('No quiz ID — cannot save.','error'); return; }
+
+  const title = document.getElementById('quiz-title-input').value.trim();
+  const cleanQs = questions.map(({_status, ...q}) => ({
+    ...q,
+    prompt: q.prompt || q.question_text || '',
+  }));
+
+  try {
+    const res = await fetch(`/api/quizzes/${quizId}/update`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ title, questions: cleanQs }),
+    });
+
+    if (res.ok) {
+      toast('Quiz saved successfully ✓','success');
+    } else {
+      // Fallback — try local sessionStorage save
+      const updated = {...quizData, title, questions: cleanQs};
+      sessionStorage.setItem('quiz_editor_data', JSON.stringify(updated));
+      toast('Changes saved locally (no server).','success');
+    }
+  } catch(e) {
+    // Fallback — save to sessionStorage
+    const updated = {...quizData, title, questions: cleanQs};
+    sessionStorage.setItem('quiz_editor_data', JSON.stringify(updated));
+    toast('Saved locally ✓','success');
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// PUBLISH MODAL
+// ────────────────────────────────────────────────────────────
+function openPublishModal() {
+  const flagged  = questions.filter(q=>q._status==='flagged').length;
+  const pending  = questions.filter(q=>q._status==='pending').length;
+  const warnBox  = document.getElementById('pub-warnings');
+  const warnText = document.getElementById('pub-warning-text');
+
+  if (flagged || pending) {
+    const msgs = [];
+    if (flagged) msgs.push(`${flagged} flagged question(s)`);
+    if (pending) msgs.push(`${pending} unreviewed question(s)`);
+    warnText.textContent = `You still have ${msgs.join(' and ')}. Review before sending.`;
+    warnBox.style.display = 'flex';
+  } else {
+    warnBox.style.display = 'none';
+  }
+
+  document.getElementById('publish-modal').classList.add('open');
+}
+
+function closePublishModal() {
+  document.getElementById('publish-modal').classList.remove('open');
+}
+
+async function publishQuiz() {
+  const btn       = document.getElementById('pub-confirm-btn');
+  const timeLimit = parseInt(document.getElementById('pub-time-limit').value) || 0;
+  const dueDate   = document.getElementById('pub-due-date').value || null;
+  const note      = document.getElementById('pub-note').value || '';
+  const title     = document.getElementById('quiz-title-input').value.trim();
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Sending…';
+
+  // 1. Save updated questions first
+  await saveQuiz();
+
+  // 2. Save settings
+  if (quizId) {
+    try {
+      await fetch(`/api/quizzes/${quizId}/settings`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ time_limit: timeLimit, due_date: dueDate, note }),
+      });
+    } catch(e) {}
+
+    // 3. Mark as allowed
+    try {
+      await fetch(`/api/quizzes/${quizId}/allow`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ is_allowed: true }),
+      });
+    } catch(e) {}
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bx bx-send"></i> Send Now';
+  closePublishModal();
+  toast('Quiz sent to students! 🎉','success');
+
+  // Brief delay then redirect
+  setTimeout(() => { window.location.href = '/teacher/generate'; }, 1800);
+}
+
+// ────────────────────────────────────────────────────────────
+// STATS
+// ────────────────────────────────────────────────────────────
+function updateStats() {
+  const total    = questions.length;
+  const approved = questions.filter(q=>q._status==='approved').length;
+  const flagged  = questions.filter(q=>q._status==='flagged').length;
+  const pending  = total - approved - flagged;
+
+  document.getElementById('stat-total').textContent    = total;
+  document.getElementById('stat-approved').textContent = approved;
+  document.getElementById('stat-flagged').textContent  = flagged;
+  document.getElementById('stat-pending').textContent  = Math.max(0,pending);
+
+  const dot  = document.getElementById('global-status-dot');
+  const text = document.getElementById('global-status-text');
+  if (approved === total && total > 0) {
+    dot.className  = 'status-dot approved';
+    text.textContent = 'All approved';
+  } else if (flagged > 0) {
+    dot.className  = 'status-dot flagged';
+    text.textContent = `${flagged} flagged`;
+  } else {
+    dot.className  = 'status-dot pending';
+    text.textContent = `${pending} pending`;
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+// HELPERS
+// ────────────────────────────────────────────────────────────
+function getCorrectIndex(q) {
+  const a = q.answer ?? q.correct_answer;
+  if (Number.isFinite(a))               return a;
+  if (typeof a === 'string') {
+    const n = parseInt(a);
+    if (!isNaN(n)) return n;
+    const upper = a.trim().toUpperCase();
+    if (/^[A-D]$/.test(upper)) return upper.charCodeAt(0)-65;
+    const opts = q.options || [];
+    const i = opts.findIndex(o => String(o).trim() === a.trim());
+    if (i >= 0) return i;
+  }
+  return 0;
+}
+
+function normBool(v) {
+  if (v === true || v === 'true' || v === 'True') return true;
+  if (v === false || v === 'false' || v === 'False') return false;
+  return null;
+}
+
+function escHtml(s) {
+  if (typeof s !== 'string') return s||'';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+let toastTimer = null;
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast', 2600);
+}
+
+// ── Close modal on overlay click
+document.getElementById('publish-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePublishModal();
+});
+
+// ── Start
+init();
+</script>
+
+</body>
+</html>
