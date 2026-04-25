@@ -78,65 +78,56 @@ class GradingService:
         policy = policy or self.default_policy
         return self.grader.grade_quiz(quiz=quiz, responses=responses, policy=policy)
     
+    # services/grading_service.py — update prepare_quiz_for_grading()
+
     @staticmethod
     def prepare_quiz_for_grading(quiz: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Normalize quiz structure for the grader.
-        
-        Args:
-            quiz: Raw quiz data
-            
-        Returns:
-            Normalized quiz data
-        """
         quiz_for_grader = dict(quiz or {})
         normalized_questions: List[Dict[str, Any]] = []
-        
+
         for q in quiz_for_grader.get("questions", []) or []:
             qq = dict(q)
-            
-            # Map assignment-specific question types to grader-supported types
             qtype = (qq.get("type") or "").strip().lower()
+
+            # Map assignment_task → keep assignment_type for the new grader
             if qtype == "assignment_task":
-                atype = (qq.get("assignment_type") or "").strip().lower()
-                if atype == "conceptual":
-                    mapped_type = "conceptual"
-                elif atype == "scenario":
-                    mapped_type = "scenario"
-                elif atype in {"case_study", "case-study"}:
-                    mapped_type = "case_study"
-                else:
-                    mapped_type = "long"
-                qq["type"] = mapped_type
-            
-            # Ensure answer field exists
-            if qq.get("answer") is None:
-                for key in [
-                    "correct_answer",
-                    "reference_answer",
-                    "expected_answer",
-                    "ideal_answer",
-                    "solution",
-                    "model_answer",
-                ]:
-                    if qq.get(key) is not None:
-                        qq["answer"] = qq.get(key)
-                        break
-            
-            # Ensure max_score exists
+                atype = (qq.get("assignment_type") or "conceptual").lower()
+                # Keep type as assignment_task — new _grade_assignment_task handles it
+                qq["type"] = "assignment_task"
+                qq["assignment_type"] = atype
+
+            # Ensure max_score from marks field
             if qq.get("max_score") is None:
-                if qq.get("marks") is not None:
+                marks = qq.get("marks")
+                if marks is not None:
                     try:
-                        qq["max_score"] = float(qq.get("marks"))
+                        qq["max_score"] = float(marks)
                     except Exception:
                         qq["max_score"] = GradingService.default_max_score(qq.get("type"))
                 else:
                     qq["max_score"] = GradingService.default_max_score(qq.get("type"))
-            
+
+            # IMPORTANT: preserve all assignment metadata for rubric building
+            # Do NOT strip requirements, grading_criteria, learning_objectives etc.
             normalized_questions.append(qq)
-        
+
         quiz_for_grader["questions"] = normalized_questions
         return quiz_for_grader
+
+
+    @staticmethod
+    def default_max_score(qtype: str) -> float:
+        q = (qtype or "").lower()
+        if q in ("mcq", "true_false", "tf", "truefalse"):
+            return 1.0
+        if q == "short":
+            return 3.0
+        if q in ("long", "conceptual"):
+            return 5.0
+        if q in ("assignment_task", "scenario", "research",
+                "project", "case_study", "comparative"):
+            return 10.0  # ← was missing, defaulted to 1.0
+        return 1.0
     
     @staticmethod
     def default_max_score(qtype: str) -> float:

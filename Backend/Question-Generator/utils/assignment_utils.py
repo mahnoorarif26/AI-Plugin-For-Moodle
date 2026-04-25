@@ -95,6 +95,64 @@ def strip_code_like_text(s: str) -> str:
     return out
 
 
+def _enrich_grading_criteria(questions: list) -> list:
+    """
+    Ensure every question has grading_criteria that the LLM grader can use.
+    Called after the cleaned_questions loop in generate_advanced_assignments_llm().
+
+    If a question is missing grading_criteria entirely, or has a very short/
+    placeholder value (< 30 chars), this fills in a detailed rubric template
+    based on the question's assignment_type.  Questions that already have a
+    meaningful grading_criteria string are left untouched.
+
+    The templates are intentionally verbose so that _grade_assignment_task()
+    in grader.py has rich rubric text to pass to the LLM examiner, even when
+    the original LLM that generated the questions produced a thin or empty
+    grading_criteria field.
+    """
+    templates = {
+        "conceptual": (
+            "Award marks for: accurate definition of core concepts (40%), "
+            "depth of explanation with examples (35%), "
+            "clarity and organisation (25%)."
+        ),
+        "scenario": (
+            "Award marks for: identifying the key problem (25%), "
+            "structured analysis of options (35%), "
+            "justified recommendation with trade-offs (40%)."
+        ),
+        "research": (
+            "Award marks for: quality of evidence cited (40%), "
+            "depth of analysis beyond surface facts (35%), "
+            "logical structure and conclusions (25%)."
+        ),
+        "project": (
+            "Award marks for: feasibility of proposed solution (35%), "
+            "completeness of all required components (40%), "
+            "clarity of presentation (25%)."
+        ),
+        "case_study": (
+            "Award marks for: multi-stakeholder analysis (30%), "
+            "use of relevant frameworks or models (35%), "
+            "justified conclusion with alternatives considered (35%)."
+        ),
+        "comparative": (
+            "Award marks for: clear comparison criteria defined (30%), "
+            "balanced coverage of both sides (40%), "
+            "well-reasoned conclusion (30%)."
+        ),
+    }
+
+    for q in questions:
+        existing = q.get("grading_criteria") or ""
+        # Only replace if missing or suspiciously short (placeholder / empty)
+        if not existing or len(str(existing).strip()) < 30:
+            atype = (q.get("assignment_type") or "conceptual").lower()
+            q["grading_criteria"] = templates.get(atype, templates["conceptual"])
+
+    return questions
+
+
 def generate_advanced_assignments_llm(
     full_text: str,
     chosen_subtopics: list,
@@ -102,7 +160,7 @@ def generate_advanced_assignments_llm(
     api_key: str,
     difficulty: str = "auto",
     scenario_style: str = "auto",
-    existing_context: str = "",  # Add this parameter
+    existing_context: str = "",
 ):
     """
     Generate diverse assignment tasks based on subtopics.
@@ -371,7 +429,7 @@ DUPLICATE PREVENTION:
             if "word_count" not in q:
                 q["word_count"] = "500-750 words"
 
-            # ✅ DECISION-BASED: remove code_snippet and sanitize ALL text fields
+            # DECISION-BASED: remove code_snippet and sanitize ALL text fields
             if effective_style == "decision_based":
                 if "code_snippet" in q:
                     del q["code_snippet"]
@@ -397,7 +455,7 @@ DUPLICATE PREVENTION:
                     q["deliverables"] = new_del
 
             else:
-                # ✅ CODE-BASED: clean the code_snippet formatting if present
+                # CODE-BASED: clean the code_snippet formatting if present
                 if "code_snippet" in q and q["code_snippet"]:
                     code = str(q["code_snippet"])
 
@@ -418,6 +476,12 @@ DUPLICATE PREVENTION:
                         q[field] = str(q[field]).strip()
 
             cleaned_questions.append(q)
+
+        # ── NEW: guarantee every question has a usable grading_criteria ──
+        # This runs AFTER all LLM sanitisation so it never overwrites a good
+        # grading_criteria that was cleaned above, only fills in missing/thin ones.
+        cleaned_questions = _enrich_grading_criteria(cleaned_questions)
+        # ─────────────────────────────────────────────────────────────────
 
         return {
             "success": True,

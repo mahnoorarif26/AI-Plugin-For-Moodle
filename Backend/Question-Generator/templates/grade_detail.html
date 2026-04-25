@@ -159,7 +159,25 @@
               <div style="font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5;">{{ row.feedback }}</div>
               {% endif %}
             </td>
-            <td data-label="Score"><span class="score-cell">{{ row.score or 0 }} / {{ row.max_score or row.max or 0 }}</span></td>
+            <td data-label="Score">
+              <span class="score-cell">{{ row.score or 0 }} / {{ row.max_score or row.max or 0 }}</span>
+              {% if row.criteria %}
+              <details style="margin-top:6px;">
+                <summary style="cursor:pointer;font-size:12px;color:#6b7280;">
+                  Criterion breakdown
+                </summary>
+                <table style="width:100%;font-size:12px;margin-top:6px;border-collapse:collapse;">
+                  {% for c in row.criteria %}
+                  <tr>
+                    <td style="padding:3px 6px;text-transform:capitalize;">{{ c.name }}</td>
+                    <td style="padding:3px 6px;text-align:right;white-space:nowrap;">{{ c.score }}/{{ c.max }}</td>
+                    <td style="padding:3px 6px;color:#6b7280;">{{ c.feedback }}</td>
+                  </tr>
+                  {% endfor %}
+                </table>
+              </details>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

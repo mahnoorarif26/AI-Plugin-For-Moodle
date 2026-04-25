@@ -208,6 +208,10 @@
     <!-- QUIZ FORM -->
     <form method="POST" action="{{ url_for('student.submit_quiz') }}" id="quiz-form">
       <input type="hidden" name="quiz_id" value="{{ quiz_id }}">
+      <!-- These hidden fields are populated from the student-info section above on submit -->
+      <input type="hidden" name="student_name" id="hidden_student_name">
+      <input type="hidden" name="student_email" id="hidden_student_email">
+      <input type="hidden" name="roll_no" id="hidden_roll_no">
 
       {% for question in questions %}
       {% set letters = ["A","B","C","D","E"] %}
@@ -324,6 +328,11 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+
+    // Copy values into the hidden form fields so they are submitted
+    document.getElementById('hidden_student_name').value = nameInput.value.trim();
+    document.getElementById('hidden_student_email').value = emailInput.value.trim();
+    document.getElementById('hidden_roll_no').value = rollInput.value.trim();
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Submitting…';
