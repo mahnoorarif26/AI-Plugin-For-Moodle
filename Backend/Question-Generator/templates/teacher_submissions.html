@@ -13,10 +13,13 @@
       --white: #ffffff; --surface: #fafaf8;
       --dark: #1a1207; --body: #4a4035; --muted: #9a8878;
       --card-r: 18px; --nav-h: 68px;
+      --green: #059669; --green-soft: #d1fae5; --green-border: #a7f3d0;
+      --red: #dc2626; --red-soft: #fee2e2; --red-border: #fca5a5;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: var(--surface); color: var(--dark); min-height: 100vh; }
 
+    /* TOPBAR */
     .topbar { height: var(--nav-h); padding: 0 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.96); backdrop-filter: blur(12px); border-bottom: 1px solid var(--soft); position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 20px rgba(251,144,38,0.08); }
     .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
     .brand-mark { width: 36px; height: 36px; background: linear-gradient(135deg, var(--o1), var(--o2)); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
@@ -36,6 +39,8 @@
     .meta-row { display: flex; flex-wrap: wrap; gap: 12px; }
     .meta-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--soft); border-radius: 8px; padding: 5px 12px; font-size: 12px; color: var(--body); font-weight: 500; }
     .meta-chip i { color: var(--o1); font-size: 14px; }
+    .meta-chip.expired-chip { background: var(--red-soft); border-color: var(--red-border); color: var(--red); }
+    .meta-chip.expired-chip i { color: var(--red); }
 
     /* STATS ROW */
     .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -44,9 +49,47 @@
     .stat-val { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 36px; font-weight: 900; color: var(--o1); line-height: 1; }
     .stat-lbl { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 5px; }
 
+    /* STATUS STAT CARD */
+    .stat-card.status-live .stat-val  { color: var(--green); }
+    .stat-card.status-expired .stat-val { color: var(--red); }
+
+    /* STATUS BADGE */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 999px;
+      font-size: 12px; font-weight: 700;
+    }
+    .status-badge.live {
+      background: var(--green-soft); color: var(--green);
+      border: 1px solid var(--green-border);
+      animation: livePulse 2s infinite;
+    }
+    .status-badge.expired {
+      background: var(--red-soft); color: var(--red);
+      border: 1px solid var(--red-border);
+    }
+    @keyframes livePulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.3); }
+      50%       { box-shadow: 0 0 0 5px rgba(5,150,105,0); }
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .status-badge.live .status-dot    { background: var(--green); }
+    .status-badge.expired .status-dot { background: var(--red); }
+
+    /* DUE DATE DISPLAY */
+    .due-date-info {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--muted);
+    }
+    .due-date-info.overdue { color: var(--red); font-weight: 600; }
+    .due-date-info i { font-size: 14px; }
+
     /* TABLE SECTION */
     .table-section { background: white; border: 1.5px solid var(--soft); border-radius: var(--card-r); overflow: hidden; }
-    .table-head { padding: 18px 24px; border-bottom: 1px solid var(--soft); display: flex; align-items: center; gap: 10px; }
+    .table-head { padding: 18px 24px; border-bottom: 1px solid var(--soft); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .table-head-left { display: flex; align-items: center; gap: 10px; }
     .table-head h2 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 800; color: var(--dark); }
     .table-head i { color: var(--o1); font-size: 20px; }
     .table-wrapper { overflow-x: auto; }
@@ -86,7 +129,7 @@
     @media (max-width: 768px) {
       .topbar { padding: 0 20px; }
       main { padding: 24px 16px 60px; }
-      .stats-row { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
       thead { display: none; }
       tbody tr { display: block; padding: 14px; border-bottom: 1px solid var(--soft); }
       td { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border: none; font-size: 13px; }
@@ -105,15 +148,22 @@
 </nav>
 
 <main>
+  <!-- PAGE HEADER -->
   <div class="page-header">
-    <div class="page-badge"><i class='bx bx-file-blank'></i> Quiz Submissions</div>
+    <div class="page-badge"><i class='bx bx-file-blank'></i> Submissions</div>
     <h1>{{ quiz_title }}</h1>
     <div class="meta-row">
       <div class="meta-chip"><i class='bx bx-hash'></i> ID: {{ quiz_id }}</div>
+      <!-- Due date chip — rendered dynamically by JS below -->
+      <div class="meta-chip" id="due-date-chip" style="display:none;">
+        <i class='bx bx-calendar' id="due-date-icon"></i>
+        <span id="due-date-text">—</span>
+      </div>
       <div class="meta-chip"><i class='bx bx-refresh'></i> Auto-refreshes every 30s</div>
     </div>
   </div>
 
+  <!-- STATS -->
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-val" id="total-submissions">—</div>
@@ -123,16 +173,22 @@
       <div class="stat-val" id="stat-latest">—</div>
       <div class="stat-lbl">Latest Submission</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-val" id="stat-status">Live</div>
-      <div class="stat-lbl">Status</div>
+    <!-- STATUS CARD: dynamically updated -->
+    <div class="stat-card" id="status-stat-card">
+      <div class="stat-val" id="stat-status-val">—</div>
+      <div class="stat-lbl">Quiz Status</div>
     </div>
   </div>
 
+  <!-- SUBMISSIONS TABLE -->
   <div class="table-section">
     <div class="table-head">
-      <i class='bx bx-group'></i>
-      <h2>Student Submissions</h2>
+      <div class="table-head-left">
+        <i class='bx bx-group'></i>
+        <h2>Student Submissions</h2>
+      </div>
+      <!-- Live status badge shown in table header too -->
+      <div id="header-status-badge"></div>
     </div>
     <div id="submissions-content">
       <div class="loading-state">
@@ -146,11 +202,130 @@
 <script>
   const quizId = "{{ quiz_id }}";
   let refreshInterval;
+  let quizDueDate = null;     // will be populated from API
+  let isExpired = false;
 
-  document.addEventListener('DOMContentLoaded', () => {
-    loadSubmissions();
-    refreshInterval = setInterval(loadSubmissions, 30000);
-  });
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  function fmtDateTime(v) {
+    if (!v) return '';
+    try {
+      const d = new Date(v);
+      if (isNaN(d)) return '';
+      return d.toLocaleString('en-US', {
+        year: 'numeric', month: 'short', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+    } catch { return ''; }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Status logic ──────────────────────────────────────────────────────────────
+
+  /**
+   * Determine if the quiz/assignment is expired based on due_date.
+   * Also handles time_limit (for quizzes without explicit due_date
+   * the due_date is the primary signal from settings).
+   */
+  function computeExpiry(quizSettings) {
+    const now = new Date();
+    const dueDate = quizSettings?.due_date || quizSettings?.dueDate || null;
+    if (!dueDate) return { expired: false, dueDate: null };
+    const due = new Date(dueDate);
+    if (isNaN(due)) return { expired: false, dueDate: null };
+    return { expired: now > due, dueDate: due };
+  }
+
+  function renderStatusBadge(expired) {
+    if (expired) {
+      return `<span class="status-badge expired">
+        <span class="status-dot"></span> Expired
+      </span>`;
+    }
+    return `<span class="status-badge live">
+      <span class="status-dot"></span> Live
+    </span>`;
+  }
+
+  function applyStatusToUI(expired, dueDate) {
+    isExpired = expired;
+
+    // ── Stat card ──
+    const statCard = document.getElementById('status-stat-card');
+    const statVal  = document.getElementById('stat-status-val');
+    if (expired) {
+      statCard.className = 'stat-card status-expired';
+      statVal.textContent = 'Expired';
+    } else {
+      statCard.className = 'stat-card status-live';
+      statVal.textContent = 'Live';
+    }
+
+    // ── Header badge ──
+    const badge = document.getElementById('header-status-badge');
+    if (badge) badge.innerHTML = renderStatusBadge(expired);
+
+    // ── Due date chip ──
+    if (dueDate) {
+      const chip = document.getElementById('due-date-chip');
+      const icon = document.getElementById('due-date-icon');
+      const text = document.getElementById('due-date-text');
+      chip.style.display = 'inline-flex';
+      if (expired) {
+        chip.classList.add('expired-chip');
+        icon.className = 'bx bx-calendar-x';
+        text.textContent = 'Due: ' + fmtDateTime(dueDate) + ' (expired)';
+      } else {
+        chip.classList.remove('expired-chip');
+        icon.className = 'bx bx-calendar';
+        text.textContent = 'Due: ' + fmtDateTime(dueDate);
+      }
+    }
+  }
+
+  // ── Fetch quiz settings to get due_date ───────────────────────────────────────
+
+  async function fetchQuizSettings() {
+    try {
+      // Try the quiz settings API first
+      const res = await fetch(`/api/quizzes/${quizId}/settings`);
+      if (res.ok) {
+        const data = await res.json();
+        // data may be the settings object directly or wrapped in { ok, settings }
+        const settings = data.settings || data;
+        const { expired, dueDate } = computeExpiry(settings);
+        applyStatusToUI(expired, dueDate);
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not fetch quiz settings:', e);
+    }
+
+    // Fallback: try fetching the full quiz object
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}`);
+      if (res.ok) {
+        const quiz = await res.json();
+        const settings = quiz.settings || {};
+        const { expired, dueDate } = computeExpiry(settings);
+        applyStatusToUI(expired, dueDate);
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not fetch quiz data:', e);
+    }
+
+    // Final fallback: no due date info available — show Live
+    applyStatusToUI(false, null);
+  }
+
+  // ── Load submissions ──────────────────────────────────────────────────────────
 
   async function loadSubmissions() {
     try {
@@ -174,8 +349,12 @@
     if (!submissions.length) { showEmptyState(); return; }
 
     // Latest submission time
-    const sorted = [...submissions].sort((a,b) => new Date(b.submitted_at||0) - new Date(a.submitted_at||0));
-    const latestTime = sorted[0]?.submitted_at ? new Date(sorted[0].submitted_at).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const sorted = [...submissions].sort(
+      (a, b) => new Date(b.submitted_at || 0) - new Date(a.submitted_at || 0)
+    );
+    const latestTime = sorted[0]?.submitted_at
+      ? new Date(sorted[0].submitted_at).toLocaleTimeString('en', { hour:'2-digit', minute:'2-digit' })
+      : '—';
     document.getElementById('stat-latest').textContent = latestTime;
 
     container.innerHTML = `
@@ -224,7 +403,10 @@
       <div class="empty-state">
         <i class='bx bx-inbox'></i>
         <h3>No Submissions Yet</h3>
-        <p>Students haven't submitted this quiz yet. Check back soon.</p>
+        <p>${isExpired
+          ? 'This quiz has expired. No more submissions can be made.'
+          : 'Students haven\'t submitted this quiz yet. Check back soon.'
+        }</p>
       </div>`;
   }
 
@@ -232,10 +414,19 @@
     window.open(`/student/grade/${subId}?origin=teacher`, '_blank');
   }
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
+  // ── Init ──────────────────────────────────────────────────────────────────────
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Load status and submissions in parallel
+    fetchQuizSettings();
+    loadSubmissions();
+
+    // Auto-refresh every 30 seconds
+    refreshInterval = setInterval(() => {
+      fetchQuizSettings();
+      loadSubmissions();
+    }, 30000);
+  });
 </script>
 </body>
 </html>
