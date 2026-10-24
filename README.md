@@ -268,14 +268,17 @@ fpdf
 
 ---
 
-## 👩‍💻 Author
-**Sidra Siddique**
-B.Sc. Data Science — University of the Punjab (2022–2026) 
-📧 sidrasiddique494@gmail.com
+
 
 **Mahnoor Arif**  
 B.Sc. Data Science — University of the Punjab (2022–2026)  
 📧 mahnoorarif138@gmail.com
+
+**Mahnoor Arif**  
+B.Sc. Data Science — University of the Punjab (2022–2026)  
+📧 mahnoorarif138@gmail.com
+
+
 
 ---
 
